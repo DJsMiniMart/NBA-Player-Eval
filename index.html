@@ -212,19 +212,31 @@ const CAREERS = {};
 /* A player-season counting only what he did for `team` (null if he never played for them that season).
    Players who changed teams mid-season carry per-team splits; older data without them falls back to full totals. */
 const SPLIT_KEYS = ["g","mp","pts","ast","drb","orb","stl","blk","tov"];
+/* Teams that moved or were renamed count as one of today's 30 franchises (Basketball-Reference codes).
+   Rows keep the name the team had at the time: Shawn Kemp shows as SEA, but he's on the Thunder's list. */
+const FRANCHISE = {SEA:"OKC", NJN:"BRK", NYN:"BRK", CHA:"CHO", CHH:"CHO", NOH:"NOP", NOK:"NOP", VAN:"MEM",
+  WSB:"WAS", CAP:"WAS", KCK:"SAC", KCO:"SAC", SDC:"LAC", BUF:"LAC", NOJ:"UTA", SDR:"HOU"};
+const fr = c => FRANCHISE[c] || c;
+const teamsOf = p => (p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ")).filter(Boolean);
+function franchiseOptions(){
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  return Object.keys(T).map(n => [NBA_TO_BBR[n] || n, T[n].n]).sort((a,b) => a[1].localeCompare(b[1]));
+}
 function onTeam(r, team){
   if(!team) return r;
   const teams = String(r.team || "").split(" → ").filter(Boolean);
-  if(r.splits && r.splits.length){
-    const parts = r.splits.filter(x => x.team === team);
+  const mine = teams.filter(t => fr(t) === team);
+  const whole = mine.length === teams.length;          // every stop that season was this franchise
+  if(r.splits && r.splits.length && !whole){
+    const parts = r.splits.filter(x => fr(x.team) === team);
     if(!parts.length) return null;
-    const o = {id:r.id, name:r.name, season:r.season, team, pos:r.pos, partOf:r.team};
+    const o = {id:r.id, name:r.name, season:r.season, team:[...new Set(parts.map(x => x.team))].join(" → "), pos:r.pos, partOf:r.team};
     SPLIT_KEYS.forEach(k => o[k] = parts.reduce((t,x) => t + (x[k] || 0), 0));
     o.value = playEval(o);
     return o.value == null ? null : o;
   }
-  if(!teams.includes(team)) return null;
-  return teams.length > 1 ? Object.assign({}, r, {team, partOf:r.team, noSplit:true}) : r;
+  if(!mine.length) return null;
+  return whole ? r : Object.assign({}, r, {team: mine.join(" → "), partOf:r.team, noSplit:true});
 }
 function buildCareers(team){
   team = team || "";
@@ -295,7 +307,7 @@ function draw(){
   const pool = qualified().slice().sort((a,b)=>b.value-a.value);
   pool.forEach((p,i)=>p.rank = i+1);
   const q = fold($('q').value.trim()), team = $('team').value;
-  let list = pool.filter(p => (!team || p.team===team || (p.teams||[]).includes(team) || ((VIEW==="alltime" || VIEW==="careers") && p.team.split(" → ").includes(team))) && (!q || fold(p.name).includes(q)));
+  let list = pool.filter(p => (!team || teamsOf(p).some(t => fr(t) === team)) && (!q || fold(p.name).includes(q)));
   list.sort((a,b)=>{
     const x=a[sortKey], y=b[sortKey];
     return (typeof x==="string" ? x.localeCompare(y) : x-y) * sortDir;
@@ -358,7 +370,7 @@ function shortYears(p){
 /* Team cell: careers show their last team plus how many others (full list on hover and in the breakdown) */
 function teamCell(p){
   if(p.partOf && VIEW === "alltime")
-    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Full season: " + p.partOf)}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
+    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Whole season: " + p.partOf)}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
   const all = p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ").filter(Boolean);
   if(VIEW === "careers" && all.length > 1)
     return `<td class="l teamcell${VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(", "))}">${esc(p.team || all[all.length-1])} <span class="more">+${all.length-1}</span></td>`;
@@ -495,8 +507,7 @@ async function showSeason(file){
   if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
   if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Play Eval, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
   if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Play Eval since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
-  const teams = [...new Set(DATA.players.flatMap(p => p.teams || String(p.team||"").split(" → ")).filter(Boolean))].sort();
-  $('team').innerHTML = `<option value="">All teams</option>` + teams.map(t=>`<option>${esc(t)}</option>`).join("");
+  $('team').innerHTML = `<option value="">All teams</option>` + franchiseOptions().map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("");
   const dG = VIEW==="current" ? DEFAULT_MIN_GAMES : VIEW==="past" ? PAST_MIN_GAMES : VIEW==="careers" ? CAREER_MIN_GAMES : ALLTIME_MIN_GAMES;
   const dM = VIEW==="current" ? DEFAULT_MIN_MPG : VIEW==="past" ? PAST_MIN_MPG : VIEW==="careers" ? CAREER_MIN_MPG : ALLTIME_MIN_MPG;
   $('minG').value = store.get(mkey("minG")) ?? dG;

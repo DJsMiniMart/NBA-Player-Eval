@@ -44,7 +44,7 @@ const NBA_LOGO = "https://cdn.nba.com/logos/leagues/logo-nba.svg";
    name, so today's logo is right for it. Older names get a colored badge instead of a logo. */
 const BBR_TEAMS = {
   BRK:{f:"BKN",same:true}, NJN:{f:"BKN",n:"New Jersey Nets"}, NYN:{f:"BKN",n:"New York Nets"},
-  CHO:{f:"CHA",same:true}, CHA:{f:"CHA",n:"Charlotte Bobcats"}, CHH:{f:"NOP",n:"Charlotte Hornets (1988-2002)"},
+  CHO:{f:"CHA",same:true}, CHA:{f:"CHA",n:"Charlotte Bobcats"}, CHH:{f:"CHA",n:"Charlotte Hornets (1988-2002)"},
   NOH:{f:"NOP",n:"New Orleans Hornets"}, NOK:{f:"NOP",n:"New Orleans/Oklahoma City Hornets"},
   PHO:{f:"PHX",same:true}, SEA:{f:"OKC",n:"Seattle SuperSonics"}, VAN:{f:"MEM",n:"Vancouver Grizzlies"},
   WSB:{f:"WAS",n:"Washington Bullets"}, CAP:{f:"WAS",n:"Capital Bullets"}, KCK:{f:"SAC",n:"Kansas City Kings"},

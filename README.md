@@ -37,6 +37,11 @@ On the all-time lists (best seasons and best careers), picking a team counts onl
 team, games played included. Players who changed teams mid-season have their team-by-team numbers saved as
 `splits` in each season file and in `data/alltime.json`.
 
+The Team list has today's 30 franchises. Teams that moved or were renamed count toward the franchise they became
+(Seattle SuperSonics -> Thunder, New Jersey Nets -> Nets, Vancouver -> Grizzlies, Charlotte Hornets 1988-2002 and
+Bobcats -> Hornets, and so on), but each row keeps the team's name from that season. The list is `FRANCHISE` in
+`index.html`.
+
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 
 ## Player pages
