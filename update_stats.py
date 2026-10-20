@@ -5,6 +5,9 @@ through the stat formula, and writes:
   data/stats.json    -- the current leaderboard the site shows
   data/history.json  -- one value per player per day, for the trend chart
 
+It also saves finished seasons listed in PAST_SEASONS once (data/season-YYYY.json) as a
+baseline, and writes data/seasons.json so the page can offer a season picker.
+
 Formula (season totals):
   (PTS + 2*AST + DRB + 2*ORB + 4*STL + BLK) / MP
 
@@ -24,6 +27,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 STATS_PATH = os.path.join(DATA_DIR, "stats.json")
 HISTORY_PATH = os.path.join(DATA_DIR, "history.json")
+SEASONS_PATH = os.path.join(DATA_DIR, "seasons.json")
+# finished seasons to keep as a baseline, by the year they ended (2025-26 -> 2026)
+PAST_SEASONS = [2026]
 
 # column header text on Basketball-Reference -> our field name
 COLS = {"Player": "name", "Team": "team", "Tm": "team", "Pos": "pos", "Age": "age",
@@ -149,14 +155,59 @@ def load_json(path, default):
         return default
 
 
+def season_label(year):
+    return f"{year - 1}-{str(year)[2:]}"
+
+
+def season_url(year):
+    return f"https://www.basketball-reference.com/leagues/NBA_{year}_totals.html"
+
+
+def save_past_seasons(now, current_year):
+    """Download each finished baseline season once; they don't change after the season ends."""
+    for year in PAST_SEASONS:
+        if year >= current_year:
+            continue
+        path = os.path.join(DATA_DIR, f"season-{year}.json")
+        if load_json(path, {}).get("players"):
+            continue
+        time.sleep(4)  # be polite to the stats site between page loads
+        url = season_url(year)
+        status, html = fetch(url)
+        players = parse_players(html) if status == 200 else []
+        if not players:
+            print(f"Couldn't load the {season_label(year)} baseline (HTTP {status}); will try again next run")
+            continue
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"season": season_label(year), "final": True, "updatedAt": now.isoformat(timespec="seconds"),
+                       "source": url, "formula": "(PTS + AST*2 + DRB + ORB*2 + STL*4 + BLK) / MP",
+                       "players": players}, f, separators=(",", ":"))
+        print(f"Saved {season_label(year)} baseline: {len(players)} players; top: {players[0]['name']} {players[0]['value']:.3f}")
+
+
+def write_season_index(current_year):
+    seasons = [{"label": season_label(current_year), "file": "stats.json", "current": True}]
+    for year in sorted(PAST_SEASONS, reverse=True):
+        path = os.path.join(DATA_DIR, f"season-{year}.json")
+        if year < current_year and load_json(path, {}).get("players"):
+            seasons.append({"label": season_label(year), "file": f"season-{year}.json", "current": False})
+    with open(SEASONS_PATH, "w", encoding="utf-8") as f:
+        json.dump(seasons, f, separators=(",", ":"))
+
+
 def main():
     now = dt.datetime.now(dt.timezone.utc)
     year = season_end_year(now)
-    url = f"https://www.basketball-reference.com/leagues/NBA_{year}_totals.html"
+    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        save_past_seasons(now, year)
+    except Exception as e:  # noqa: BLE001 -- a baseline hiccup shouldn't stop today's update
+        print(f"Baseline season download failed: {e}")
+    write_season_index(year)
+    url = season_url(year)
     status, html = fetch(url)
     players = parse_players(html) if status == 200 else []
-    season = f"{year - 1}-{str(year)[2:]}"
-    os.makedirs(DATA_DIR, exist_ok=True)
+    season = season_label(year)
 
     if not players:
         old = load_json(STATS_PATH, {})

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NBA Leaderboard</title>
+<title>Play Eval</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -33,7 +33,7 @@
   .pod .nm{font-weight:700;font-size:16px;margin:2px 0;}
   .pod .tm{color:var(--dim);font-size:12px;}
   .pod .val{font:700 34px/1 "Barlow Condensed";margin-top:8px;}
-  .controls{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+  .controls{display:grid;grid-template-columns:1fr 2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
   .controls label{display:block;font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
   input,select{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
@@ -48,6 +48,9 @@
   td.rank{color:var(--dim);font-weight:600;width:44px;}
   td.name{font-weight:600;}
   td.score{font-weight:700;color:var(--accent);font-size:15px;}
+  td.base{color:var(--dim);}
+  .up{color:#2f9e44;font-size:11px;font-weight:600;} .down{color:#e03131;font-size:11px;font-weight:600;}
+  .final-note{background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
   .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.35;vertical-align:middle;margin-right:8px;}
   tr.detail td{background:var(--row);text-align:left;white-space:normal;padding:14px 16px;}
   .parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;}
@@ -82,7 +85,7 @@
 <div class="wrap">
   <header>
     <div>
-      <h1 id="title">NBA <span>Leaderboard</span></h1>
+      <h1 id="title">Play <span>Eval</span></h1>
       <div class="meta" id="meta">Loading…</div>
     </div>
     <div class="formula">
@@ -94,6 +97,7 @@
   <div class="podium" id="podium"></div>
 
   <div class="controls">
+    <div><label for="season">Season</label><select id="season"></select></div>
     <div class="search"><label for="q">Search player</label><input id="q" type="search" placeholder="e.g. Jokic"></div>
     <div><label for="team">Team</label><select id="team"><option value="">All teams</option></select></div>
     <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
@@ -108,7 +112,8 @@
     <div class="more" id="more"></div>
   </div>
 
-  <div class="card trend">
+  <div class="final-note" id="finalNote" hidden></div>
+  <div class="card trend" id="trendCard">
     <h2>Top 5 over the season</h2>
     <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
     <div class="chartbox"><canvas id="topChart"></canvas></div>
@@ -122,9 +127,11 @@
 
 <script>
 /* ===== Settings you can change ===== */
-const STAT_NAME = "Leaderboard";   // what your stat is called -- shows in the title and table
-const DEFAULT_MIN_GAMES = 5;       // qualifying minimums (people can change them on the page)
+const STAT_NAME = "Play Eval";   // what your stat is called -- shows in the title and table
+const DEFAULT_MIN_GAMES = 5;       // qualifying minimums for the season in progress (people can change them on the page)
 const DEFAULT_MIN_MPG = 15;
+const PAST_MIN_GAMES = 40;         // qualifying minimums when looking at a finished season
+const PAST_MIN_MPG = 15;
 /* =================================== */
 
 const $ = id => document.getElementById(id);
@@ -136,7 +143,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const f1 = n => (Math.round(n*10)/10).toFixed(1);
 const f3 = n => n.toFixed(3);
 
-let DATA = {players:[]}, HIST = {days:{}, names:{}};
+let DATA = {players:[]}, HIST = {days:{}, names:{}}, SEASONS = [], CUR = null, BASE = null, BASEMAP = new Map();
 let sortKey = "value", sortDir = -1, openId = null, showAll = false;
 const charts = {};
 
@@ -153,10 +160,15 @@ const COLS = [
   {k:"spg", t:"STL", sm:true},
   {k:"bpg", t:"BLK", sm:true},
   {k:"value", t:STAT_NAME === "Leaderboard" ? "Score" : STAT_NAME},
+  {k:"base", t:"", base:true},
 ];
+const isPast = () => !!(DATA && DATA.final);
+const cols = () => COLS.filter(c => !c.base || (!isPast() && BASE)).map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : c);
 
 function enrich(p){
   const g = p.g || 1;
+  const b = BASEMAP.get(p.id);
+  p.base = (b && !isPast()) ? b.value : -1;
   return Object.assign(p, {mpg:p.mp/g, ppg:p.pts/g, apg:p.ast/g, dpg:p.drb/g, opg:p.orb/g, spg:p.stl/g, bpg:p.blk/g});
 }
 
@@ -166,7 +178,7 @@ function qualified(){
 }
 
 function drawHead(){
-  $('thead').innerHTML = COLS.map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
+  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
   $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k; if(k==="rank"){ sortKey="value"; sortDir=-1; }
     else if(sortKey===k) sortDir *= -1; else { sortKey = k; sortDir = (k==="name"||k==="team") ? 1 : -1; }
@@ -199,11 +211,11 @@ function draw(){
   $('podium').querySelectorAll('.pod').forEach(el => el.onclick = () => { openId = el.dataset.id; $('q').value = ""; $('team').value = ""; showAll = true; draw(); setTimeout(()=>{ const r = document.querySelector(`tr.detail`); if(r) r.scrollIntoView({block:"center", behavior:"smooth"}); }, 50); });
 
   if(!DATA.players.length){
-    $('tbody').innerHTML = `<tr><td colspan="${COLS.length}" class="empty">${esc(DATA.note || "No stats yet.")}</td></tr>`;
+    $('tbody').innerHTML = `<tr><td colspan="${cols().length}" class="empty">${esc(DATA.note || "No stats yet.")}</td></tr>`;
     $('more').innerHTML = ""; return;
   }
   if(!list.length){
-    $('tbody').innerHTML = `<tr><td colspan="${COLS.length}" class="empty">No players match. Try lowering the minimums.</td></tr>`;
+    $('tbody').innerHTML = `<tr><td colspan="${cols().length}" class="empty">No players match. Try lowering the minimums.</td></tr>`;
     $('more').innerHTML = ""; return;
   }
   $('tbody').innerHTML = shown.map(p => {
@@ -214,7 +226,7 @@ function draw(){
       <td>${p.g}</td><td>${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
       <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
-      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td></tr>`;
+      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(!isPast() && BASE) ? `<td class="base">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}</tr>`;
     return row + (openId===p.id ? detailRow(p) : "");
   }).join("");
   $('more').innerHTML = (!filtered && list.length > 50) ? `<button id="moreBtn">${showAll ? "Show top 50" : `Show all ${list.length} players`}</button>` : "";
@@ -229,13 +241,23 @@ function detailRow(p){
     ["Off. reb ×2", p.orb, 2], ["Steals ×4", p.stl, 4], ["Blocks", p.blk, 1]
   ];
   const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
-  return `<tr class="detail"><td colspan="${COLS.length}">
+  return `<tr class="detail"><td colspan="${cols().length}">
     <div class="parts">
       ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${total?Math.round(100*v*m/total):0}% of total</div></div>`).join("")}
       <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.value)}</div></div>
     </div>
-    <div class="chartbox"><canvas id="pChart"></canvas></div>
+    ${compareHtml(p)}
+    ${isPast() ? "" : `<div class="chartbox"><canvas id="pChart"></canvas></div>`}
   </td></tr>`;
+}
+
+function compareHtml(p){
+  if(isPast()){
+    const now = CUR && CUR.players.find(x=>x.id===p.id);
+    return `<div class="sub" style="margin:0 0 4px;">Final ${esc(DATA.season)} numbers.${now ? ` This season so far: <b>${f3(now.value)}</b> in ${now.g} games.` : ""}</div>`;
+  }
+  const b = BASEMAP.get(p.id);
+  return b ? `<div class="sub" style="margin:0 0 8px;">${esc(BASE.season)} final: <b>${f3(b.value)}</b> in ${b.g} games (${f1(b.mp/(b.g||1))} min) — ${p.value>=b.value?"up":"down"} ${Math.abs(p.value-b.value).toFixed(3)} so far this season.</div>` : "";
 }
 
 function seriesFor(id){
@@ -263,6 +285,10 @@ function playerChart(id){
 }
 
 function topChart(){
+  $('trendCard').hidden = isPast();
+  if(isPast()) return;
+  const box = $('trendCard').querySelector('.chartbox');
+  if(!$('topChart')) box.innerHTML = `<canvas id="topChart"></canvas>`;
   const c = $('topChart'); if(typeof Chart==="undefined") return;
   const days = Object.keys(HIST.days||{}).sort();
   if(days.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">This chart fills in after a couple of daily updates.</div>`; return; }
@@ -271,26 +297,53 @@ function topChart(){
   lineChart(c, days.map(d=>d.slice(5)), top.map((p,i)=>({label:p.name, data:days.map(d=>HIST.days[d][p.id] ?? null), borderColor:colors[i], backgroundColor:colors[i], tension:.25, pointRadius:0, borderWidth:2})));
 }
 
-async function load(){
-  const bust = "?t=" + Date.now();
-  try{
-    const r = await fetch("data/stats.json" + bust); DATA = await r.json();
-  }catch(e){ DATA = {players:[], note:"Couldn't load the stats file."}; }
-  try{ const r = await fetch("data/history.json" + bust); if(r.ok) HIST = await r.json(); }catch(_){ }
-  DATA.players = (DATA.players||[]).map(enrich);
-  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
-  const when = DATA.updatedAt ? new Date(DATA.updatedAt).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}) : null;
-  $('meta').textContent = `${DATA.season || ""} season · ${DATA.players.length} players${when ? " · updated " + when : ""}`;
-  if(DATA.checkedAt) $('checked').textContent = `Last checked ${new Date(DATA.checkedAt).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.`;
+async function getJSON(path){
+  try{ const r = await fetch(path + "?t=" + Date.now()); if(!r.ok) return null; return await r.json(); }catch(_){ return null; }
+}
+function fmtWhen(iso){ return new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); }
+function mkey(k){ return k + (isPast() ? ":past" : ":current"); }
+
+function showSeason(file){
+  const s = SEASONS.find(x=>x.file===file) || SEASONS[0];
+  DATA = s.current ? CUR : s.data;
+  DATA.players.forEach(enrich);
+  openId = null; showAll = false; sortKey = "value"; sortDir = -1;
+  $('season').value = s.file;
+  const when = DATA.updatedAt ? fmtWhen(DATA.updatedAt) : null;
+  $('meta').textContent = `${DATA.season || ""} season · ${DATA.players.length} players` + (isPast() ? " · final numbers" : (when ? " · updated " + when : ""));
+  $('checked').textContent = (!isPast() && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
+  $('finalNote').hidden = !isPast();
+  if(isPast()) $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season as a baseline. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season.`;
   const teams = [...new Set(DATA.players.flatMap(p => p.teams || [p.team]).filter(Boolean))].sort();
   $('team').innerHTML = `<option value="">All teams</option>` + teams.map(t=>`<option>${esc(t)}</option>`).join("");
-  $('minG').value = store.get("minG") ?? DEFAULT_MIN_GAMES;
-  $('minM').value = store.get("minM") ?? DEFAULT_MIN_MPG;
+  $('minG').value = store.get(mkey("minG")) ?? (isPast() ? PAST_MIN_GAMES : DEFAULT_MIN_GAMES);
+  $('minM').value = store.get(mkey("minM")) ?? (isPast() ? PAST_MIN_MPG : DEFAULT_MIN_MPG);
+  store.set("season", s.file);
+  draw(); topChart();
+}
+
+async function load(){
+  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
+  CUR = await getJSON("data/stats.json") || {players:[], note:"Couldn't load the stats file."};
+  CUR.players = CUR.players || [];
+  HIST = await getJSON("data/history.json") || {days:{}, names:{}};
+  const index = await getJSON("data/seasons.json") || [];
+  SEASONS = [{label:CUR.season || "This season", file:"stats.json", current:true}];
+  for(const s of index.filter(x=>!x.current)){
+    const d = await getJSON("data/" + s.file);
+    if(d && d.players && d.players.length){ d.final = true; SEASONS.push(Object.assign({}, s, {data:d})); }
+  }
+  BASE = SEASONS[1] ? SEASONS[1].data : null;
+  BASEMAP = new Map(BASE ? BASE.players.map(p=>[p.id, p]) : []);
+  $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");
+  $('season').onchange = () => showSeason($('season').value);
   $('q').oninput = draw;
   $('team').onchange = draw;
-  $('minG').oninput = () => { store.set("minG", $('minG').value); draw(); topChart(); };
-  $('minM').oninput = () => { store.set("minM", $('minM').value); draw(); topChart(); };
-  draw(); topChart();
+  $('minG').oninput = () => { store.set(mkey("minG"), $('minG').value); draw(); topChart(); };
+  $('minM').oninput = () => { store.set(mkey("minM"), $('minM').value); draw(); topChart(); };
+  const saved = store.get("season");
+  const fallback = (!CUR.players.length && SEASONS[1]) ? SEASONS[1].file : "stats.json";
+  showSeason(SEASONS.some(s=>s.file===saved) ? saved : fallback);
 }
 load();
 </script>
