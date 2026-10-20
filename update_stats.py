@@ -5,11 +5,15 @@ through the stat formula, and writes:
   data/stats.json    -- the current leaderboard the site shows
   data/history.json  -- one value per player per day, for the trend chart
 
-It also saves finished seasons listed in PAST_SEASONS once (data/season-YYYY.json) as a
-baseline, and writes data/seasons.json so the page can offer a season picker.
+It also saves every finished season from 1973-74 on, once each (data/season-YYYY.json),
+builds data/alltime.json (every player-season, for the all-time list and career charts),
+and writes data/seasons.json so the page can offer a season picker.
+
+1973-74 is the first NBA season that tracked steals, blocks, and offensive/defensive
+rebounds separately, so it's the earliest season the formula can be run on.
 
 Formula (season totals):
-  (PTS + 2*AST + DRB + 2*ORB + 4*STL + BLK) / MP
+  (PTS + 2*AST + DRB + 2*ORB + 2*STL + BLK) / MP
 
 Run by GitHub Actions once a day (.github/workflows/update-stats.yml).
 """
@@ -28,8 +32,13 @@ DATA_DIR = os.path.join(HERE, "data")
 STATS_PATH = os.path.join(DATA_DIR, "stats.json")
 HISTORY_PATH = os.path.join(DATA_DIR, "history.json")
 SEASONS_PATH = os.path.join(DATA_DIR, "seasons.json")
-# finished seasons to keep as a baseline, by the year they ended (2025-26 -> 2026)
-PAST_SEASONS = [2026]
+ALLTIME_PATH = os.path.join(DATA_DIR, "alltime.json")
+# Saved seasons are re-scored with this whenever it changes, so edit stat_value() and this together.
+FORMULA = "(PTS + AST*2 + DRB + ORB*2 + STL*2 + BLK) / MP"
+# first season with steals, blocks and offensive/defensive rebounds (1973-74 -> 1974)
+FIRST_SEASON = 1974
+MAX_NEW_SEASONS_PER_RUN = 60   # the first run downloads them all; later runs have nothing to do
+ALLTIME_MIN_MINUTES = 100      # leave out tiny cameo seasons from the all-time file
 
 # column header text on Basketball-Reference -> our field name
 COLS = {"Player": "name", "Team": "team", "Tm": "team", "Pos": "pos", "Age": "age",
@@ -40,10 +49,10 @@ MULTI_TEAM = re.compile(r"^(TOT|\dTM)$")
 
 
 def stat_value(p):
-    """The stat: (PTS + AST*2 + DRB + ORB*2 + STL*4 + BLK) / minutes played."""
+    """The stat: (PTS + AST*2 + DRB + ORB*2 + STL*2 + BLK) / minutes played."""
     if not p["mp"]:
         return None
-    total = p["pts"] + p["ast"] * 2 + p["drb"] + p["orb"] * 2 + p["stl"] * 4 + p["blk"]
+    total = p["pts"] + p["ast"] * 2 + p["drb"] + p["orb"] * 2 + p["stl"] * 2 + p["blk"]
     return total / p["mp"]
 
 
@@ -165,34 +174,64 @@ def season_url(year):
 
 def save_past_seasons(now, current_year):
     """Download each finished baseline season once; they don't change after the season ends."""
-    for year in PAST_SEASONS:
-        if year >= current_year:
-            continue
+    added = 0
+    for year in range(current_year - 1, FIRST_SEASON - 1, -1):  # newest first
         path = os.path.join(DATA_DIR, f"season-{year}.json")
         if load_json(path, {}).get("players"):
             continue
-        time.sleep(4)  # be polite to the stats site between page loads
+        if added >= MAX_NEW_SEASONS_PER_RUN:
+            break
+        time.sleep(5)  # be polite to the stats site between page loads (stays under its rate limit)
         url = season_url(year)
-        status, html = fetch(url)
+        try:
+            status, html = fetch(url)
+        except Exception as e:  # noqa: BLE001 -- likely rate limited; pick up where we left off next run
+            print(f"Stopped downloading old seasons at {season_label(year)}: {e}")
+            break
+        added += 1
         players = parse_players(html) if status == 200 else []
         if not players:
             print(f"Couldn't load the {season_label(year)} baseline (HTTP {status}); will try again next run")
             continue
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"season": season_label(year), "final": True, "updatedAt": now.isoformat(timespec="seconds"),
-                       "source": url, "formula": "(PTS + AST*2 + DRB + ORB*2 + STL*4 + BLK) / MP",
+                       "source": url, "formula": FORMULA,
                        "players": players}, f, separators=(",", ":"))
         print(f"Saved {season_label(year)} baseline: {len(players)} players; top: {players[0]['name']} {players[0]['value']:.3f}")
 
 
 def write_season_index(current_year):
+    """seasons.json (the picker) + alltime.json (every finished player-season, compact)."""
     seasons = [{"label": season_label(current_year), "file": "stats.json", "current": True}]
-    for year in sorted(PAST_SEASONS, reverse=True):
+    rows, done = [], []
+    for year in range(current_year - 1, FIRST_SEASON - 1, -1):
         path = os.path.join(DATA_DIR, f"season-{year}.json")
-        if year < current_year and load_json(path, {}).get("players"):
-            seasons.append({"label": season_label(year), "file": f"season-{year}.json", "current": False})
+        data = load_json(path, {})
+        if not data.get("players"):
+            continue
+        if data.get("formula") != FORMULA:   # formula changed since this season was saved: re-score it
+            for p in data["players"]:
+                p["value"] = round(stat_value(p), 4)
+            data["players"].sort(key=lambda p: p["value"], reverse=True)
+            data["formula"] = FORMULA
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, separators=(",", ":"))
+            print(f"Re-scored {season_label(year)} with the current formula")
+        label = season_label(year)
+        seasons.append({"label": label, "file": f"season-{year}.json", "current": False})
+        done.append(label)
+        for p in data["players"]:
+            if p["mp"] < ALLTIME_MIN_MINUTES:
+                continue
+            team = " \u2192 ".join(p["teams"]) if p.get("teams") else p.get("team", "")
+            rows.append([p["id"], p["name"], label, team, p["g"], p["mp"], p["pts"], p["ast"],
+                         p["drb"], p["orb"], p["stl"], p["blk"], p["value"]])
     with open(SEASONS_PATH, "w", encoding="utf-8") as f:
         json.dump(seasons, f, separators=(",", ":"))
+    with open(ALLTIME_PATH, "w", encoding="utf-8") as f:
+        json.dump({"seasons": done, "cols": ["id", "name", "season", "team", "g", "mp", "pts", "ast",
+                                             "drb", "orb", "stl", "blk", "value"], "rows": rows},
+                  f, separators=(",", ":"))
 
 
 def main():
@@ -221,15 +260,16 @@ def main():
 
     stats = {"season": season, "updatedAt": now.isoformat(timespec="seconds"),
              "checkedAt": now.isoformat(timespec="seconds"), "source": url,
-             "formula": "(PTS + AST*2 + DRB + ORB*2 + STL*4 + BLK) / MP",
+             "formula": FORMULA,
              "players": players}
     with open(STATS_PATH, "w", encoding="utf-8") as f:
         json.dump(stats, f, separators=(",", ":"))
 
     # history: {"season": "2026-27", "days": {"2026-11-01": {"playerId": value, ...}}, "names": {...}}
     hist = load_json(HISTORY_PATH, {})
-    if hist.get("season") != season:
-        hist = {"season": season, "days": {}, "names": {}}
+    if hist.get("season") != season or hist.get("formula") != FORMULA:
+        # new season, or the formula changed (old daily numbers can't be re-scored) -> start the trend over
+        hist = {"season": season, "formula": FORMULA, "days": {}, "names": {}}
     day = now.astimezone(dt.timezone(dt.timedelta(hours=-5))).date().isoformat()
     hist["days"][day] = {p["id"]: p["value"] for p in players if p["mp"] >= 1}
     for p in players:
