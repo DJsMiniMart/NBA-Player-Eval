@@ -161,7 +161,7 @@ function heroHtml(team){
   const facts = [b.pos || (last && last.pos), b.ht ? height(b.ht) : null, b.wt ? b.wt + " lb" : null, age != null ? `Age ${age}` : null].filter(Boolean).join(" · ");
   return `
   <div class="pp-hero"><div class="pp-hero-in">
-    <button class="pp-back" id="ppBack">← Back to leaderboard</button>
+    <button class="pp-back" id="ppBack">← ${window.PE_BACK === "#/players" ? "Back to players" : "Back to leaderboard"}</button>
     <div class="pp-top">
       <div class="pp-logo">${team.league ? `<img src="${NBA_LOGO}" alt="NBA logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'NBA',style:'color:#1D428A;font-size:26px'}))">`
         : team.id ? `<img src="https://cdn.nba.com/logos/nba/${team.id}/primary/L/logo.svg" alt="${esc(team.n)} logo" onerror="this.style.display='none'">` : ""}</div>
@@ -633,7 +633,7 @@ function render(){
     ${careerHtml}
   </div>`;
   document.title = `${REC.name} · ${typeof STAT_NAME === "string" ? STAT_NAME : "Play Eval"}`;
-  EL.querySelector("#ppBack").onclick = () => { location.hash = ""; };
+  EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
@@ -647,8 +647,8 @@ async function show(id, el){
     el.innerHTML = `<div class="pp-loading">Loading player…</div>`;
     const rec = await getJSON("data/players/" + encodeURIComponent(id) + ".json");
     if(!rec){
-      el.innerHTML = `<div class="pp-body"><button id="ppBack2">← Back to leaderboard</button><div class="pp-loading">There's no page for this player yet. Player pages are built during the morning update.</div></div>`;
-      el.querySelector("#ppBack2").onclick = () => { location.hash = ""; };
+      el.innerHTML = `<div class="pp-body"><button id="ppBack2">← ${window.PE_BACK === "#/players" ? "Back to players" : "Back to leaderboard"}</button><div class="pp-loading">There's no page for this player yet. Player pages are built during the morning update.</div></div>`;
+      el.querySelector("#ppBack2").onclick = () => { location.hash = window.PE_BACK || ""; };
       return;
     }
     REC = rec; SEL = null; LOGS_ALL = {};
@@ -755,7 +755,7 @@ async function compare(idA, idB, el){
       return `<tr><td class="a ${wa?"win":""}">${has(a) ? fmt(a) : "—"}${extra ? extra(A) : ""}</td><td class="lab">${esc(lab)}</td><td class="b ${wb?"win":""}">${has(b) ? fmt(b) : "—"}${extra ? extra(B) : ""}</td></tr>`;
     }).join("");
   }
-  el.innerHTML = `<div class="pp-hero"><div class="pp-hero-in"><button class="pp-back" id="ppBack">← Back to leaderboard</button>
+  el.innerHTML = `<div class="pp-hero"><div class="pp-hero-in"><button class="pp-back" id="ppBack">← ${window.PE_BACK === "#/players" ? "Back to players" : "Back to leaderboard"}</button>
       <h1 class="pp-name" style="margin-top:14px">Compare players</h1><div class="pp-teamline">Side by side. Green marks the better number in each row.</div></div></div>
     <div class="pp-body">
       <datalist id="cmpList">${INDEX.map(r => `<option value="${esc(label(r))}">`).join("")}</datalist>
@@ -769,7 +769,7 @@ async function compare(idA, idB, el){
         : `<div class="final-note">Pick ${A ? "a second" : "two"} player${A ? "" : "s"} to compare.</div>`}
     </div>`;
   document.title = "Compare players";
-  el.querySelector("#ppBack").onclick = () => { location.hash = ""; };
+  el.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   const go = () => {
     const find = v => { const r = INDEX.find(x => label(x) === v) || INDEX.find(x => x[1].toLowerCase() === v.trim().toLowerCase()); return r ? r[0] : null; };
     const a = find(el.querySelector("#cmpA").value) || idA, b = find(el.querySelector("#cmpB").value) || idB;

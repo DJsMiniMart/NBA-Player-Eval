@@ -19,6 +19,22 @@ and the page (`index.html`) reads them.
 - Change the update time with the `cron` line in the workflow (it's in UTC).
 - To update right now: Actions tab -> "Update NBA stats" -> Run workflow.
 
+## Pages
+
+A **Pages** menu at the top of every page (`nav.js`) links to:
+
+- **Home** (`index.html`) -- the Play Eval leaderboard
+- **Players** (`index.html#/players`, `players.js`) -- every player under contract, grouped by team, with salary and
+  latest Play Eval; the search also finds every player since 1973-74. Each row opens that player's page.
+- **Trade Machine** (`trade.html`, `trade.js`) -- build a trade between 2-5 teams with players, draft picks (up to
+  seven drafts out, with protections or swaps) and cash, and see whether it would go through: salary matching,
+  the first and second apron limits (no taking back extra salary above the first apron; no aggregating salaries,
+  sending cash or trading the frozen pick seven years out above the second), the Stepien rule, the cash limit and
+  roster size. Salaries come from `data/contracts.json`. **Update the cap, tax and apron numbers in `RULES` at the
+  top of `trade.js` each July.** "Copy link to this trade" saves the whole trade in the address.
+
+To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
+
 ## Player pages
 
 Click the "Player page" button on any leaderboard row to open that player's page. Active players get their

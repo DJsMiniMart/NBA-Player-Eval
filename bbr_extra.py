@@ -202,7 +202,7 @@ def update_contracts(now):
             if pid in out:   # listed twice (e.g. waived and re-signed): keep both teams' money
                 out[pid]["years"] += years
                 continue
-            out[pid] = {"team": team, "years": years, "guaranteed": gtd}
+            out[pid] = {"name": c["Player"].get_text(strip=True), "team": team, "years": years, "guaranteed": gtd}
         if out:
             break
     if out:

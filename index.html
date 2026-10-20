@@ -150,7 +150,10 @@
 </div>
 </div>
 <div id="playerView" hidden></div>
+<div id="playersView" hidden></div>
+<script src="nav.js"></script>
 <script src="player.js"></script>
+<script src="players.js"></script>
 
 <script>
 /* ===== Settings you can change ===== */
@@ -500,7 +503,15 @@ let boardScroll = 0;
 function route(){
   const m = location.hash.match(/^#\/player\/(.+)$/);
   const c = location.hash.match(/^#\/compare\/([^/]+)(?:\/([^/]+))?$/);
-  if(c){
+  const list = /^#\/players\/?$/.test(location.hash);
+  if(list) window.PE_BACK = "#/players"; else if(!m && !c) window.PE_BACK = "";
+  $('playersView').hidden = !list;
+  if(list){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = true;
+    window.scrollTo(0, 0);
+    PlayersPage.show($('playersView'));
+  } else if(c){
     if(!$('boardView').hidden) boardScroll = window.scrollY;
     $('boardView').hidden = true; $('playerView').hidden = false;
     window.scrollTo(0, 0);
