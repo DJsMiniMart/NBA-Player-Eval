@@ -15,6 +15,11 @@ rebounds separately, so it's the earliest season the formula can be run on.
 Formula (season totals):
   (PTS + 2*AST + DRB + 2*ORB + 2*STL + BLK) / MP
 
+After that it runs the player-page steps (each one can fail without stopping the others):
+  bbr_extra.py     -- bios, draft picks, contracts (Basketball-Reference)
+  nba_games.py     -- every game's box score + play-by-play from the NBA's public feed
+  build_players.py -- one file per player for the player page (data/players/<id>.json)
+
 Run by GitHub Actions once a day (.github/workflows/update-stats.yml).
 """
 import datetime as dt
@@ -23,6 +28,7 @@ import os
 import re
 import sys
 import time
+import traceback
 from urllib.request import Request, urlopen
 
 from bs4 import BeautifulSoup, Comment
@@ -39,12 +45,15 @@ FORMULA = "(PTS + AST*2 + DRB + ORB*2 + STL*2 + BLK) / MP"
 FIRST_SEASON = 1974
 MAX_NEW_SEASONS_PER_RUN = 60   # the first run downloads them all; later runs have nothing to do
 ALLTIME_MIN_MINUTES = 100      # leave out tiny cameo seasons from the all-time file
+SEASON_SCHEMA = 2              # bump when new columns are saved, so old season files get re-downloaded
 
 # column header text on Basketball-Reference -> our field name
 COLS = {"Player": "name", "Team": "team", "Tm": "team", "Pos": "pos", "Age": "age",
         "G": "g", "GS": "gs", "MP": "mp", "PTS": "pts", "AST": "ast",
-        "DRB": "drb", "ORB": "orb", "STL": "stl", "BLK": "blk", "TOV": "tov", "TRB": "trb"}
-NUMERIC = {"age", "g", "gs", "mp", "pts", "ast", "drb", "orb", "stl", "blk", "tov", "trb"}
+        "DRB": "drb", "ORB": "orb", "STL": "stl", "BLK": "blk", "TOV": "tov", "TRB": "trb",
+        "FG": "fg", "FGA": "fga", "3P": "fg3", "3PA": "fg3a", "FT": "ft", "FTA": "fta", "PF": "pf"}
+NUMERIC = {"age", "g", "gs", "mp", "pts", "ast", "drb", "orb", "stl", "blk", "tov", "trb",
+           "fg", "fga", "fg3", "fg3a", "ft", "fta", "pf"}
 MULTI_TEAM = re.compile(r"^(TOT|\dTM)$")
 
 
@@ -177,7 +186,8 @@ def save_past_seasons(now, current_year):
     added = 0
     for year in range(current_year - 1, FIRST_SEASON - 1, -1):  # newest first
         path = os.path.join(DATA_DIR, f"season-{year}.json")
-        if load_json(path, {}).get("players"):
+        saved = load_json(path, {})
+        if saved.get("players") and saved.get("schema") == SEASON_SCHEMA:
             continue
         if added >= MAX_NEW_SEASONS_PER_RUN:
             break
@@ -195,7 +205,7 @@ def save_past_seasons(now, current_year):
             continue
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"season": season_label(year), "final": True, "updatedAt": now.isoformat(timespec="seconds"),
-                       "source": url, "formula": FORMULA,
+                       "source": url, "formula": FORMULA, "schema": SEASON_SCHEMA,
                        "players": players}, f, separators=(",", ":"))
         print(f"Saved {season_label(year)} baseline: {len(players)} players; top: {players[0]['name']} {players[0]['value']:.3f}")
 
@@ -248,7 +258,9 @@ def main():
     players = parse_players(html) if status == 200 else []
     season = season_label(year)
 
-    if not players:
+    if players:
+        save_current(now, season, url, players)
+    else:
         old = load_json(STATS_PATH, {})
         old.update({"season": season, "checkedAt": now.isoformat(timespec="seconds"),
                     "note": "No stats posted for this season yet. The board fills in after the first games."})
@@ -256,11 +268,26 @@ def main():
         with open(STATS_PATH, "w", encoding="utf-8") as f:
             json.dump(old, f, separators=(",", ":"))
         print(f"No player rows found (HTTP {status}) at {url}")
-        return 0
 
+    run_step("bios, drafts, contracts", lambda: __import__("bbr_extra").update(now, year))
+    run_step("games (box scores + play-by-play)", lambda: __import__("nba_games").update(now, year))
+    run_step("player pages", lambda: __import__("build_players").build(now, year))
+    return 0
+
+
+def run_step(name, fn):
+    print(f"--- {name} ---", flush=True)
+    try:
+        fn()
+    except Exception:  # noqa: BLE001 -- one step failing shouldn't stop the rest
+        print(f"{name} failed:")
+        traceback.print_exc()
+
+
+def save_current(now, season, url, players):
     stats = {"season": season, "updatedAt": now.isoformat(timespec="seconds"),
              "checkedAt": now.isoformat(timespec="seconds"), "source": url,
-             "formula": FORMULA,
+             "formula": FORMULA, "schema": SEASON_SCHEMA,
              "players": players}
     with open(STATS_PATH, "w", encoding="utf-8") as f:
         json.dump(stats, f, separators=(",", ":"))
@@ -277,7 +304,6 @@ def main():
     with open(HISTORY_PATH, "w", encoding="utf-8") as f:
         json.dump(hist, f, separators=(",", ":"))
     print(f"Saved {len(players)} players for {season}; top: {players[0]['name']} {players[0]['value']:.3f}")
-    return 0
 
 
 if __name__ == "__main__":

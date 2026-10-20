@@ -8,24 +8,37 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+  /* NBA colors: blue #1D428A, red #C8102E, white */
   :root{
-    --bg:#f4f1ea; --panel:#ffffff; --ink:#1b1b1f; --dim:#6b6a70; --line:#e3ddd1;
-    --accent:#d9480f; --accent-soft:#fde8dc; --court:#1f3a5f; --gold:#c99a2e; --silver:#8d939c; --bronze:#a8673a;
-    --row:#faf8f3;
+    --bg:#f2f4f8; --panel:#ffffff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea;
+    --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A; --nba-blue:#1D428A; --nba-red:#C8102E;
+    --gold:#c99a2e; --silver:#8d939c; --bronze:#a8673a; --row:#f6f8fb;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#111317; --panel:#1a1d23; --ink:#ecebe7; --dim:#9a9aa2; --line:#2a2e36;
-      --accent:#ff7a3d; --accent-soft:#3a2418; --court:#8fb3e0; --row:#1e2128; }
+    :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a;
+      --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff; --row:#16213a; }
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
   .wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
   header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
   h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
-  h1 span{color:var(--accent);}
-  .meta{color:var(--dim);font-size:12.5px;margin-top:6px;}
-  .formula{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--dim);max-width:420px;}
-  .formula b{color:var(--ink);font-weight:600;}
+  h1 span{color:#fff;background:var(--nba-red);padding:0 8px;border-radius:4px;margin-left:4px;}
+  .meta{color:rgba(255,255,255,.8);font-size:12.5px;margin-top:8px;}
+  .formula{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;font-size:12.5px;color:rgba(255,255,255,.85);max-width:420px;}
+  .formula b{color:#fff;font-weight:600;}
+  .nba-band{background:linear-gradient(180deg,#17366f 0%,var(--nba-blue) 100%);color:#fff;border-bottom:5px solid var(--nba-red);margin-bottom:6px;}
+  .band-in{padding-top:18px;padding-bottom:22px;}
+  .band-in header{margin-bottom:0;}
+  .logo-strip{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:rgba(0,0,0,.18);scrollbar-width:thin;justify-content:safe center;}
+  .logo-strip button{flex:0 0 auto;width:38px;height:38px;padding:4px;border-radius:50%;background:#fff;border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .12s;}
+  .logo-strip button:hover{transform:translateY(-2px);}
+  .logo-strip button.on{border-color:var(--nba-red);box-shadow:0 0 0 3px rgba(200,16,46,.45);}
+  .logo-strip img{width:100%;height:100%;object-fit:contain;}
+  .logo-strip .lbl{font:700 10px Inter;color:#1D428A;}
+  .pagebtn{padding:5px 10px;font-size:12px;font-weight:600;background:var(--nba-blue);color:#fff;border-color:var(--nba-blue);border-radius:6px;white-space:nowrap;}
+  .pagebtn:hover{background:var(--nba-red);border-color:var(--nba-red);}
+  td.pagecell{text-align:right;width:1%;}
   .podium{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0;}
   .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;}
   .pod::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c);}
@@ -80,9 +93,13 @@
     .podium{gap:8px;}
   }
 </style>
+<link rel="stylesheet" href="player.css">
 </head>
 <body>
-<div class="wrap">
+<div id="boardView">
+<div class="nba-band">
+  <div class="logo-strip" id="logoStrip" aria-label="NBA teams"></div>
+  <div class="wrap band-in">
   <header>
     <div>
       <h1 id="title">Play <span>Eval</span></h1>
@@ -93,7 +110,9 @@
       (Points + Assists×2 + Def. Rebounds + Off. Rebounds×2 + Steals×2 + Blocks) ÷ Minutes
     </div>
   </header>
-
+  </div>
+</div>
+<div class="wrap" style="padding-top:12px">
   <div class="podium" id="podium"></div>
 
   <div class="controls">
@@ -121,9 +140,13 @@
 
   <footer>
     Stats from <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener">Basketball-Reference</a>, refreshed every morning.
+    Player pages also use the NBA's public game feed. Use the Player page button on any row to open one.
     <span id="checked"></span>
   </footer>
 </div>
+</div>
+<div id="playerView" hidden></div>
+<script src="player.js"></script>
 
 <script>
 /* ===== Settings you can change ===== */
@@ -168,6 +191,7 @@ const COLS = [
   {k:"bpg", t:"BLK", sm:true},
   {k:"value", t:STAT_NAME === "Leaderboard" ? "Score" : STAT_NAME},
   {k:"base", t:"", only:"current", base:true},
+  {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
 const cols = () => COLS.filter(c => (!c.only || c.only===VIEW) && (!c.base || BASE)).map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : c);
@@ -189,7 +213,8 @@ function qualified(){
 function drawHead(){
   $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
   $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
-    const k = th.dataset.k; if(k==="rank"){ sortKey="value"; sortDir=-1; }
+    const k = th.dataset.k; if(k==="page") return;
+    if(k==="rank"){ sortKey="value"; sortDir=-1; }
     else if(sortKey===k) sortDir *= -1; else { sortKey = k; sortDir = (k==="name"||k==="team"||k==="season") ? 1 : -1; }
     draw();
   });
@@ -237,13 +262,16 @@ function draw(){
       <td>${p.g}</td><td>${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
       <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
-      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE) ? `<td class="base">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}</tr>`;
+      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE) ? `<td class="base">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}">Player page</button></td></tr>`;
     return row + (openKey===p.key ? detailRow(p) : "");
   }).join("");
   const word = VIEW==="alltime" ? "seasons" : "players";
   $('more').innerHTML = (shown.length < list.length || showAll) && list.length > limit ? `<button id="moreBtn">${showAll ? `Show top ${limit}` : `Show all ${list.length.toLocaleString()} ${word}`}</button>` : "";
   const mb = $('moreBtn'); if(mb) mb.onclick = () => { showAll = !showAll; draw(); };
-  $('tbody').querySelectorAll('tr.p').forEach(tr => tr.onclick = () => { openKey = openKey===tr.dataset.key ? null : tr.dataset.key; draw(); });
+  $('tbody').querySelectorAll('tr.p').forEach(tr => {
+    tr.onclick = () => { openKey = openKey===tr.dataset.key ? null : tr.dataset.key; draw(); };
+  });
+  $('tbody').querySelectorAll('[data-open]').forEach(b => b.onclick = e => { e.stopPropagation(); openPlayer(b.dataset.open); });
   if(openKey){
     const p = DATA.players.find(x=>x.key===openKey);
     if(p){ if(VIEW==="current") playerChart(p.id); else careerChart(p); }
@@ -371,6 +399,7 @@ async function showSeason(file){
   $('minM').value = store.get(mkey("minM")) ?? dM;
   store.set("season", s.file);
   draw(); topChart();
+  if(typeof syncLogoStrip === "function") syncLogoStrip();
 }
 
 async function load(){
@@ -396,7 +425,44 @@ async function load(){
   const fallback = (!CUR.players.length && index.length) ? index[0].file : "stats.json";
   showSeason(SEASONS.some(s=>s.file===saved) ? saved : fallback);
 }
-load();
+const NBA_TO_BBR = {BKN:"BRK", CHA:"CHO", PHX:"PHO"};
+function buildLogoStrip(){
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const codes = Object.keys(T).sort((a,b)=>T[a].n.localeCompare(T[b].n));
+  $('logoStrip').innerHTML = codes.map(c => `<button data-team="${c}" title="${esc(T[c].n)}"><img src="https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg" alt="${esc(T[c].n)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'lbl',textContent:'${c}'}))"></button>`).join("");
+  $('logoStrip').querySelectorAll('button').forEach(b => b.onclick = () => {
+    const code = NBA_TO_BBR[b.dataset.team] || b.dataset.team;
+    const opts = [...$('team').options].map(o=>o.value);
+    const pick = opts.includes(code) ? code : (opts.includes(b.dataset.team) ? b.dataset.team : null);
+    if(!pick){ return; }
+    $('team').value = $('team').value === pick ? "" : pick;
+    syncLogoStrip(); draw();
+    document.querySelector('.controls').scrollIntoView({behavior:"smooth", block:"start"});
+  });
+}
+function syncLogoStrip(){
+  const v = $('team').value;
+  $('logoStrip').querySelectorAll('button').forEach(b => b.classList.toggle("on", !!v && (v === b.dataset.team || v === NBA_TO_BBR[b.dataset.team])));
+}
+function openPlayer(id){ if(id) location.hash = "#/player/" + encodeURIComponent(id); }
+let boardScroll = 0;
+function route(){
+  const m = location.hash.match(/^#\/player\/(.+)$/);
+  if(m){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = false;
+    window.scrollTo(0, 0);
+    PlayerPage.show(decodeURIComponent(m[1]), $('playerView'));
+  } else {
+    $('playerView').hidden = true; $('boardView').hidden = false;
+    document.title = STAT_NAME;
+    requestAnimationFrame(() => window.scrollTo(0, boardScroll));
+  }
+}
+window.addEventListener("hashchange", route);
+buildLogoStrip();
+$('team').addEventListener("change", syncLogoStrip);
+load().then(() => { syncLogoStrip(); route(); });
 </script>
 </body>
 </html>

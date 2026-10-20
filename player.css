@@ -1,0 +1,79 @@
+/* Player page. Team colors arrive as --tc1 (primary) and --tc2 (secondary) on #playerView. */
+#playerView{--tc1:#1f3a5f;--tc2:#d9480f;--tcbar:var(--tc1);}
+.pp-hero{background:linear-gradient(120deg,var(--tc1) 0%,var(--tc1) 55%,color-mix(in srgb,var(--tc1) 70%,#000) 100%);color:#fff;position:relative;overflow:hidden;}
+.pp-hero::after{content:"";position:absolute;right:-60px;top:-60px;width:340px;height:340px;border-radius:50%;border:38px solid var(--tc2);opacity:.22;}
+.pp-hero-in{max-width:1100px;margin:0 auto;padding:18px 16px 26px;position:relative;z-index:1;}
+.pp-back{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:13px;padding:6px 12px;}
+.pp-back:hover{background:rgba(255,255,255,.24);}
+.pp-top{display:flex;align-items:center;gap:22px;margin-top:16px;flex-wrap:wrap;}
+.pp-logo{width:104px;height:104px;flex:0 0 auto;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(0,0,0,.25);}
+.pp-logo img{width:78px;height:78px;object-fit:contain;}
+.pp-name{font:700 52px/0.95 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:0;}
+.pp-teamline{font-size:14px;opacity:.85;margin-top:6px;}
+.pp-eval{margin-left:auto;text-align:right;}
+.pp-eval .k{font:700 13px "Barlow Condensed";letter-spacing:1px;text-transform:uppercase;opacity:.8;}
+.pp-eval .v{font:700 54px/1 "Barlow Condensed";color:var(--tc2);text-shadow:0 2px 0 rgba(0,0,0,.25);}
+.pp-eval .s{font-size:12px;opacity:.8;}
+.pp-body{max-width:1100px;margin:0 auto;padding:18px 16px 60px;}
+.pp-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;}
+.pp-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;border-top:4px solid var(--tc1);min-width:0;}
+.pp-card h3{font:700 19px "Barlow Condensed";text-transform:uppercase;letter-spacing:.4px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.pp-card h3 small{font:500 11.5px Inter,sans-serif;color:var(--dim);text-transform:none;letter-spacing:0;}
+.pp-col{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.pp-kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px;}
+.pp-kv dt{color:var(--dim);}
+.pp-kv dd{margin:0;font-weight:600;text-align:right;}
+.pp-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;}
+.pp-stat{background:var(--row);border-radius:8px;padding:8px 10px;text-align:center;}
+.pp-stat .k{font-size:10.5px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.pp-stat .v{font:700 22px/1.1 "Barlow Condensed";}
+.pp-stat.hl{background:var(--tc1);color:#fff;}
+.pp-stat.hl .k{color:rgba(255,255,255,.8);}
+.pp-seasonpick{display:flex;align-items:center;gap:10px;margin:4px 0 14px;flex-wrap:wrap;}
+.pp-seasonpick select{width:auto;min-width:180px;}
+.pp-seasonpick .sub{margin:0;}
+.pp-court{width:100%;max-width:520px;display:block;margin:0 auto;}
+.pp-court .ln{fill:none;stroke:var(--dim);stroke-width:2;opacity:.55;}
+.pp-court .floor{fill:var(--row);}
+.pp-legend{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--dim);margin-top:8px;}
+.pp-legend .grad{width:120px;height:8px;border-radius:4px;background:linear-gradient(90deg,#2563eb,#a3a3a3,#dc2626);}
+.pp-zt td,.pp-zt th{padding:6px 8px;font-size:12.5px;cursor:default;}
+.pp-bars{display:flex;flex-direction:column;gap:9px;}
+.pp-barrow{display:grid;grid-template-columns:minmax(110px,1fr) 2fr 44px;align-items:center;gap:10px;font-size:13px;}
+.pp-barrow a{color:var(--ink);font-weight:600;text-decoration:none;}
+.pp-barrow a:hover{text-decoration:underline;}
+.pp-track{height:10px;background:var(--row);border-radius:5px;overflow:hidden;}
+.pp-fill{height:100%;background:var(--tcbar);border-radius:5px;}
+.pp-barrow .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}
+.pp-split{display:flex;height:34px;border-radius:8px;overflow:hidden;margin:6px 0 10px;}
+.pp-split div{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12.5px;min-width:0;white-space:nowrap;overflow:hidden;}
+.pp-note{font-size:11.5px;color:var(--dim);margin-top:8px;}
+.pp-top5{display:flex;flex-direction:column;gap:8px;}
+.pp-game{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;background:var(--row);border-radius:8px;padding:8px 10px;}
+.pp-game .r{font:700 20px "Barlow Condensed";color:var(--tcbar);text-align:center;}
+.pp-game .d{font-size:12px;color:var(--dim);}
+.pp-game .l{font-size:13px;font-weight:600;}
+.pp-game .e{font:700 24px "Barlow Condensed";}
+.pp-tbl td,.pp-tbl th{padding:7px 8px;font-size:12.5px;cursor:default;}
+.pp-tbl tr.career td{font-weight:700;background:var(--row);}
+.pp-tbl tr.cur td{background:color-mix(in srgb,var(--tc1) 10%,transparent);}
+.pp-tbl td.ev{font-weight:700;color:var(--tcbar);}
+.pp-tbl td.w{color:#2f9e44;font-weight:600;} .pp-tbl td.lo{color:#e03131;font-weight:600;}
+.pp-empty{color:var(--dim);font-size:13px;padding:10px 0;}
+.pp-more{text-align:center;margin-top:10px;}
+.pp-loading{padding:80px 20px;text-align:center;color:var(--dim);}
+@media (max-width:900px){ .c4,.c5,.c6,.c7,.c8{grid-column:span 12} }
+@media (max-width:720px){
+  .pp-name{font-size:38px;}
+  .pp-logo{width:72px;height:72px}.pp-logo img{width:54px;height:54px;}
+  .pp-eval{margin-left:0;text-align:left;width:100%;}
+  .pp-eval .v{font-size:42px;}
+}
+.pp-teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.pp-team{display:flex;align-items:center;gap:12px;background:var(--row);border-radius:10px;padding:10px 12px;border-left:5px solid var(--c1);}
+.pp-team-logo{width:44px;height:44px;flex:0 0 auto;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.12);overflow:hidden;}
+.pp-team-logo img{width:34px;height:34px;object-fit:contain;}
+.pp-team-logo span{font:700 13px "Barlow Condensed";color:#fff;background:var(--c1);width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:3px solid var(--c2);border-radius:50%;}
+.pp-team-n{font-weight:700;font-size:13.5px;}
+.pp-team-y{font-size:12px;color:var(--dim);}

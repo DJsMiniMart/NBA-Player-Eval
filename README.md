@@ -14,3 +14,18 @@ and the page (`index.html`) reads them.
   1973-74 is the first season the NBA tracked steals, blocks, and offensive/defensive rebounds.
 - Change the update time with the `cron` line in the workflow (it's in UTC).
 - To update right now: Actions tab -> "Update NBA stats" -> Run workflow.
+
+## Player pages
+
+Click the "Player page" button on any leaderboard row to open that player's page. Active players get their
+current team's logo and colors; retired players get the NBA's colors and a list of every team they played for.
+Each morning the update also runs:
+
+- `bbr_extra.py` -- bios (weekly), draft picks (once per draft), contracts (daily) from Basketball-Reference
+- `nba_games.py` -- every game's box score and play-by-play from the NBA's public feed (cdn.nba.com):
+  game logs, shot zones and locations, assist partners, steal types, block locations. It finishes this
+  season's games, then backfills older seasons, newest first, until the feed runs out. Each run stops
+  starting new games after 150 minutes; the rest is picked up the next morning.
+- `build_players.py` -- writes `data/players/<id>.json`, one per player since 1973-74
+
+Team colors and logos are in the `TEAMS` list at the top of `player.js`.
