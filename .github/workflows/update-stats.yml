@@ -8,9 +8,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: update-stats        # never run two updates at once
+  cancel-in-progress: false
+
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 330       # the first few runs backfill old seasons; normal days take a few minutes
     steps:
       - uses: actions/checkout@v4
 
@@ -29,5 +34,6 @@ jobs:
           git config user.name "stats-bot"
           git config user.email "stats-bot@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "Daily stats update"
+          git diff --cached --quiet || git commit -q -m "Daily stats update"
+          git pull --rebase -q || true
           git push
