@@ -86,12 +86,23 @@ def match_season(acc, bbr_players):
     return out
 
 
+def earnings(seasons, sal):
+    """Career NBA salary on record: one amount per season (a traded player's year is counted once)."""
+    if not sal:
+        return None
+    rows = sorted(([label, team, amt] for label, (team, amt) in sal.items()), key=lambda r: r[0])
+    played = [s["season"] for s in seasons if not s.get("current")]
+    missing = [label for label in played if label not in sal]
+    return {"total": sum(r[2] for r in rows), "seasons": rows, "missing": missing}
+
+
 def build(now=None, current_year=None):
     os.makedirs(PLAYERS_DIR, exist_ok=True)
     seasons = load_bbr_seasons()
     bios = load_json(os.path.join(DATA_DIR, "bios.json"), {}).get("players", {})
     drafts = load_json(os.path.join(DATA_DIR, "drafts.json"), {}).get("players", {})
     contracts = load_json(os.path.join(DATA_DIR, "contracts.json"), {}).get("players", {})
+    salaries = load_json(os.path.join(DATA_DIR, "salaries.json"), {}).get("players", {})
     current_label = load_json(os.path.join(DATA_DIR, "stats.json"), {}).get("season")
 
     players = {}
@@ -174,6 +185,7 @@ def build(now=None, current_year=None):
         rec["bio"] = bios.get(pid)
         rec["draft"] = drafts.get(pid)
         rec["contract"] = contracts.get(pid)
+        rec["earnings"] = earnings(rec["seasons"], salaries.get(pid, {}))
         rec["logCols"] = LOG_COLS + ["eval"]
         rec["league"] = {s: league[s] for s in rec["games"] if s in league}
         if not rec["bio"] and last:

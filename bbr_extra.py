@@ -5,6 +5,8 @@
   data/drafts.json     year, round, pick and team for every drafted player (one page per draft,
                        downloaded once; the newest draft is re-checked weekly)
   data/contracts.json  salary by season, with player/team options (refreshed daily)
+  data/salaries.json   past salaries, from each team's season page (for career earnings);
+                       each team-season is downloaded once, a time-capped batch per run
 
 Pages are fetched slowly (one every 5 seconds) to stay under the site's rate limit.
 """
@@ -22,6 +24,8 @@ from update_stats import DATA_DIR, FIRST_SEASON, fetch, load_json
 BIOS_PATH = os.path.join(DATA_DIR, "bios.json")
 DRAFTS_PATH = os.path.join(DATA_DIR, "drafts.json")
 CONTRACTS_PATH = os.path.join(DATA_DIR, "contracts.json")
+SALARIES_PATH = os.path.join(DATA_DIR, "salaries.json")
+SALARY_BUDGET_SEC = 40 * 60   # per run; the full history (~1,500 team pages) takes a few mornings
 BASE = "https://www.basketball-reference.com"
 PAUSE = 5
 FIRST_DRAFT = 1960   # early enough to cover anyone who played in 1973-74
@@ -206,9 +210,76 @@ def update_contracts(now):
         print(f"Contracts: {len(out)} players")
 
 
+# ---------- past salaries ----------
+MONEY = re.compile(r"^\$[\d,]+$")
+
+
+def parse_salaries(html):
+    """{player id: amount} from a team-season page's Salaries table."""
+    out = {}
+    for t in tables(html):
+        heads = [th.get_text(strip=True) for th in (t.find("thead") or t).find_all("th")]
+        if "Salary" not in heads:
+            continue
+        for tr in (t.find("tbody") or t).find_all("tr"):
+            pid, amt = None, None
+            for cell in tr.find_all(["th", "td"]):
+                pid = pid or player_id(cell) if cell.find("a") else pid
+                txt = cell.get_text(strip=True)
+                if MONEY.match(txt):
+                    amt = int(txt.replace("$", "").replace(",", ""))
+            if pid and amt:
+                out[pid] = max(out.get(pid, 0), amt)
+        if out:
+            break
+    return out
+
+
+def team_seasons(current_year):
+    """Every (team code, season end year) a player in our season files played for, newest first."""
+    out = set()
+    for year in range(current_year - 1, FIRST_SEASON - 1, -1):
+        d = load_json(os.path.join(DATA_DIR, f"season-{year}.json"), {})
+        for p in d.get("players", []):
+            for code in (p.get("teams") or [p.get("team")]):
+                if code and not re.match(r"^(TOT|\dTM)$", code):
+                    out.add((code, year))
+    return sorted(out, key=lambda x: (-x[1], x[0]))
+
+
+def update_salaries(now, current_year):
+    data = load_json(SALARIES_PATH, {"done": {}, "players": {}})
+    done, players = data.setdefault("done", {}), data.setdefault("players", {})
+    started, fetched = time.time(), 0
+    todo = [(c, y) for c, y in team_seasons(current_year) if f"{c}-{y}" not in done]
+    for code, year in todo:
+        if time.time() - started > SALARY_BUDGET_SEC:
+            break
+        try:
+            html = get(f"{BASE}/teams/{code}/{year}.html")
+        except Exception as e:  # noqa: BLE001 -- probably rate limited: keep what we have, resume tomorrow
+            print(f"Salaries paused at {code} {year}: {e}")
+            break
+        if not html:
+            continue
+        label = f"{year - 1}-{str(year)[2:]}"
+        for pid, amt in parse_salaries(html).items():
+            row = players.setdefault(pid, {})
+            prev = row.get(label)
+            if not prev or amt > prev[1]:          # traded players show up on two teams: count the year once
+                row[label] = [code, amt]
+        done[f"{code}-{year}"] = now.isoformat(timespec="seconds")
+        fetched += 1
+        if fetched % 50 == 0:
+            save(SALARIES_PATH, data)
+    save(SALARIES_PATH, data)
+    left = len(todo) - fetched
+    print(f"Salaries: {fetched} team pages this run, {left} still to go, {len(players)} players on record")
+
+
 def update(now, current_year):
     for name, fn in (("bios", lambda: update_bios(now)), ("drafts", lambda: update_drafts(now, current_year)),
-                     ("contracts", lambda: update_contracts(now))):
+                     ("contracts", lambda: update_contracts(now)), ("salaries", lambda: update_salaries(now, current_year))):
         try:
             fn()
         except Exception as e:  # noqa: BLE001

@@ -83,7 +83,7 @@ const pct = (m, a) => a ? (100*m/a).toFixed(1) + "%" : "—";
 const per = (t, g) => (num(t) != null && g) ? t/g : null;
 const evalOf = s => s.mp ? (s.pts + 2*s.ast + s.drb + 2*s.orb + 2*s.stl + s.blk) / s.mp : null;
 
-let REC = null, SEL = null, EL = null, LOGS_ALL = false;
+let REC = null, SEL = null, EL = null, LOGS_ALL = {};
 
 function lum(hex){
   const c = hex.replace("#","").match(/../g).map(h => parseInt(h,16)/255).map(v => v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4));
@@ -179,7 +179,7 @@ function bioCard(){
   const draft = d ? `${d.year} · ${ordinal(d.round)} round · ${ordinal(d.pick)} pick${d.team ? " (" + esc(d.team) + ")" : ""}` : (b.from ? "Undrafted" : "—");
   const rows = [["Age", age != null ? `${age}${born ? ` (born ${born})` : ""}` : "—"], ["Height", height(b.ht)], ["Weight", b.wt ? b.wt + " lb" : "—"],
     ["Position", b.pos || "—"], ["College", b.college || "—"], ["Draft", draft], ["NBA seasons", b.from ? `${b.from - 1}-${String(b.from).slice(2)} to ${b.to - 1}-${String(b.to).slice(2)}` : "—"]];
-  return `<div class="pp-card c4"><h3>Player bio</h3><dl class="pp-kv">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>`;
+  return `<div class="pp-card c6"><h3>Player bio</h3><dl class="pp-kv">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>`;
 }
 
 function teamsCard(){
@@ -190,6 +190,22 @@ function teamsCard(){
     <div class="pp-teams">${list.map(t => { const i = teamInfo(t.code); return `<div class="pp-team" style="--c1:${i.c1};--c2:${i.c2}">
       <div class="pp-team-logo">${i.logo ? `<img src="${i.logo}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${esc(t.code)}'}))">` : `<span>${esc(t.code)}</span>`}</div>
       <div><div class="pp-team-n">${esc(i.n)}</div><div class="pp-team-y">${esc(yrs(t))}${i.franchise && i.franchise !== i.n ? ` · now the ${esc(i.franchise)}` : ""}</div></div></div>`; }).join("")}</div></div>`;
+}
+
+function earningsCard(){
+  const e = REC.earnings;
+  let body;
+  if(!e || !e.seasons || !e.seasons.length){
+    body = `<div class="pp-empty">No salary records found for this player yet. Past salaries are filled in over the first few morning updates; Basketball-Reference's records are thin before the mid-1980s.</div>`;
+  } else {
+    const rows = e.seasons.slice().reverse();
+    body = `<div class="pp-earn">${money(e.total)}</div>
+      <div class="sub" style="margin:0 0 10px">NBA salary over ${e.seasons.length} season${e.seasons.length===1?"":"s"} on record</div>
+      <div class="tablewrap" style="max-height:260px;overflow-y:auto"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>Salary</th></tr></thead><tbody>
+      ${rows.map(([s,t,a])=>`<tr><td class="l">${esc(s)}</td><td class="l">${esc(t)}</td><td>${money(a)}</td></tr>`).join("")}</tbody></table></div>
+      ${e.missing && e.missing.length ? `<div class="pp-note">No salary on record for ${e.missing.length} season${e.missing.length===1?"":"s"} (${esc(e.missing.slice(0,6).join(", "))}${e.missing.length>6?", …":""}), so the real total is higher.</div>` : ""}`;
+  }
+  return `<div class="pp-card c6"><h3>Total career earnings <small>playing salary, not adjusted for inflation</small></h3>${body}</div>`;
 }
 
 function contractCard(){
@@ -203,34 +219,41 @@ function contractCard(){
       </tbody></table>
       ${c.guaranteed ? `<div class="pp-note">Guaranteed money remaining: <b>${esc(c.guaranteed)}</b>${c.team ? " · " + esc(c.team) : ""}</div>` : ""}`;
   }
-  return `<div class="pp-card c4"><h3>Contract <small>from Basketball-Reference</small></h3>${body}</div>`;
+  const e = REC.earnings;
+  const sofar = e && e.total ? `<div class="pp-note">Career earnings through last season: <b>${money(e.total)}</b>${e.missing && e.missing.length ? " (some seasons missing)" : ""}</div>` : "";
+  return `<div class="pp-card c6"><h3>Contract <small>from Basketball-Reference</small></h3>${body}${sofar}</div>`;
 }
 
-function statLineCard(){
-  const seasons = REC.seasons || [];
-  const s = seasons.find(x=>x.current) || seasons[seasons.length-1];
-  if(!s) return `<div class="pp-card c4"><h3>Season stat line</h3><div class="pp-empty">No stats yet.</div></div>`;
+function statLineCard(s, title, sub, extra){
+  if(!s) return `<div class="pp-card c12"><h3>${esc(title)}</h3><div class="pp-empty">No games played yet.</div></div>`;
   const g = s.g || 0, trb = s.trb != null ? s.trb : (s.drb||0)+(s.orb||0);
   const items = [["G", g], ["MIN", f1(per(s.mp,g))], ["PTS", f1(per(s.pts,g))], ["REB", f1(per(trb,g))], ["AST", f1(per(s.ast,g))],
-    ["STL", f1(per(s.stl,g))], ["BLK", f1(per(s.blk,g))], ["TOV", f1(per(s.tov,g))], ["FG%", pct(s.fg, s.fga)], ["3P%", pct(s.fg3, s.fg3a)], ["FT%", pct(s.ft, s.fta)]];
-  return `<div class="pp-card c4"><h3>${esc(s.season)} stat line <small>${s.current ? "this season, per game" : "per game"}</small></h3>
+    ["STL", f1(per(s.stl,g))], ["BLK", f1(per(s.blk,g))], ["TOV", s.tov != null ? f1(per(s.tov,g)) : "—"],
+    ["FG%", s.fga != null ? pct(s.fg, s.fga) : "—"], ["3P%", s.fg3a != null ? pct(s.fg3, s.fg3a) : "—"], ["FT%", s.fta != null ? pct(s.ft, s.fta) : "—"]];
+  return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
     <div class="pp-line">${items.map(([k,v])=>`<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}
-    <div class="pp-stat hl"><div class="k">Play Eval</div><div class="v">${f3(s.value)}</div></div></div></div>`;
+    <div class="pp-stat hl"><div class="k">Play Eval</div><div class="v">${f3(s.value)}</div></div></div>${extra || ""}</div>`;
 }
+/* Career totals across every season (percentages only when every season has the shooting numbers) */
+function careerTotals(){
+  const seasons = REC.seasons || [];
+  const T = {g:0,mp:0,pts:0,ast:0,drb:0,orb:0,trb:0,stl:0,blk:0,tov:0,fg:0,fga:0,fg3:0,fg3a:0,ft:0,fta:0}, have = {};
+  seasons.forEach(s => { for(const k in T){ if(s[k] != null){ T[k] += s[k]; have[k] = (have[k]||0) + 1; } } if(s.trb == null) T.trb += (s.drb||0)+(s.orb||0); });
+  const out = Object.assign({}, T, {team:"", value: evalOf(T), seasons: seasons.length});
+  ["tov","fga","fg3a","fta"].forEach(k => { if(have[k] !== seasons.length) out[k] = null; });
+  return out;
+}
+const money = n => "$" + Math.round(n).toLocaleString();
 
 function careerCard(){
   const seasons = (REC.seasons || []).slice().reverse();
   if(!seasons.length) return "";
-  const T = {g:0,mp:0,pts:0,ast:0,drb:0,orb:0,trb:0,stl:0,blk:0,tov:0,fg:0,fga:0,fg3:0,fg3a:0,ft:0,fta:0}, have = {};
-  seasons.forEach(s => { for(const k in T){ if(s[k] != null){ T[k] += s[k]; have[k] = (have[k]||0) + 1; } } if(s.trb == null) T.trb += (s.drb||0)+(s.orb||0); });
-  const full = k => have[k] === seasons.length;   // only show career % when every season has the numbers
   const row = (s, cls, label) => { const g = s.g || 0, trb = s.trb != null ? s.trb : (s.drb||0)+(s.orb||0); return `<tr class="${cls||""}">
     <td class="l">${esc(label || s.season)}</td><td class="l">${esc(s.team || "")}</td><td>${g}</td><td>${f1(per(s.mp,g))}</td><td>${f1(per(s.pts,g))}</td><td>${f1(per(trb,g))}</td>
     <td>${f1(per(s.ast,g))}</td><td>${f1(per(s.stl,g))}</td><td>${f1(per(s.blk,g))}</td><td>${s.tov!=null?f1(per(s.tov,g)):"—"}</td>
     <td>${s.fga!=null?pct(s.fg,s.fga):"—"}</td><td>${s.fg3a!=null?pct(s.fg3,s.fg3a):"—"}</td><td>${s.fta!=null?pct(s.ft,s.fta):"—"}</td><td class="ev">${f3(s.value)}</td></tr>`; };
-  const career = Object.assign({}, T, {team:"", value: evalOf(T)});
-  ["tov","fga","fg3a","fta"].forEach(k => { if(!full(k)) career[k] = null; });
-  return `<div class="pp-card c12"><h3>Career stat lines <small>per game · regular season</small></h3>
+  const career = careerTotals();
+  return `<div class="pp-card c12"><h3>Season by season <small>per game · regular season</small></h3>
     <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th><th>Play Eval</th></tr></thead>
     <tbody>${seasons.map(s => row(s, s.current ? "cur" : "")).join("")}${row(career, "career", "Career")}</tbody></table></div>
     <div class="pp-note">Play Eval on the career row is worked out from career totals, not an average of seasons.</div></div>`;
@@ -340,42 +363,81 @@ function top5Card(G){
       <div class="e">${f3(g.eval)}</div></div>`).join("")}</div>` : `<div class="pp-empty">No games with ${MIN_TOP_GAME_MINUTES}+ minutes in this selection.</div>`}</div>`;
 }
 
-function gameLogCard(G){
+function gameLogCard(G, key){
   const logs = logObjs((G && G.logs) || []).sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(b.gid).localeCompare(String(a.gid)));
-  const shown = LOGS_ALL ? logs : logs.slice(0, 20);
+  const all = !!LOGS_ALL[key];
+  const shown = all ? logs : logs.slice(0, 20);
   return `<div class="pp-card c12"><h3>Game log <small>${logs.length} games · newest first</small></h3>
     ${logs.length ? `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Date</th><th class="l">Opp</th><th class="l">Result</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th>Play Eval</th></tr></thead><tbody>
       ${shown.map(g => `<tr><td class="l">${esc(shortDate(g.date))}</td><td class="l">${g.home ? "vs" : "@"} ${esc(g.opp)}</td><td class="l ${g.res === "W" ? "w" : "lo"}">${esc(g.res)}</td>
         <td>${Math.round(g.min)}</td><td>${g.pts}</td><td>${g.drb + g.orb}</td><td>${g.ast}</td><td>${g.stl}</td><td>${g.blk}</td><td>${g.tov}</td>
         <td>${g.fgm}-${g.fga}</td><td>${g.f3m}-${g.f3a}</td><td>${g.ftm}-${g.fta}</td><td>${g.pm > 0 ? "+" : ""}${g.pm}</td><td class="ev">${f3(g.eval)}</td></tr>`).join("")}
-      </tbody></table></div>${logs.length > 20 ? `<div class="pp-more"><button id="ppLogMore">${LOGS_ALL ? "Show the last 20" : `Show all ${logs.length} games`}</button></div>` : ""}`
+      </tbody></table></div>${logs.length > 20 ? `<div class="pp-more"><button data-logmore="${key}">${all ? "Show the last 20" : `Show all ${logs.length} games`}</button></div>` : ""}`
       : `<div class="pp-empty">No games for this selection.</div>`}</div>`;
 }
 
 /* ---------- page ---------- */
+function gameBoxes(G, L, team, key){
+  return `<div class="pp-grid">${shootingCard(G, L)}<div class="c5 pp-col">${assistsCard(G)}${top5Card(G)}</div>${stealsCard(G, team)}${blocksCard(G, team)}${gameLogCard(G, key)}</div>`;
+}
+function sectionHead(title, sub){
+  return `<div class="pp-section"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+}
+function currentLabel(){
+  const cur = (REC.seasons || []).find(x => x.current);
+  if(cur) return cur.season;
+  const y = curEndYear(); return `${y-1}-${String(y).slice(2)}`;
+}
+
 function render(){
-  const team = isRetired() ? NBA_SCHEME : teamOf(REC.team);
-  const panel = dark() ? "#1a1d23" : "#ffffff";
+  const retired = isRetired();
+  const team = retired ? NBA_SCHEME : teamOf(REC.team);
+  const panel = dark() ? "#121b2e" : "#ffffff";
   EL.style.setProperty("--tc1", team.c1);
   EL.style.setProperty("--tc2", team.c2);
   EL.style.setProperty("--tcbar", contrast(team.c1, panel) >= 1.8 ? team.c1 : team.c2);
   const gs = Object.keys(REC.games || {}).sort().reverse();
-  if(SEL == null || (SEL !== "career" && !gs.includes(SEL))) SEL = gs[0] || null;
-  const G = SEL ? gamesFor(SEL) : null, L = SEL ? leagueFor(SEL) : {};
-  const pick = gs.length ? `<div class="pp-seasonpick"><label class="sub" for="ppSeason" style="font-weight:600">Game-by-game boxes:</label>
-      <select id="ppSeason">${gs.map(s=>`<option value="${esc(s)}"${s===SEL?" selected":""}>${esc(s)}</option>`).join("")}${gs.length > 1 ? `<option value="career"${SEL==="career"?" selected":""}>All seasons (${esc(gs[gs.length-1])} on)</option>` : ""}</select>
-      <span class="sub">Shooting, assists, steals, blocks, top games and game log</span></div>`
-    : `<div class="final-note" style="margin-bottom:14px">Shot-by-shot and game-by-game data isn't available for this player's seasons. The NBA's public game feed only goes back so far.</div>`;
+
+  // ---- this season (active players only)
+  let seasonHtml = "";
+  if(!retired){
+    const label = currentLabel();
+    const cur = (REC.seasons || []).find(x => x.current) || null;
+    const G = (REC.games || {})[label] || null;
+    seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.")
+      + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game")}</div><div class="pp-gap"></div>`
+      + (G ? gameBoxes(G, leagueFor(label), team, "season") : `<div class="final-note">No games yet this season. The shooting chart, assists, steals, blocks, top games and game log fill in once ${esc(REC.name.split(" ")[0])} plays.</div>`);
+  }
+
+  // ---- career
+  if(SEL == null || (SEL !== "career" && !gs.includes(SEL))) SEL = gs.length ? "career" : null;
+  const ct = careerTotals();
+  const span = (REC.seasons || []).length ? `${REC.seasons[0].season} to ${REC.seasons[REC.seasons.length-1].season}` : "";
+  const extra = `<div class="pp-note">${ct.seasons} season${ct.seasons===1?"":"s"}${span ? " (" + esc(span) + ")" : ""} · career totals: ${Math.round(ct.pts).toLocaleString()} points, ${Math.round(ct.trb).toLocaleString()} rebounds, ${Math.round(ct.ast).toLocaleString()} assists, ${Math.round(ct.stl).toLocaleString()} steals, ${Math.round(ct.blk).toLocaleString()} blocks. Play Eval is worked out from career totals.</div>`;
+  let gameCareer;
+  if(gs.length){
+    const G = gamesFor(SEL), L = leagueFor(SEL);
+    const oldest = gs[gs.length-1];
+    const pick = `<div class="pp-seasonpick"><label class="sub" for="ppSeason" style="font-weight:600">Show:</label>
+      <select id="ppSeason"><option value="career"${SEL==="career"?" selected":""}>Whole career${gs.length > 1 ? ` (${esc(oldest)} on)` : ""}</option>${gs.map(s=>`<option value="${esc(s)}"${s===SEL?" selected":""}>${esc(s)} only</option>`).join("")}</select>
+      <span class="sub">${(REC.seasons||[]).length && REC.seasons[0].season < oldest ? `Game-by-game records start in ${esc(oldest)}, the NBA feed's oldest season for this player.` : ""}</span></div>`;
+    gameCareer = pick + gameBoxes(G, L, team, "career");
+  } else {
+    gameCareer = `<div class="final-note">Shot-by-shot and game-by-game data isn't available for this player's seasons. The NBA's public game feed only goes back so far.</div>`;
+  }
+  const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.")
+    + `<div class="pp-grid">${statLineCard(ct, "Career stat line", "per game, whole career", extra)}</div><div class="pp-gap"></div>`
+    + gameCareer + `<div class="pp-gap"></div><div class="pp-grid">${careerCard()}</div>`;
+
   EL.innerHTML = heroHtml(team) + `<div class="pp-body">
-    <div class="pp-grid">${bioCard()}${statLineCard()}${contractCard()}${teamsCard()}</div>
-    <div style="height:14px"></div>${pick}
-    ${gs.length ? `<div class="pp-grid">${shootingCard(G, L)}<div class="c5 pp-col">${assistsCard(G)}${top5Card(G)}</div>${stealsCard(G, team)}${blocksCard(G, team)}${gameLogCard(G)}</div><div style="height:14px"></div>` : ""}
-    <div class="pp-grid">${careerCard()}</div>
+    <div class="pp-grid">${bioCard()}${retired ? earningsCard() : contractCard()}${teamsCard()}</div>
+    ${seasonHtml}
+    ${careerHtml}
   </div>`;
   document.title = `${REC.name} · ${typeof STAT_NAME === "string" ? STAT_NAME : "Play Eval"}`;
   EL.querySelector("#ppBack").onclick = () => { location.hash = ""; };
-  const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL = false; render(); };
-  const more = EL.querySelector("#ppLogMore"); if(more) more.onclick = () => { LOGS_ALL = !LOGS_ALL; render(); };
+  const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
+  EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
 }
 
 async function show(id, el){
@@ -388,7 +450,7 @@ async function show(id, el){
       el.querySelector("#ppBack2").onclick = () => { location.hash = ""; };
       return;
     }
-    REC = rec; SEL = null; LOGS_ALL = false;
+    REC = rec; SEL = null; LOGS_ALL = {};
   }
   render();
 }
