@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install
-        run: pip install beautifulsoup4
+        run: pip install beautifulsoup4 numpy
 
       - name: Pull stats and run the formula
         run: python update_stats.py
