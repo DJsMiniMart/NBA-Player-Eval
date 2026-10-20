@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NBA Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f1ea; --panel:#ffffff; --ink:#1b1b1f; --dim:#6b6a70; --line:#e3ddd1;
+    --accent:#d9480f; --accent-soft:#fde8dc; --court:#1f3a5f; --gold:#c99a2e; --silver:#8d939c; --bronze:#a8673a;
+    --row:#faf8f3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#111317; --panel:#1a1d23; --ink:#ecebe7; --dim:#9a9aa2; --line:#2a2e36;
+      --accent:#ff7a3d; --accent-soft:#3a2418; --court:#8fb3e0; --row:#1e2128; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+  h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
+  h1 span{color:var(--accent);}
+  .meta{color:var(--dim);font-size:12.5px;margin-top:6px;}
+  .formula{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--dim);max-width:420px;}
+  .formula b{color:var(--ink);font-weight:600;}
+  .podium{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0;}
+  .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;}
+  .pod::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c);}
+  .pod .rk{font:700 13px "Barlow Condensed";color:var(--c);letter-spacing:1px;text-transform:uppercase;}
+  .pod .nm{font-weight:700;font-size:16px;margin:2px 0;}
+  .pod .tm{color:var(--dim);font-size:12px;}
+  .pod .val{font:700 34px/1 "Barlow Condensed";margin-top:8px;}
+  .controls{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+  .controls label{display:block;font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+  input,select{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .tablewrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);text-align:right;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--panel);}
+  th.l,td.l{text-align:left;}
+  th.on{color:var(--accent);}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tbody tr.p{cursor:pointer;}
+  tbody tr.p:hover td{background:var(--row);}
+  td.rank{color:var(--dim);font-weight:600;width:44px;}
+  td.name{font-weight:600;}
+  td.score{font-weight:700;color:var(--accent);font-size:15px;}
+  .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.35;vertical-align:middle;margin-right:8px;}
+  tr.detail td{background:var(--row);text-align:left;white-space:normal;padding:14px 16px;}
+  .parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;}
+  .part{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .part .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+  .part .v{font-weight:700;font-size:15px;}
+  .part .s{font-size:11.5px;color:var(--dim);}
+  .chartbox{position:relative;height:220px;}
+  .trend{margin-top:18px;padding:16px;}
+  .trend h2{font:700 22px "Barlow Condensed";text-transform:uppercase;margin:0 0 2px;}
+  .sub{color:var(--dim);font-size:12.5px;margin-bottom:10px;}
+  .empty{padding:40px 20px;text-align:center;color:var(--dim);}
+  .more{padding:12px;text-align:center;}
+  button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  footer{color:var(--dim);font-size:12px;margin-top:20px;}
+  footer a{color:inherit;}
+  @media (max-width:720px){
+    h1{font-size:34px;}
+    .podium{grid-template-columns:1fr;}
+    .controls{grid-template-columns:1fr 1fr;}
+    .controls .search{grid-column:1/-1;}
+    .hide-sm,.bar{display:none;}
+    th,td{padding:8px 6px;}
+    .pod{padding:10px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;}
+    .pod .rk{grid-row:1/3;}
+    .pod .val{grid-row:1/3;grid-column:3;margin:0;font-size:28px;}
+    .podium{gap:8px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 id="title">NBA <span>Leaderboard</span></h1>
+      <div class="meta" id="meta">Loading…</div>
+    </div>
+    <div class="formula">
+      <b>The formula</b> (season totals):<br>
+      (Points + Assists×2 + Def. Rebounds + Off. Rebounds×2 + Steals×4 + Blocks) ÷ Minutes
+    </div>
+  </header>
+
+  <div class="podium" id="podium"></div>
+
+  <div class="controls">
+    <div class="search"><label for="q">Search player</label><input id="q" type="search" placeholder="e.g. Jokic"></div>
+    <div><label for="team">Team</label><select id="team"><option value="">All teams</option></select></div>
+    <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
+    <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
+  </div>
+
+  <div class="card">
+    <div class="tablewrap"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="more" id="more"></div>
+  </div>
+
+  <div class="card trend">
+    <h2>Top 5 over the season</h2>
+    <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
+    <div class="chartbox"><canvas id="topChart"></canvas></div>
+  </div>
+
+  <footer>
+    Stats from <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener">Basketball-Reference</a>, refreshed every morning.
+    <span id="checked"></span>
+  </footer>
+</div>
+
+<script>
+/* ===== Settings you can change ===== */
+const STAT_NAME = "Leaderboard";   // what your stat is called -- shows in the title and table
+const DEFAULT_MIN_GAMES = 5;       // qualifying minimums (people can change them on the page)
+const DEFAULT_MIN_MPG = 15;
+/* =================================== */
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(_){ } }
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f1 = n => (Math.round(n*10)/10).toFixed(1);
+const f3 = n => n.toFixed(3);
+
+let DATA = {players:[]}, HIST = {days:{}, names:{}};
+let sortKey = "value", sortDir = -1, openId = null, showAll = false;
+const charts = {};
+
+const COLS = [
+  {k:"rank", t:"#", l:true},
+  {k:"name", t:"Player", l:true},
+  {k:"team", t:"Team", l:true},
+  {k:"g", t:"G"},
+  {k:"mpg", t:"MPG"},
+  {k:"ppg", t:"PTS", sm:true},
+  {k:"apg", t:"AST", sm:true},
+  {k:"dpg", t:"DRB", sm:true},
+  {k:"opg", t:"ORB", sm:true},
+  {k:"spg", t:"STL", sm:true},
+  {k:"bpg", t:"BLK", sm:true},
+  {k:"value", t:STAT_NAME === "Leaderboard" ? "Score" : STAT_NAME},
+];
+
+function enrich(p){
+  const g = p.g || 1;
+  return Object.assign(p, {mpg:p.mp/g, ppg:p.pts/g, apg:p.ast/g, dpg:p.drb/g, opg:p.orb/g, spg:p.stl/g, bpg:p.blk/g});
+}
+
+function qualified(){
+  const minG = +$('minG').value || 0, minM = +$('minM').value || 0;
+  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM);
+}
+
+function drawHead(){
+  $('thead').innerHTML = COLS.map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
+  $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k; if(k==="rank"){ sortKey="value"; sortDir=-1; }
+    else if(sortKey===k) sortDir *= -1; else { sortKey = k; sortDir = (k==="name"||k==="team") ? 1 : -1; }
+    draw();
+  });
+}
+
+function draw(){
+  drawHead();
+  const pool = qualified().slice().sort((a,b)=>b.value-a.value);
+  pool.forEach((p,i)=>p.rank = i+1);
+  const q = $('q').value.trim().toLowerCase(), team = $('team').value;
+  let list = pool.filter(p => (!team || p.team===team || (p.teams||[]).includes(team)) && (!q || p.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(q.normalize("NFD").replace(/[̀-ͯ]/g,""))));
+  list.sort((a,b)=>{
+    const x=a[sortKey], y=b[sortKey];
+    return (typeof x==="string" ? x.localeCompare(y) : x-y) * sortDir;
+  });
+  const top = pool[0] ? pool[0].value : 1, low = pool.length ? pool[pool.length-1].value : 0;
+  const filtered = q || team;
+  const shown = (showAll || filtered) ? list : list.slice(0, 50);
+
+  // podium
+  $('podium').innerHTML = pool.slice(0,3).map((p,i)=>`
+    <div class="pod" style="--c:var(--${["gold","silver","bronze"][i]})" data-id="${esc(p.id)}">
+      <div class="rk">${["1st","2nd","3rd"][i]}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="tm">${esc(p.team)} · ${p.g} games · ${f1(p.mpg)} min</div>
+      <div class="val">${f3(p.value)}</div>
+    </div>`).join("");
+  $('podium').querySelectorAll('.pod').forEach(el => el.onclick = () => { openId = el.dataset.id; $('q').value = ""; $('team').value = ""; showAll = true; draw(); setTimeout(()=>{ const r = document.querySelector(`tr.detail`); if(r) r.scrollIntoView({block:"center", behavior:"smooth"}); }, 50); });
+
+  if(!DATA.players.length){
+    $('tbody').innerHTML = `<tr><td colspan="${COLS.length}" class="empty">${esc(DATA.note || "No stats yet.")}</td></tr>`;
+    $('more').innerHTML = ""; return;
+  }
+  if(!list.length){
+    $('tbody').innerHTML = `<tr><td colspan="${COLS.length}" class="empty">No players match. Try lowering the minimums.</td></tr>`;
+    $('more').innerHTML = ""; return;
+  }
+  $('tbody').innerHTML = shown.map(p => {
+    const row = `<tr class="p" data-id="${esc(p.id)}">
+      <td class="l rank">${p.rank}</td>
+      <td class="l name">${esc(p.name)}</td>
+      <td class="l">${esc(p.teams ? p.teams.join(" → ") : p.team)}</td>
+      <td>${p.g}</td><td>${f1(p.mpg)}</td>
+      <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
+      <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
+      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td></tr>`;
+    return row + (openId===p.id ? detailRow(p) : "");
+  }).join("");
+  $('more').innerHTML = (!filtered && list.length > 50) ? `<button id="moreBtn">${showAll ? "Show top 50" : `Show all ${list.length} players`}</button>` : "";
+  const mb = $('moreBtn'); if(mb) mb.onclick = () => { showAll = !showAll; draw(); };
+  $('tbody').querySelectorAll('tr.p').forEach(tr => tr.onclick = () => { openId = openId===tr.dataset.id ? null : tr.dataset.id; draw(); });
+  if(openId) playerChart(openId);
+}
+
+function detailRow(p){
+  const parts = [
+    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Def. reb", p.drb, 1],
+    ["Off. reb ×2", p.orb, 2], ["Steals ×4", p.stl, 4], ["Blocks", p.blk, 1]
+  ];
+  const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
+  return `<tr class="detail"><td colspan="${COLS.length}">
+    <div class="parts">
+      ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${total?Math.round(100*v*m/total):0}% of total</div></div>`).join("")}
+      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.value)}</div></div>
+    </div>
+    <div class="chartbox"><canvas id="pChart"></canvas></div>
+  </td></tr>`;
+}
+
+function seriesFor(id){
+  const days = Object.keys(HIST.days||{}).sort();
+  return {days, vals: days.map(d => HIST.days[d][id] ?? null)};
+}
+
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function lineChart(canvas, labels, datasets){
+  if(charts[canvas.id]) charts[canvas.id].destroy();
+  charts[canvas.id] = new Chart(canvas, {
+    type:"line", data:{labels, datasets},
+    options:{responsive:true, maintainAspectRatio:false, spanGaps:true, interaction:{mode:"index", intersect:false},
+      plugins:{legend:{labels:{color:css('--ink'), boxWidth:12}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y==null?"—":c.parsed.y.toFixed(3)}`}}},
+      scales:{x:{ticks:{color:css('--dim'), maxTicksLimit:8}, grid:{display:false}}, y:{ticks:{color:css('--dim')}, grid:{color:css('--line')}}}}
+  });
+}
+
+function playerChart(id){
+  const c = $('pChart'); if(!c || typeof Chart==="undefined") return;
+  const {days, vals} = seriesFor(id);
+  if(days.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">The season trend line appears after a couple of daily updates.</div>`; return; }
+  const p = DATA.players.find(x=>x.id===id);
+  lineChart(c, days.map(d=>d.slice(5)), [{label:p?p.name:id, data:vals, borderColor:css('--accent'), backgroundColor:css('--accent'), tension:.25, pointRadius:0, borderWidth:2.5}]);
+}
+
+function topChart(){
+  const c = $('topChart'); if(typeof Chart==="undefined") return;
+  const days = Object.keys(HIST.days||{}).sort();
+  if(days.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">This chart fills in after a couple of daily updates.</div>`; return; }
+  const top = qualified().slice().sort((a,b)=>b.value-a.value).slice(0,5);
+  const colors = [css('--accent'), css('--court'), css('--gold'), "#2f9e44", "#9c36b5"];
+  lineChart(c, days.map(d=>d.slice(5)), top.map((p,i)=>({label:p.name, data:days.map(d=>HIST.days[d][p.id] ?? null), borderColor:colors[i], backgroundColor:colors[i], tension:.25, pointRadius:0, borderWidth:2})));
+}
+
+async function load(){
+  const bust = "?t=" + Date.now();
+  try{
+    const r = await fetch("data/stats.json" + bust); DATA = await r.json();
+  }catch(e){ DATA = {players:[], note:"Couldn't load the stats file."}; }
+  try{ const r = await fetch("data/history.json" + bust); if(r.ok) HIST = await r.json(); }catch(_){ }
+  DATA.players = (DATA.players||[]).map(enrich);
+  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
+  const when = DATA.updatedAt ? new Date(DATA.updatedAt).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}) : null;
+  $('meta').textContent = `${DATA.season || ""} season · ${DATA.players.length} players${when ? " · updated " + when : ""}`;
+  if(DATA.checkedAt) $('checked').textContent = `Last checked ${new Date(DATA.checkedAt).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.`;
+  const teams = [...new Set(DATA.players.flatMap(p => p.teams || [p.team]).filter(Boolean))].sort();
+  $('team').innerHTML = `<option value="">All teams</option>` + teams.map(t=>`<option>${esc(t)}</option>`).join("");
+  $('minG').value = store.get("minG") ?? DEFAULT_MIN_GAMES;
+  $('minM').value = store.get("minM") ?? DEFAULT_MIN_MPG;
+  $('q').oninput = draw;
+  $('team').onchange = draw;
+  $('minG').oninput = () => { store.set("minG", $('minG').value); draw(); topChart(); };
+  $('minM').oninput = () => { store.set("minM", $('minM').value); draw(); topChart(); };
+  draw(); topChart();
+}
+load();
+</script>
+</body>
+</html>
