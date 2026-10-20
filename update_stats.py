@@ -50,7 +50,10 @@ FIRST_TOV_SEASON = 1978   # 1977-78: first season with turnovers
 FIRST_SEASON = 1974
 MAX_NEW_SEASONS_PER_RUN = 60   # the first run downloads them all; later runs have nothing to do
 ALLTIME_MIN_MINUTES = 100      # leave out tiny cameo seasons from the all-time file
-SEASON_SCHEMA = 2              # bump when new columns are saved, so old season files get re-downloaded
+SEASON_SCHEMA = 3              # bump when new columns are saved, so old season files get re-downloaded
+                               # (3: per-team splits for players who changed teams mid-season)
+PLAYOFF_SCHEMA = 2             # playoff files never need splits (no trades during the playoffs)
+SPLIT_KEYS = ["g", "mp", "pts", "ast", "drb", "orb", "stl", "blk", "tov"]
 
 # column header text on Basketball-Reference -> our field name
 COLS = {"Player": "name", "Team": "team", "Tm": "team", "Pos": "pos", "Age": "age",
@@ -150,6 +153,9 @@ def parse_players(html):
             order.append(pid)
         elif not MULTI_TEAM.match(team):
             players[pid]["teams"].append(team)  # their individual team rows, in order
+            # ...and what they did with each team, for the team-only all-time lists
+            players[pid].setdefault("splits", []).append(
+                {"team": team, **{k: int(row.get(k) or 0) for k in SPLIT_KEYS}})
     out = []
     for pid in order:
         p = players[pid]
@@ -159,6 +165,8 @@ def parse_players(html):
         p["team"] = teams[-1] if teams else p.get("team", "")
         if len(teams) > 1:
             p["teams"] = teams
+        else:
+            p.pop("splits", None)
         p["id"] = pid
         v = stat_value(p)
         if v is None:
@@ -241,7 +249,7 @@ def save_playoffs(now, current_year):
         if year == current_year:
             if now.month not in (4, 5, 6, 7):
                 continue
-        elif saved.get("complete") and saved.get("schema") == SEASON_SCHEMA:
+        elif saved.get("complete") and (saved.get("schema") or 0) >= PLAYOFF_SCHEMA:
             rescore(path, saved)
             continue
         time.sleep(5)
@@ -258,7 +266,7 @@ def save_playoffs(now, current_year):
         with open(path, "w", encoding="utf-8") as f:
             json.dump({"season": season_label(year), "playoffs": True, "complete": year < current_year,
                        "updatedAt": now.isoformat(timespec="seconds"), "source": playoffs_url(year),
-                       "formula": FORMULA, "schema": SEASON_SCHEMA, "players": players}, f, separators=(",", ":"))
+                       "formula": FORMULA, "schema": PLAYOFF_SCHEMA, "players": players}, f, separators=(",", ":"))
         print(f"Saved {season_label(year)} playoffs: {len(players)} players")
 
 
@@ -279,13 +287,14 @@ def write_season_index(current_year):
             if p["mp"] < ALLTIME_MIN_MINUTES:
                 continue
             team = " \u2192 ".join(p["teams"]) if p.get("teams") else p.get("team", "")
+            splits = [[s["team"]] + [s[k] for k in SPLIT_KEYS] for s in p.get("splits", [])] or 0
             rows.append([p["id"], p["name"], label, team, p["g"], p["mp"], p["pts"], p["ast"],
-                         p["drb"], p["orb"], p["stl"], p["blk"], p.get("tov", 0), p["value"]])
+                         p["drb"], p["orb"], p["stl"], p["blk"], p.get("tov", 0), p["value"], splits])
     with open(SEASONS_PATH, "w", encoding="utf-8") as f:
         json.dump(seasons, f, separators=(",", ":"))
     with open(ALLTIME_PATH, "w", encoding="utf-8") as f:
         json.dump({"seasons": done, "cols": ["id", "name", "season", "team", "g", "mp", "pts", "ast",
-                                             "drb", "orb", "stl", "blk", "tov", "value"], "rows": rows},
+                                             "drb", "orb", "stl", "blk", "tov", "value", "splits"], "rows": rows},
                   f, separators=(",", ":"))
 
 

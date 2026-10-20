@@ -33,6 +33,10 @@ A **Pages** menu at the top of every page (`nav.js`) links to:
   roster size. Salaries come from `data/contracts.json`. **Update the cap, tax and apron numbers in `RULES` at the
   top of `trade.js` each July.** "Copy link to this trade" saves the whole trade in the address.
 
+On the all-time lists (best seasons and best careers), picking a team counts only what each player did for that
+team, games played included. Players who changed teams mid-season have their team-by-team numbers saved as
+`splits` in each season file and in `data/alltime.json`.
+
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 
 ## Player pages

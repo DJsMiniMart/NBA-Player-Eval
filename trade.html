@@ -87,13 +87,13 @@
   .inline select{flex:1;min-width:0;max-width:100%;font-size:12.5px;}
   .muted{color:var(--dim);font-size:12px;}
   /* results */
-  .verdict{margin:22px 0 12px;padding:16px 18px;border-radius:12px;display:flex;gap:14px;align-items:center;border:1px solid var(--line);background:var(--panel);}
+  .verdict{margin:0 0 12px;padding:16px 18px;border-radius:12px;display:flex;gap:14px;align-items:center;border:1px solid var(--line);background:var(--panel);}
   .verdict .big{font:700 30px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;}
   .verdict.ok{background:var(--ok-soft);border-color:var(--ok);} .verdict.ok .big{color:var(--ok);}
   .verdict.bad{background:var(--bad-soft);border-color:var(--bad);} .verdict.bad .big{color:var(--bad);}
   .verdict .icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex:0 0 auto;background:var(--dim);}
   .verdict.ok .icon{background:var(--ok);} .verdict.bad .icon{background:var(--bad);}
-  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;}
+  .results{margin-bottom:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;}
   .rcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;border-top:4px solid var(--c1);}
   .rcard h3{margin:0 0 8px;font:700 20px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
   .rcard h3 img{width:28px;height:28px;object-fit:contain;}
@@ -148,9 +148,9 @@
     <button id="reset">Start over</button>
   </div>
 
-  <div class="teams" id="teams"><div class="empty">Loading…</div></div>
-
   <div id="out"></div>
+
+  <div class="teams" id="teams"><div class="empty">Loading…</div></div>
 
   <details class="rules" id="rules">
     <summary>How the Trade Machine checks a trade</summary>

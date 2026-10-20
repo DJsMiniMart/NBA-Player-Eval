@@ -208,11 +208,30 @@ const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)
   .map(c => c.k === "team" && (VIEW === "alltime" || VIEW === "careers") ? Object.assign({}, c, {sm:true}) : c);
 /* Play Eval from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
 const playEval = t => t.mp ? (t.pts + 2*t.ast + 2*((t.drb||0) + (t.orb||0)) + 4*t.stl + t.blk - 4*(t.tov||0)) / t.mp : null;
-let CAREERS = null;
-function buildCareers(){
-  if(CAREERS) return CAREERS;
+const CAREERS = {};
+/* A player-season counting only what he did for `team` (null if he never played for them that season).
+   Players who changed teams mid-season carry per-team splits; older data without them falls back to full totals. */
+const SPLIT_KEYS = ["g","mp","pts","ast","drb","orb","stl","blk","tov"];
+function onTeam(r, team){
+  if(!team) return r;
+  const teams = String(r.team || "").split(" → ").filter(Boolean);
+  if(r.splits && r.splits.length){
+    const parts = r.splits.filter(x => x.team === team);
+    if(!parts.length) return null;
+    const o = {id:r.id, name:r.name, season:r.season, team, pos:r.pos, partOf:r.team};
+    SPLIT_KEYS.forEach(k => o[k] = parts.reduce((t,x) => t + (x[k] || 0), 0));
+    o.value = playEval(o);
+    return o.value == null ? null : o;
+  }
+  if(!teams.includes(team)) return null;
+  return teams.length > 1 ? Object.assign({}, r, {team, partOf:r.team, noSplit:true}) : r;
+}
+function buildCareers(team){
+  team = team || "";
+  if(CAREERS[team]) return CAREERS[team];
   const by = new Map();
-  const rows = (ALLTIME ? ALLTIME.players : []).concat((CUR.players || []).map(p => Object.assign({}, p, {season: CUR.season, team: p.teams ? p.teams.join(" → ") : p.team})));
+  const rows = (ALLTIME ? ALLTIME.players : []).concat((CUR.players || []).map(p => Object.assign({}, p, {season: CUR.season, team: p.teams ? p.teams.join(" → ") : p.team})))
+    .map(r => onTeam(r, team)).filter(Boolean);
   rows.forEach(r => {
     const c = by.get(r.id) || {id:r.id, name:r.name, g:0, mp:0, pts:0, ast:0, drb:0, orb:0, stl:0, blk:0, tov:0, seasons:[], teams:[], noTov:false};
     ["g","mp","pts","ast","drb","orb","stl","blk","tov"].forEach(k => c[k] += r[k] || 0);
@@ -223,11 +242,27 @@ function buildCareers(){
     c.name = r.name;
     by.set(r.id, c);
   });
-  CAREERS = {season:"All-time careers", final:true, players:[...by.values()].map(c => {
+  return CAREERS[team] = {season:"All-time careers", final:true, team, players:[...by.values()].map(c => {
     c.seasons.sort();
     return Object.assign(c, {value: playEval(c), nSeasons: c.seasons.length, season: `${c.seasons[0]} to ${c.seasons[c.seasons.length-1]}`, team: c.lastTeam || ""});
-  }).filter(c => c.value != null), note:"Careers appear once past seasons have been downloaded."};
-  return CAREERS;
+  }).filter(c => c.value != null), note: team ? "No careers with this team yet." : "Careers appear once past seasons have been downloaded."};
+}
+const ALLTEAM = {};
+function alltimeFor(team){
+  if(!team) return ALLTIME;
+  return ALLTEAM[team] || (ALLTEAM[team] = {season:"All-time", final:true, team,
+    players: ALLTIME.players.map(r => onTeam(r, team)).filter(Boolean), note:"No seasons with this team yet."});
+}
+/* All-time views: picking a team rebuilds the list from only the games each player played for that team */
+function applyTeam(){
+  if(VIEW === "alltime" || VIEW === "careers"){
+    const team = $('team').value;
+    DATA = VIEW === "alltime" ? alltimeFor(team) : buildCareers(team);
+    DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
+    openKey = null; showAll = false;
+    setMeta();
+  }
+  draw(); topChart();
 }
 
 function enrich(p, season){
@@ -322,6 +357,8 @@ function shortYears(p){
 }
 /* Team cell: careers show their last team plus how many others (full list on hover and in the breakdown) */
 function teamCell(p){
+  if(p.partOf && VIEW === "alltime")
+    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Full season: " + p.partOf)}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
   const all = p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ").filter(Boolean);
   if(VIEW === "careers" && all.length > 1)
     return `<td class="l teamcell${VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(", "))}">${esc(p.team || all[all.length-1])} <span class="more">+${all.length-1}</span></td>`;
@@ -409,7 +446,11 @@ async function loadAlltime(){
   if(ALLTIME) return ALLTIME;
   const raw = await getJSON("data/alltime.json");
   const cols = raw && raw.cols || [];
-  ALLTIME = {season:"All-time", final:true, players:(raw && raw.rows || []).map(r => Object.fromEntries(cols.map((c,i)=>[c, r[i]]))),
+  ALLTIME = {season:"All-time", final:true, players:(raw && raw.rows || []).map(r => {
+      const o = Object.fromEntries(cols.map((c,i)=>[c, r[i]]));
+      o.splits = Array.isArray(o.splits) ? o.splits.map(x => Object.fromEntries(["team", ...SPLIT_KEYS].map((k,i) => [k, x[i]]))) : null;
+      return o;
+    }),
     note:"All-time seasons haven't been downloaded yet. They're added on the next daily update."};
   CAREER = new Map();
   ALLTIME.players.forEach(p => { if(!CAREER.has(p.id)) CAREER.set(p.id, []); CAREER.get(p.id).push(p); });
@@ -418,6 +459,19 @@ async function loadAlltime(){
 function fmtWhen(iso){ return new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); }
 function mkey(k){ return k + ":" + VIEW; }
 
+function pastRange(){
+  const past = SEASONS.filter(x => /^season-/.test(x.file));
+  return past.length ? ` from ${past[past.length-1].label} to ${past[0].label}` : "";
+}
+function setMeta(){
+  const when = DATA.updatedAt ? fmtWhen(DATA.updatedAt) : null;
+  const tm = DATA.team ? ` · only games with ${DATA.team}` : "";
+  $('meta').textContent = VIEW==="careers"
+    ? `All-time careers · ${DATA.players.length.toLocaleString()} players since 1973-74, including this season so far${tm}`
+    : VIEW==="alltime"
+    ? `All-time · ${DATA.players.length.toLocaleString()} player-seasons${pastRange()}${tm}`
+    : `${DATA.season || ""} season · ${DATA.players.length} players` + (VIEW==="past" ? " · final numbers" : (when ? " · updated " + when : ""));
+}
 async function showSeason(file){
   const s = SEASONS.find(x=>x.file===file) || SEASONS[0];
   $('season').value = s.file;
@@ -425,7 +479,7 @@ async function showSeason(file){
   if(s.file !== "stats.json") await loadAlltime();   // career lines for past views
   if(s.current){ VIEW = "current"; DATA = CUR; }
   else if(s.file === "alltime"){ VIEW = "alltime"; DATA = ALLTIME; }
-  else if(s.file === "careers"){ VIEW = "careers"; DATA = buildCareers(); }
+  else if(s.file === "careers"){ VIEW = "careers"; DATA = buildCareers(""); }
   else {
     VIEW = "past";
     DATA = fileCache[s.file] || (fileCache[s.file] = await getJSON("data/" + s.file)) || {players:[], note:"Couldn't load that season."};
@@ -434,13 +488,9 @@ async function showSeason(file){
   DATA.players = DATA.players || [];
   DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
-  const when = DATA.updatedAt ? fmtWhen(DATA.updatedAt) : null;
-  $('meta').textContent = VIEW==="careers"
-    ? `All-time careers · ${DATA.players.length.toLocaleString()} players since 1973-74, including this season so far`
-    : VIEW==="alltime"
-    ? `All-time · ${DATA.players.length.toLocaleString()} player-seasons from ${SEASONS.length>2 ? SEASONS[SEASONS.length-1].label : ""} to ${SEASONS.length>2 ? SEASONS[2].label : ""}`
-    : `${DATA.season || ""} season · ${DATA.players.length} players` + (VIEW==="past" ? " · final numbers" : (when ? " · updated " + when : ""));
+  setMeta();
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
+
   $('finalNote').hidden = VIEW==="current";
   if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
   if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Play Eval, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
@@ -472,7 +522,7 @@ async function load(){
   $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");
   $('season').onchange = () => showSeason($('season').value);
   $('q').oninput = draw;
-  $('team').onchange = draw;
+  $('team').onchange = applyTeam;
   $('minG').oninput = () => { store.set(mkey("minG"), $('minG').value); draw(); topChart(); };
   $('minM').oninput = () => { store.set(mkey("minM"), $('minM').value); draw(); topChart(); };
   const saved = store.get("season");
@@ -490,7 +540,7 @@ function buildLogoStrip(){
     const pick = opts.includes(code) ? code : (opts.includes(b.dataset.team) ? b.dataset.team : null);
     if(!pick){ return; }
     $('team').value = $('team').value === pick ? "" : pick;
-    syncLogoStrip(); draw();
+    syncLogoStrip(); applyTeam();
     document.querySelector('.controls').scrollIntoView({behavior:"smooth", block:"start"});
   });
 }
