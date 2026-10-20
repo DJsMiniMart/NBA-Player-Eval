@@ -107,7 +107,7 @@
     </div>
     <div class="formula">
       <b>The formula</b> (season totals):<br>
-      ((Points + Assists×2 + Steals×2 + Def. Rebounds + Off. Rebounds×2 + Blocks) − Turnovers) ÷ Minutes
+      ((Points + Assists×2 + Rebounds×2 + Steals×4 + Blocks) − Turnovers×4) ÷ Minutes<br><small>Same as per-game numbers ÷ minutes per game.</small>
     </div>
   </header>
   </div>
@@ -280,8 +280,8 @@ function draw(){
 
 function detailRow(p){
   const parts = [
-    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Def. reb", p.drb, 1],
-    ["Off. reb ×2", p.orb, 2], ["Steals ×2", p.stl, 2], ["Blocks", p.blk, 1], ["Turnovers −1", p.tov || 0, -1]
+    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Rebounds ×2", p.trb != null ? p.trb : (p.drb||0) + (p.orb||0), 2],
+    ["Steals ×4", p.stl, 4], ["Blocks", p.blk, 1], ["Turnovers ×4", p.tov || 0, -4]
   ];
   const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
   return `<tr class="detail"><td colspan="${cols().length}">

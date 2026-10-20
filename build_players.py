@@ -34,7 +34,7 @@ STAT_KEYS = ["g", "gs", "mp", "pts", "ast", "drb", "orb", "trb", "stl", "blk", "
 LOG_COLS = ["gid", "date", "opp", "home", "min", "pts", "ast", "drb", "orb", "stl", "blk", "tov", "fgm", "fga",
             "f3m", "f3a", "ftm", "fta", "pm", "res", "start", "tm", "gm"]
 # the formula's pieces and their weights (turnovers count against)
-PARTS = [("pts", 1), ("ast", 2), ("stl", 2), ("drb", 1), ("orb", 2), ("blk", 1), ("tov", -1)]
+PARTS = [("pts", 1), ("ast", 2), ("trb", 2), ("stl", 4), ("blk", 1), ("tov", -4)]
 FIRST_TOV_LABEL = "1977-78"
 SIM_SEASON_MIN_MP = 500        # seasons used for "similar players"
 SIM_CURRENT_MIN_MP = 120       # ...this season, while it's young

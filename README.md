@@ -2,7 +2,9 @@
 
 A ranked list of every NBA player by Play Eval, updated automatically every morning:
 
-    ((Points + Assists x2 + Steals x2 + Defensive Rebounds + Offensive Rebounds x2 + Blocks) - Turnovers) / Minutes
+    ((Points + Assists x2 + Rebounds x2 + Steals x4 + Blocks) - Turnovers x4) / Minutes
+
+(The same as per-game numbers divided by minutes per game.)
 
 The NBA didn't track turnovers before 1977-78, so nothing is subtracted for 1973-74 to 1976-77 (marked * on the site).
 

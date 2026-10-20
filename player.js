@@ -81,9 +81,10 @@ const f1 = v => v == null ? "—" : (Math.round(v*10)/10).toFixed(1);
 const f3 = v => v == null ? "—" : v.toFixed(3);
 const pct = (m, a) => a ? (100*m/a).toFixed(1) + "%" : "—";
 const per = (t, g) => (num(t) != null && g) ? t/g : null;
-/* Play Eval: ((PTS + AST*2 + STL*2 + DRB + ORB*2 + BLK) - TOV) / minutes */
-const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*s.stl + s.drb + 2*s.orb + s.blk - (s.tov || 0)) / s.mp : null;
-const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["stl","Steals ×2",2],["drb","Def. rebounds",1],["orb","Off. rebounds ×2",2],["blk","Blocks",1],["tov","Turnovers (−1)",-1]];
+/* Play Eval: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / minutes */
+const rebOf = s => s.trb != null ? s.trb : (s.drb || 0) + (s.orb || 0);
+const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*rebOf(s) + 4*s.stl + s.blk - 4*(s.tov || 0)) / s.mp : null;
+const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds ×2",2],["stl","Steals ×4",4],["blk","Blocks",1],["tov","Turnovers (×4, subtracted)",-4]];
 const POS_NAMES = {PG:"point guards",SG:"shooting guards",SF:"small forwards",PF:"power forwards",C:"centers",G:"guards",F:"forwards"};
 
 let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {};
@@ -417,7 +418,7 @@ function driversCard(tot, lg, title, sub){
   const max = Math.max(...rows.map(r => Math.max(Math.abs(r.me), Math.abs(r.avg))), .01);
   const best = rows.slice().sort((a,b)=>b.d-a.d)[0], worst = rows.slice().sort((a,b)=>a.d-b.d)[0];
   return `<div class="pp-card c6"><h3>${esc(title)} <small>${esc(sub)}</small></h3>
-    <div class="sub" style="margin:0 0 10px">Biggest edge: <b>${esc(best.label.replace(/ ×2| \(−1\)/,""))}</b> (${sgn3(best.d)} vs. average)${worst.d < 0 ? ` · Weakest: <b>${esc(worst.label.replace(/ ×2| \(−1\)/,""))}</b> (${sgn3(worst.d)})` : ""}</div>
+    <div class="sub" style="margin:0 0 10px">Biggest edge: <b>${esc(best.label.replace(/ ×\d| \(.*\)/,""))}</b> (${sgn3(best.d)} vs. average)${worst.d < 0 ? ` · Weakest: <b>${esc(worst.label.replace(/ ×\d| \(.*\)/,""))}</b> (${sgn3(worst.d)})` : ""}</div>
     <table class="pp-tbl pp-drv"><thead><tr><th class="l">Piece</th><th class="l"></th><th>Them</th><th>Avg</th><th>+/−</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td class="l">${esc(r.label)}</td><td class="l" style="width:38%"><div class="pp-dbar"><div class="me" style="width:${(100*Math.abs(r.me)/max).toFixed(1)}%"></div><div class="avg" style="left:${(100*Math.abs(r.avg)/max).toFixed(1)}%"></div></div></td>
       <td>${r.me.toFixed(3)}</td><td>${r.avg.toFixed(3)}</td><td class="${+r.d.toFixed(3) > 0 ? "w" : +r.d.toFixed(3) < 0 ? "lo" : ""}">${sgn3(r.d)}</td></tr>`).join("")}
