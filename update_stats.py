@@ -13,7 +13,10 @@ and writes data/seasons.json so the page can offer a season picker.
 rebounds separately, so it's the earliest season the formula can be run on.
 
 Formula (season totals):
-  (PTS + 2*AST + DRB + 2*ORB + 2*STL + BLK) / MP
+  ((PTS + 2*AST + 2*STL + DRB + 2*ORB + BLK) - TOV) / MP
+  The NBA didn't record turnovers before 1977-78, so nothing is subtracted for 1973-74 to 1976-77.
+
+Playoff totals for every season are saved the same way (data/playoffs-YYYY.json).
 
 After that it runs the player-page steps (each one can fail without stopping the others):
   bbr_extra.py     -- bios, draft picks, contracts (Basketball-Reference)
@@ -40,7 +43,8 @@ HISTORY_PATH = os.path.join(DATA_DIR, "history.json")
 SEASONS_PATH = os.path.join(DATA_DIR, "seasons.json")
 ALLTIME_PATH = os.path.join(DATA_DIR, "alltime.json")
 # Saved seasons are re-scored with this whenever it changes, so edit stat_value() and this together.
-FORMULA = "(PTS + AST*2 + DRB + ORB*2 + STL*2 + BLK) / MP"
+FORMULA = "((PTS + AST*2 + STL*2 + DRB + ORB*2 + BLK) - TOV) / MP"
+FIRST_TOV_SEASON = 1978   # 1977-78: first season with turnovers
 # first season with steals, blocks and offensive/defensive rebounds (1973-74 -> 1974)
 FIRST_SEASON = 1974
 MAX_NEW_SEASONS_PER_RUN = 60   # the first run downloads them all; later runs have nothing to do
@@ -58,10 +62,10 @@ MULTI_TEAM = re.compile(r"^(TOT|\dTM)$")
 
 
 def stat_value(p):
-    """The stat: (PTS + AST*2 + DRB + ORB*2 + STL*2 + BLK) / minutes played."""
+    """The stat: ((PTS + AST*2 + STL*2 + DRB + ORB*2 + BLK) - TOV) / minutes played."""
     if not p["mp"]:
         return None
-    total = p["pts"] + p["ast"] * 2 + p["drb"] + p["orb"] * 2 + p["stl"] * 2 + p["blk"]
+    total = p["pts"] + p["ast"] * 2 + p["stl"] * 2 + p["drb"] + p["orb"] * 2 + p["blk"] - (p.get("tov") or 0)
     return total / p["mp"]
 
 
@@ -210,6 +214,52 @@ def save_past_seasons(now, current_year):
         print(f"Saved {season_label(year)} baseline: {len(players)} players; top: {players[0]['name']} {players[0]['value']:.3f}")
 
 
+def rescore(path, data):
+    """Formula changed since this file was saved: re-score it from the saved totals."""
+    if data.get("formula") == FORMULA or not data.get("players"):
+        return
+    for p in data["players"]:
+        p["value"] = round(stat_value(p), 4)
+    data["players"].sort(key=lambda p: p["value"], reverse=True)
+    data["formula"] = FORMULA
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, separators=(",", ":"))
+    print(f"Re-scored {data.get('season')} {'playoffs' if 'playoffs' in path else ''} with the current formula")
+
+
+def playoffs_url(year):
+    return f"https://www.basketball-reference.com/playoffs/NBA_{year}_totals.html"
+
+
+def save_playoffs(now, current_year):
+    """Every season's playoff totals, once; the current season's while the playoffs are on (April-July)."""
+    for year in range(current_year, FIRST_SEASON - 1, -1):
+        path = os.path.join(DATA_DIR, f"playoffs-{year}.json")
+        saved = load_json(path, {})
+        if year == current_year:
+            if now.month not in (4, 5, 6, 7):
+                continue
+        elif saved.get("complete") and saved.get("schema") == SEASON_SCHEMA:
+            rescore(path, saved)
+            continue
+        time.sleep(5)
+        try:
+            status, html = fetch(playoffs_url(year))
+        except Exception as e:  # noqa: BLE001 -- rate limited: carry on tomorrow
+            print(f"Stopped downloading playoffs at {season_label(year)}: {e}")
+            break
+        players = parse_players(html) if status == 200 else []
+        if not players:
+            if year != current_year:
+                print(f"No playoff totals for {season_label(year)} (HTTP {status})")
+            continue
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"season": season_label(year), "playoffs": True, "complete": year < current_year,
+                       "updatedAt": now.isoformat(timespec="seconds"), "source": playoffs_url(year),
+                       "formula": FORMULA, "schema": SEASON_SCHEMA, "players": players}, f, separators=(",", ":"))
+        print(f"Saved {season_label(year)} playoffs: {len(players)} players")
+
+
 def write_season_index(current_year):
     """seasons.json (the picker) + alltime.json (every finished player-season, compact)."""
     seasons = [{"label": season_label(current_year), "file": "stats.json", "current": True}]
@@ -219,14 +269,7 @@ def write_season_index(current_year):
         data = load_json(path, {})
         if not data.get("players"):
             continue
-        if data.get("formula") != FORMULA:   # formula changed since this season was saved: re-score it
-            for p in data["players"]:
-                p["value"] = round(stat_value(p), 4)
-            data["players"].sort(key=lambda p: p["value"], reverse=True)
-            data["formula"] = FORMULA
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, separators=(",", ":"))
-            print(f"Re-scored {season_label(year)} with the current formula")
+        rescore(path, data)
         label = season_label(year)
         seasons.append({"label": label, "file": f"season-{year}.json", "current": False})
         done.append(label)
@@ -235,12 +278,12 @@ def write_season_index(current_year):
                 continue
             team = " \u2192 ".join(p["teams"]) if p.get("teams") else p.get("team", "")
             rows.append([p["id"], p["name"], label, team, p["g"], p["mp"], p["pts"], p["ast"],
-                         p["drb"], p["orb"], p["stl"], p["blk"], p["value"]])
+                         p["drb"], p["orb"], p["stl"], p["blk"], p.get("tov", 0), p["value"]])
     with open(SEASONS_PATH, "w", encoding="utf-8") as f:
         json.dump(seasons, f, separators=(",", ":"))
     with open(ALLTIME_PATH, "w", encoding="utf-8") as f:
         json.dump({"seasons": done, "cols": ["id", "name", "season", "team", "g", "mp", "pts", "ast",
-                                             "drb", "orb", "stl", "blk", "value"], "rows": rows},
+                                             "drb", "orb", "stl", "blk", "tov", "value"], "rows": rows},
                   f, separators=(",", ":"))
 
 
@@ -269,6 +312,7 @@ def main():
             json.dump(old, f, separators=(",", ":"))
         print(f"No player rows found (HTTP {status}) at {url}")
 
+    run_step("playoffs", lambda: save_playoffs(now, year))
     run_step("bios, drafts, contracts", lambda: __import__("bbr_extra").update(now, year))
     run_step("games (box scores + play-by-play)", lambda: __import__("nba_games").update(now, year))
     run_step("player pages", lambda: __import__("build_players").build(now, year))

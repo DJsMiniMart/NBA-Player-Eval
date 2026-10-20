@@ -3,7 +3,9 @@
 For every regular-season game it reads the box score and the play-by-play and adds, per player:
   - a game-log line (minutes, points, rebounds, ... and the result)
   - every shot: its zone ("Restricted Area", "Mid-Range", "Left Corner 3", ...) and a 2-ft court cell
-  - who they assisted (from each made shot's assist)
+  - who they assisted (from each made shot's assist), who assisted them, and how many of their
+    makes were assisted vs. unassisted, by zone
+  - their team's margin and the game's length, for on/off (plus-minus on vs. off the floor)
   - steals, split by the kind of turnover they caused (bad pass -> off-ball, lost ball -> on-ball)
   - blocks, split by where the blocked shot was taken (rim, paint, mid-range, three)
 
@@ -32,6 +34,7 @@ TIME_BUDGET_SEC = 150 * 60     # stop starting new games after this long (the wo
 PAUSE_SEC = 0.35               # between requests
 SAVE_EVERY = 75                # write progress to disk this often
 MAX_GAME_NUMBER = 1320         # regular-season game numbers run 00001..01230 (fewer in short seasons)
+ACC_SCHEMA = 2                 # bump when new fields are collected: older season files are rebuilt
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -127,8 +130,8 @@ def court_cell(a):
 
 
 def blank_player(name):
-    return {"n": name, "t": [], "logs": [], "z": {}, "b": {}, "at": {}, "st": {"on": 0, "off": 0, "oth": 0},
-            "bk": {"rim": 0, "paint": 0, "mid": 0, "three": 0}}
+    return {"n": name, "t": [], "logs": [], "z": {}, "b": {}, "at": {}, "af": {}, "ua": {},
+            "st": {"on": 0, "off": 0, "oth": 0}, "bk": {"rim": 0, "paint": 0, "mid": 0, "three": 0}}
 
 
 def add_game(acc, box, pbp):
@@ -137,10 +140,13 @@ def add_game(acc, box, pbp):
     gid = g["gameId"]
     date = str(g.get("gameEt") or g.get("gameTimeLocal") or g.get("gameTimeUTC") or "")[:10]
     teams = {}
+    team_min = sum(minutes((pl.get("statistics") or {}).get("minutes")) for pl in g["homeTeam"].get("players", []))
+    game_min = round(team_min / 5) if team_min else 48   # 48, or 53/58/... with overtime
     for side, other in (("homeTeam", "awayTeam"), ("awayTeam", "homeTeam")):
         t, o = g[side], g[other]
         teams[t["teamId"]] = t["teamTricode"]
-        won = int(t.get("score") or 0) > int(o.get("score") or 0)
+        margin = int(t.get("score") or 0) - int(o.get("score") or 0)
+        won = margin > 0
         for pl in t.get("players", []):
             st = pl.get("statistics") or {}
             mins = minutes(st.get("minutes"))
@@ -161,7 +167,7 @@ def add_game(acc, box, pbp):
                               st.get("threePointersMade", 0), st.get("threePointersAttempted", 0),
                               st.get("freeThrowsMade", 0), st.get("freeThrowsAttempted", 0),
                               st.get("plusMinusPoints", 0), "W" if won else "L",
-                              1 if str(pl.get("starter", "0")) == "1" else 0])
+                              1 if str(pl.get("starter", "0")) == "1" else 0, margin, game_min])
             acc["names"][pid] = name
 
     def P(pid):
@@ -183,10 +189,16 @@ def add_game(acc, box, pbp):
                 b = shooter["b"].setdefault(key, [0, 0])
                 b[0] += 1
                 b[1] += 1 if made else 0
-            if made and a.get("assistPersonId"):
-                giver = P(a["assistPersonId"])
-                k = str(a["personId"])
-                giver["at"][k] = giver["at"].get(k, 0) + 1
+            if made:
+                u = shooter["ua"].setdefault(zone, [0, 0])   # [assisted, unassisted] makes
+                if a.get("assistPersonId"):
+                    u[0] += 1
+                    giver = P(a["assistPersonId"])
+                    k, gk = str(a["personId"]), str(a["assistPersonId"])
+                    giver["at"][k] = giver["at"].get(k, 0) + 1
+                    shooter["af"][gk] = shooter["af"].get(gk, 0) + 1
+                else:
+                    u[1] += 1
             if a.get("blockPersonId"):
                 blocker = P(a["blockPersonId"])
                 if zone == "Restricted Area":
@@ -212,7 +224,15 @@ def add_game(acc, box, pbp):
 
 def new_acc(end_year):
     return {"season": season_label(end_year), "done": [], "missing": [], "players": {}, "names": {}, "teams": {},
-            "complete": False}
+            "complete": False, "schema": ACC_SCHEMA}
+
+
+def load_acc(end_year):
+    acc = load(season_path(end_year), None)
+    if acc and acc.get("schema") != ACC_SCHEMA:
+        print(f"{season_label(end_year)}: collecting new fields, so this season's games are re-read")
+        return None
+    return acc
 
 
 def process(gid, acc):
@@ -256,7 +276,7 @@ def update(now, current_year):
     out_of_time = lambda: time.time() - started > TIME_BUDGET_SEC  # noqa: E731
 
     # 1) this season, from the schedule
-    acc = load(season_path(current_year), None) or new_acc(current_year)
+    acc = load_acc(current_year) or new_acc(current_year)
     done = set(acc["done"])
     todo = [g for g in current_final_games(current_year) if g not in done]
     print(f"{season_label(current_year)}: {len(todo)} new games")
@@ -274,7 +294,7 @@ def update(now, current_year):
         if status.get("unavailableBefore") and year < status["unavailableBefore"]:
             break
         path = season_path(year)
-        acc = load(path, None)
+        acc = load_acc(year)
         if acc and acc.get("complete"):
             year -= 1
             continue

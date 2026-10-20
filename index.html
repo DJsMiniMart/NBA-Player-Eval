@@ -107,7 +107,7 @@
     </div>
     <div class="formula">
       <b>The formula</b> (season totals):<br>
-      (Points + Assists×2 + Def. Rebounds + Off. Rebounds×2 + Steals×2 + Blocks) ÷ Minutes
+      ((Points + Assists×2 + Steals×2 + Def. Rebounds + Off. Rebounds×2 + Blocks) − Turnovers) ÷ Minutes
     </div>
   </header>
   </div>
@@ -281,12 +281,12 @@ function draw(){
 function detailRow(p){
   const parts = [
     ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Def. reb", p.drb, 1],
-    ["Off. reb ×2", p.orb, 2], ["Steals ×2", p.stl, 2], ["Blocks", p.blk, 1]
+    ["Off. reb ×2", p.orb, 2], ["Steals ×2", p.stl, 2], ["Blocks", p.blk, 1], ["Turnovers −1", p.tov || 0, -1]
   ];
   const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
   return `<tr class="detail"><td colspan="${cols().length}">
     <div class="parts">
-      ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${total?Math.round(100*v*m/total):0}% of total</div></div>`).join("")}
+      ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${m < 0 ? (p.season && p.season < "1977-78" ? "not tracked yet" : "subtracted") : (total ? Math.round(100*v*m/total) + "% of total" : "")}</div></div>`).join("")}
       <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.value)}</div></div>
     </div>
     ${compareHtml(p)}
@@ -389,7 +389,7 @@ async function showSeason(file){
     : `${DATA.season || ""} season · ${DATA.players.length} players` + (VIEW==="past" ? " · final numbers" : (when ? " · updated " + when : ""));
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
   $('finalNote').hidden = VIEW==="current";
-  if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.`;
+  if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
   if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Play Eval since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
   const teams = [...new Set(DATA.players.flatMap(p => p.teams || String(p.team||"").split(" → ")).filter(Boolean))].sort();
   $('team').innerHTML = `<option value="">All teams</option>` + teams.map(t=>`<option>${esc(t)}</option>`).join("");
@@ -448,7 +448,13 @@ function openPlayer(id){ if(id) location.hash = "#/player/" + encodeURIComponent
 let boardScroll = 0;
 function route(){
   const m = location.hash.match(/^#\/player\/(.+)$/);
-  if(m){
+  const c = location.hash.match(/^#\/compare\/([^/]+)(?:\/([^/]+))?$/);
+  if(c){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = false;
+    window.scrollTo(0, 0);
+    PlayerPage.compare(decodeURIComponent(c[1]), c[2] ? decodeURIComponent(c[2]) : null, $('playerView'));
+  } else if(m){
     if(!$('boardView').hidden) boardScroll = window.scrollY;
     $('boardView').hidden = true; $('playerView').hidden = false;
     window.scrollTo(0, 0);

@@ -2,7 +2,9 @@
 
 A ranked list of every NBA player by Play Eval, updated automatically every morning:
 
-    (Points + Assists x2 + Defensive Rebounds + Offensive Rebounds x2 + Steals x2 + Blocks) / Minutes
+    ((Points + Assists x2 + Steals x2 + Defensive Rebounds + Offensive Rebounds x2 + Blocks) - Turnovers) / Minutes
+
+The NBA didn't track turnovers before 1977-78, so nothing is subtracted for 1973-74 to 1976-77 (marked * on the site).
 
 Season totals come from Basketball-Reference. A GitHub Action (`.github/workflows/update-stats.yml`)
 runs `update_stats.py` once a day, saves the results to `data/stats.json` and `data/history.json`,
@@ -29,5 +31,11 @@ Each morning the update also runs:
   season's games, then backfills older seasons, newest first, until the feed runs out. Each run stops
   starting new games after 150 minutes; the rest is picked up the next morning.
 - `build_players.py` -- writes `data/players/<id>.json`, one per player since 1973-74
+
+Player pages also show: Play Eval rank, percentile and position rank; what drives their Play Eval (each
+piece per minute vs. the league); recent form; splits; season and career highs; assisted vs. unassisted makes;
+who they assist and who assists them; on/off impact (team point differential per 48 on vs. off the floor);
+most similar players this season and all-time; and playoff numbers back to 1973-74 (Basketball-Reference
+playoff totals, `data/playoffs-YYYY.json`). Compare any two players at `#/compare/<id>/<id>`.
 
 Team colors and logos are in the `TEAMS` list at the top of `player.js`.
