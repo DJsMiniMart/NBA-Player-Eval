@@ -157,6 +157,8 @@ const PAST_MIN_GAMES = 40;         // ...for a finished season
 const PAST_MIN_MPG = 15;
 const ALLTIME_MIN_GAMES = 40;      // ...for the all-time best seasons list
 const ALLTIME_MIN_MPG = 20;
+const CAREER_MIN_GAMES = 400;      // ...for the all-time best careers list (about five full seasons)
+const CAREER_MIN_MPG = 20;
 /* =================================== */
 
 const $ = id => document.getElementById(id);
@@ -179,7 +181,7 @@ const fileCache = {};
 const COLS = [
   {k:"rank", t:"#", l:true},
   {k:"name", t:"Player", l:true},
-  {k:"season", t:"Season", l:true, only:"alltime"},
+  {k:"season", t:"Season", l:true, only:["alltime","careers"]},
   {k:"team", t:"Team", l:true},
   {k:"g", t:"G"},
   {k:"mpg", t:"MPG"},
@@ -194,7 +196,31 @@ const COLS = [
   {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
-const cols = () => COLS.filter(c => (!c.only || c.only===VIEW) && (!c.base || BASE)).map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : c);
+const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || BASE))
+  .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c));
+/* Play Eval from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
+const playEval = t => t.mp ? (t.pts + 2*t.ast + 2*((t.drb||0) + (t.orb||0)) + 4*t.stl + t.blk - 4*(t.tov||0)) / t.mp : null;
+let CAREERS = null;
+function buildCareers(){
+  if(CAREERS) return CAREERS;
+  const by = new Map();
+  const rows = (ALLTIME ? ALLTIME.players : []).concat((CUR.players || []).map(p => Object.assign({}, p, {season: CUR.season, team: p.teams ? p.teams.join(" → ") : p.team})));
+  rows.forEach(r => {
+    const c = by.get(r.id) || {id:r.id, name:r.name, g:0, mp:0, pts:0, ast:0, drb:0, orb:0, stl:0, blk:0, tov:0, seasons:[], teams:[], noTov:false};
+    ["g","mp","pts","ast","drb","orb","stl","blk","tov"].forEach(k => c[k] += r[k] || 0);
+    c.seasons.push(r.season);
+    String(r.team || "").split(" → ").filter(Boolean).forEach(t => { if(!c.teams.includes(t)) c.teams.push(t); });
+    if(r.season < "1977-78") c.noTov = true;
+    if(!c.last || r.season > c.last){ c.last = r.season; c.lastTeam = String(r.team || "").split(" → ").pop(); }
+    c.name = r.name;
+    by.set(r.id, c);
+  });
+  CAREERS = {season:"All-time careers", final:true, players:[...by.values()].map(c => {
+    c.seasons.sort();
+    return Object.assign(c, {value: playEval(c), nSeasons: c.seasons.length, season: `${c.seasons[0]} to ${c.seasons[c.seasons.length-1]}`, team: c.lastTeam || ""});
+  }).filter(c => c.value != null), note:"Careers appear once past seasons have been downloaded."};
+  return CAREERS;
+}
 
 function enrich(p, season){
   const g = p.g || 1;
@@ -202,6 +228,7 @@ function enrich(p, season){
   p.base = b ? b.value : -1;
   p.season = p.season || season || "";
   p.key = VIEW==="alltime" ? p.id + "|" + p.season : p.id;
+  if(VIEW==="careers"){ p.season = season; }
   return Object.assign(p, {mpg:p.mp/g, ppg:p.pts/g, apg:p.ast/g, dpg:p.drb/g, opg:p.orb/g, spg:p.stl/g, bpg:p.blk/g});
 }
 
@@ -225,14 +252,14 @@ function draw(){
   const pool = qualified().slice().sort((a,b)=>b.value-a.value);
   pool.forEach((p,i)=>p.rank = i+1);
   const q = fold($('q').value.trim()), team = $('team').value;
-  let list = pool.filter(p => (!team || p.team===team || (p.teams||[]).includes(team) || (VIEW==="alltime" && p.team.split(" → ").includes(team))) && (!q || fold(p.name).includes(q)));
+  let list = pool.filter(p => (!team || p.team===team || (p.teams||[]).includes(team) || ((VIEW==="alltime" || VIEW==="careers") && p.team.split(" → ").includes(team))) && (!q || fold(p.name).includes(q)));
   list.sort((a,b)=>{
     const x=a[sortKey], y=b[sortKey];
     return (typeof x==="string" ? x.localeCompare(y) : x-y) * sortDir;
   });
   const top = pool[0] ? pool[0].value : 1, low = pool.length ? pool[pool.length-1].value : 0;
   const filtered = q || team;
-  const limit = VIEW==="alltime" ? 100 : 50;
+  const limit = VIEW==="alltime" || VIEW==="careers" ? 100 : 50;
   const shown = (showAll || (filtered && list.length <= 500)) ? list : list.slice(0, limit);
   const nc = cols().length;
 
@@ -240,7 +267,7 @@ function draw(){
     <div class="pod" style="--c:var(--${["gold","silver","bronze"][i]})" data-key="${esc(p.key)}">
       <div class="rk">${["1st","2nd","3rd"][i]}</div>
       <div class="nm">${esc(p.name)}</div>
-      <div class="tm">${VIEW==="alltime" ? esc(p.season)+" · " : ""}${esc(p.team)} · ${p.g} games · ${f1(p.mpg)} min</div>
+      <div class="tm">${VIEW==="alltime" || VIEW==="careers" ? esc(p.season)+" · " : ""}${esc(p.team)} · ${p.g.toLocaleString()} games · ${f1(p.mpg)} min</div>
       <div class="val">${f3(p.value)}</div>
     </div>`).join("");
   $('podium').querySelectorAll('.pod').forEach(el => el.onclick = () => { openKey = el.dataset.key; $('q').value = ""; $('team').value = ""; showAll = true; draw(); setTimeout(()=>{ const r = document.querySelector(`tr.detail`); if(r) r.scrollIntoView({block:"center", behavior:"smooth"}); }, 50); });
@@ -257,7 +284,7 @@ function draw(){
     const row = `<tr class="p" data-key="${esc(p.key)}">
       <td class="l rank">${p.rank}</td>
       <td class="l name">${esc(p.name)}</td>
-      ${VIEW==="alltime" ? `<td class="l">${esc(p.season)}</td>` : ""}
+      ${VIEW==="alltime" || VIEW==="careers" ? `<td class="l">${esc(p.season)}${VIEW==="careers" && p.noTov ? "*" : ""}</td>` : ""}
       <td class="l">${esc(p.teams ? p.teams.join(" → ") : p.team)}</td>
       <td>${p.g}</td><td>${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
@@ -265,7 +292,7 @@ function draw(){
       <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE) ? `<td class="base">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}">Player page</button></td></tr>`;
     return row + (openKey===p.key ? detailRow(p) : "");
   }).join("");
-  const word = VIEW==="alltime" ? "seasons" : "players";
+  const word = VIEW==="alltime" ? "seasons" : VIEW==="careers" ? "careers" : "players";
   $('more').innerHTML = (shown.length < list.length || showAll) && list.length > limit ? `<button id="moreBtn">${showAll ? `Show top ${limit}` : `Show all ${list.length.toLocaleString()} ${word}`}</button>` : "";
   const mb = $('moreBtn'); if(mb) mb.onclick = () => { showAll = !showAll; draw(); };
   $('tbody').querySelectorAll('tr.p').forEach(tr => {
@@ -302,6 +329,7 @@ function compareHtml(p){
   const now = CUR && CUR.players.find(x=>x.id===p.id);
   const career = (CAREER && CAREER.get(p.id)) || [];
   const best = career.slice().sort((a,b)=>b.value-a.value)[0];
+  if(VIEW==="careers") return `<div class="sub" style="margin:0 0 8px;">${p.nSeasons} season${p.nSeasons===1?"":"s"} (${esc(p.season)}), ${esc(p.teams.join(", "))}.${best ? ` Best season: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b>.` : ""} Line below: Play Eval each season of their career.</div>`;
   return `<div class="sub" style="margin:0 0 8px;">${esc(p.season)} final numbers.${best && career.length>1 ? ` Career best: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b> in ${now.g} games.` : ""} Line below: Play Eval each season of their career.</div>`;
 }
 
@@ -375,26 +403,30 @@ async function showSeason(file){
   if(s.file !== "stats.json") await loadAlltime();   // career lines for past views
   if(s.current){ VIEW = "current"; DATA = CUR; }
   else if(s.file === "alltime"){ VIEW = "alltime"; DATA = ALLTIME; }
+  else if(s.file === "careers"){ VIEW = "careers"; DATA = buildCareers(); }
   else {
     VIEW = "past";
     DATA = fileCache[s.file] || (fileCache[s.file] = await getJSON("data/" + s.file)) || {players:[], note:"Couldn't load that season."};
     DATA.final = true;
   }
   DATA.players = DATA.players || [];
-  DATA.players.forEach(p => enrich(p, DATA.season));
+  DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
   const when = DATA.updatedAt ? fmtWhen(DATA.updatedAt) : null;
-  $('meta').textContent = VIEW==="alltime"
+  $('meta').textContent = VIEW==="careers"
+    ? `All-time careers · ${DATA.players.length.toLocaleString()} players since 1973-74, including this season so far`
+    : VIEW==="alltime"
     ? `All-time · ${DATA.players.length.toLocaleString()} player-seasons from ${SEASONS.length>2 ? SEASONS[SEASONS.length-1].label : ""} to ${SEASONS.length>2 ? SEASONS[2].label : ""}`
     : `${DATA.season || ""} season · ${DATA.players.length} players` + (VIEW==="past" ? " · final numbers" : (when ? " · updated " + when : ""));
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
   $('finalNote').hidden = VIEW==="current";
   if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
+  if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Play Eval, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
   if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Play Eval since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
   const teams = [...new Set(DATA.players.flatMap(p => p.teams || String(p.team||"").split(" → ")).filter(Boolean))].sort();
   $('team').innerHTML = `<option value="">All teams</option>` + teams.map(t=>`<option>${esc(t)}</option>`).join("");
-  const dG = VIEW==="current" ? DEFAULT_MIN_GAMES : VIEW==="past" ? PAST_MIN_GAMES : ALLTIME_MIN_GAMES;
-  const dM = VIEW==="current" ? DEFAULT_MIN_MPG : VIEW==="past" ? PAST_MIN_MPG : ALLTIME_MIN_MPG;
+  const dG = VIEW==="current" ? DEFAULT_MIN_GAMES : VIEW==="past" ? PAST_MIN_GAMES : VIEW==="careers" ? CAREER_MIN_GAMES : ALLTIME_MIN_GAMES;
+  const dM = VIEW==="current" ? DEFAULT_MIN_MPG : VIEW==="past" ? PAST_MIN_MPG : VIEW==="careers" ? CAREER_MIN_MPG : ALLTIME_MIN_MPG;
   $('minG').value = store.get(mkey("minG")) ?? dG;
   $('minM').value = store.get(mkey("minM")) ?? dM;
   store.set("season", s.file);
@@ -409,7 +441,7 @@ async function load(){
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
   SEASONS = [{label:CUR.season || "This season", file:"stats.json", current:true}];
-  if(index.length) SEASONS.push({label:"All-time best seasons", file:"alltime"});
+  if(index.length) SEASONS.push({label:"All-time best seasons", file:"alltime"}, {label:"All-time best careers", file:"careers"});
   SEASONS.push(...index);
   if(index.length){
     BASE = fileCache[index[0].file] = await getJSON("data/" + index[0].file);
