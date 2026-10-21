@@ -627,7 +627,7 @@ function render(){
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Play Eval", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
-        ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}</div><div class="pp-gap"></div>`
+        ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
       + (curPO ? `<div class="pp-grid">${statLineCard(curPO, `${label} playoffs`, "per game, this postseason")}</div><div class="pp-gap"></div>` : "")
       + (G ? gameBoxes(G, leagueFor(label), team, "season", false) : `<div class="final-note">No games yet this season. The shooting chart, passing, steals, blocks, splits, highs and game log fill in once ${esc(REC.name.split(" ")[0])} plays.</div>`);
   }
@@ -668,6 +668,43 @@ function render(){
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
 }
 
+/* ---------- crunch time: last 5 minutes of the 4th quarter or overtime, score within 5 ---------- */
+let SEASONP = null;
+async function loadSeasonPlayers(){
+  if(SEASONP) return SEASONP;
+  const d = await getJSON("data/teams/players.json");
+  SEASONP = {cols: (d && d.cols) || [], rows: (d && d.players) || [], moments: (d && d.moments) || {}};
+  return SEASONP;
+}
+const foldName = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
+function clutchCard(){
+  const box = `<div class="pp-card c12" id="ppClutch">`;
+  if(!SEASONP) return box + `<h3>Crunch time</h3><div class="pp-empty">Loading…</div></div>`;
+  const C = Object.fromEntries(SEASONP.cols.map((c, i) => [c, i]));
+  const r = SEASONP.rows.find(x => foldName(x[C.name]) === foldName(REC.name));
+  if(!r) return box + `<h3>Crunch time <small>last 5 minutes of the 4th or OT, score within 5</small></h3><div class="pp-empty">No games yet this season.</div></div>`;
+  const v = k => r[C[k]] || 0;
+  const mins = v("min"), cmin = v("c_sec") / 60;
+  const base = mins ? (v("pts") + 2*v("ast") + 2*(v("dreb") + v("oreb")) + 4*v("stl") + v("blk") - 4*v("tov")) / mins : null;
+  const extra = .5 * (v("c_pts") + 2*v("c_ast") + 2*v("c_reb") + 4*v("c_stl") + v("c_blk") - 4*v("c_tov"));
+  const cpe = base != null ? base + extra / mins : null;
+  const moments = (SEASONP.moments[r[C.id]] || []).slice().reverse();
+  const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const per = (n, d) => d ? `${n}-${d}` : "—";
+  const stat = (k, l) => `<div class="pp-cstat"><span>${l}</span><b>${k}</b></div>`;
+  return box + `<h3>Crunch time <small>last 5 minutes of the 4th or overtime with the score within 5 · this season</small></h3>
+    ${cmin ? `<div class="pp-cgrid">
+      <div class="pp-cpe"><div><span>PE</span><b>${f3(base)}</b></div><div class="hot"><span>Clutch PE</span><b>${f3(cpe)}</b></div>
+        <div class="pp-note" style="margin:6px 0 0">Clutch PE counts every crunch-time point, assist, rebound, steal, block and turnover 1.5×. ${cpe > base ? "Their crunch-time play raises it." : cpe < base ? "Crunch-time turnovers pull it down." : ""}</div></div>
+      <div class="pp-cstats">${stat(cmin.toFixed(1), "Minutes")}${stat(v("c_pts"), "Points")}${stat(per(v("c_fgm"), v("c_fga")), "FG")}${stat(per(v("c_fg3m"), v("c_fg3a")), "3P")}${stat(per(v("c_ftm"), v("c_fta")), "FT")}
+        ${stat(v("c_ast"), "Assists")}${stat(v("c_reb"), "Rebounds")}${stat(v("c_stl"), "Steals")}${stat(v("c_blk"), "Blocks")}${stat(v("c_tov"), "Turnovers")}${stat((v("c_pm") > 0 ? "+" : "") + v("c_pm"), "+/-")}</div>
+    </div>
+    ${moments.length ? `<h4 class="pp-subh">Go-ahead and tying baskets</h4><ul class="pp-moments">${moments.slice(0, 8).map(m => `<li><b class="${m[5] === "go-ahead" ? "w" : ""}">${m[5] === "go-ahead" ? "Go-ahead" : "Tying"}</b>
+      <span>${esc(new Date(m[1] + "T12:00:00Z").toLocaleDateString("en-US", {month:"short", day:"numeric"}))} vs ${esc(m[2])} · ${m[3] > 4 ? "OT" + (m[3] > 5 ? m[3] - 4 : "") : "Q4"} ${clock(m[4])} left</span>
+      <span class="t">${esc(m[6])}</span><span class="sc">${m[7]}-${m[8]}</span></li>`).join("")}</ul>` : ""}`
+    : `<div class="pp-empty">No crunch-time minutes yet this season.</div>`}</div>`;
+}
+
 /* ---------- awards and championships next to the name ---------- */
 let AWARDS = null;
 async function loadAwards(){
@@ -702,6 +739,7 @@ function awardsHtml(id){
 async function show(id, el){
   EL = el;
   loadAwards().then(() => { const box = EL.querySelector("#ppAwards"); if(box && REC && REC.id === id) box.innerHTML = awardsHtml(id); });
+  loadSeasonPlayers().then(() => { const box = EL.querySelector("#ppClutch"); if(box && REC && REC.id === id) box.outerHTML = clutchCard(); });
   if(!REC || REC.id !== id){
     el.innerHTML = `<div class="pp-loading">Loading player…</div>`;
     const rec = await getJSON("data/players/" + encodeURIComponent(id) + ".json");

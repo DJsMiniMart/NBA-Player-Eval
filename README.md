@@ -74,6 +74,11 @@ Bobcats -> Hornets, and so on), and every row is shown under today's team (hover
   Pace is the team's (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) per 48 minutes, with its
   league rank under the same filters.
 
+  **Crunch time / Clutch PE:** `espn_games.py` tallies every player's stats in the last 5 minutes of the 4th quarter
+  or overtime with the score within 5 (the NBA's "clutch" definition), plus go-ahead and tying baskets. Clutch PE
+  is PE with those crunch-time points, assists, rebounds, steals, blocks and turnovers counted 1.5x. It shows in box
+  scores, on player pages (Crunch time card) and on the Stats page (leaders, players table, teams' clutch records).
+
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 
 ## Player pages

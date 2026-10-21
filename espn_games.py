@@ -30,7 +30,7 @@ SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 CORE = "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba"
 PAUSE = 0.4
 TIME_BUDGET_SEC = 90 * 60
-SCHEMA = "espn-1"
+SCHEMA = "espn-2"   # 2: crunch-time (clutch) stats per player per game
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                          "Chrome/124.0 Safari/537.36", "Accept": "application/json", "Accept-Encoding": "gzip"}
 # ESPN abbreviation -> NBA's
@@ -344,6 +344,17 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
     putback = {t: False for t in tris}   # possession that started with an offensive rebound
     last_clock, last_period, last_score = 720.0, 1, (0, 0)
     nickname = {pid: n.lower() for pid, n in names.items()}
+    # crunch time = the last 5 minutes of the 4th quarter or overtime with the score within 5 (the NBA's "clutch")
+    # per player: [seconds, pts, ast, reb, stl, blk, tov, fgm, fga, 3pm, 3pa, ftm, fta, +/-]
+    CL = {}
+    moments = []
+    home_t = g["home"]
+
+    def cl(pid):
+        return CL.setdefault(pid, [0.0] + [0] * 13)
+
+    def close(period, score):
+        return period >= 4 and abs(score[0] - score[1]) <= 5
 
     def row(t):
         if len(floor[t]) != 5:
@@ -404,6 +415,12 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
                     r = row(t)
                     if r:
                         r[0] += last_clock - clock
+                if close(period, last_score):
+                    secs = max(0.0, min(last_clock, 300.0) - clock)
+                    if secs:
+                        for t in tris:
+                            for pid in floor[t]:
+                                cl(pid)[0] += secs
                 last_clock = clock
             kind = str((p.get("type") or {}).get("text", "")).lower()
             text = str(p.get("text") or "")
@@ -420,6 +437,23 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
                 continue
             # points
             hs, as_ = to_int(p.get("homeScore")), to_int(p.get("awayScore"))
+            clutch = clock <= 300 and close(period, last_score)   # judged on the score before this play
+            if clutch and (hs, as_) != last_score and hs >= last_score[0] and as_ >= last_score[1]:
+                for t, pts in ((g["home"], hs - last_score[0]), (g["away"], as_ - last_score[1])):
+                    if pts <= 0:
+                        continue
+                    for pid in floor[t]:
+                        cl(pid)[13] += pts
+                    for pid in floor[other[t]]:
+                        cl(pid)[13] -= pts
+                    if ppl and tri_of.get(ppl[0][0]) == t:
+                        cl(ppl[0][0])[1] += pts
+                        mine = (last_score[0] - last_score[1]) * (1 if t == home_t else -1)
+                        after = mine + pts
+                        if (mine <= 0 < after) or (mine < 0 == after):
+                            me_after = hs if t == home_t else as_
+                            them_after = as_ if t == home_t else hs
+                            moments.append([ppl[0][0], period, round(clock), "go-ahead" if after > 0 else "tying", text, me_after, them_after])
             if (hs, as_) != last_score and hs >= last_score[0] and as_ >= last_score[1]:
                 for t, pts in ((g["home"], hs - last_score[0]), (g["away"], as_ - last_score[1])):
                     if pts > 0:
@@ -456,6 +490,28 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
                 putback[other[team]] = False       # the other team got the ball back
                 if "turnover" in kind or (shooting and p.get("scoringPlay")):
                     putback[team] = False
+            # crunch-time box score
+            if clutch and ppl:
+                who = ppl[0][0]
+                if shooting:
+                    a3 = (to_int(p.get("pointsAttempted")) or (3 if "three point" in text.lower() else 2)) == 3
+                    c = cl(who); c[8] += 1; c[7] += bool(p.get("scoringPlay"))
+                    if a3:
+                        c[10] += 1; c[9] += bool(p.get("scoringPlay"))
+                    helper = next((pid for pid, ty in ppl[1:] if "assist" in ty), None) or (ppl[1][0] if p.get("scoringPlay") and len(ppl) > 1 and "assist" in text.lower() else None)
+                    blocker = next((pid for pid, ty in ppl[1:] if "block" in ty), None) or (ppl[1][0] if not p.get("scoringPlay") and len(ppl) > 1 and "block" in text.lower() else None)
+                    if helper and helper != who:
+                        cl(helper)[2] += 1
+                    if blocker:
+                        cl(blocker)[5] += 1
+                elif "free throw" in kind:
+                    c = cl(who); c[12] += 1; c[11] += bool(p.get("scoringPlay"))
+                elif "rebound" in kind:
+                    cl(who)[3] += 1
+                elif "turnover" in kind:
+                    cl(who)[6] += 1
+                    if len(ppl) > 1 and "steal" in text.lower():
+                        cl(next((pid for pid, ty in ppl[1:] if "steal" in ty), ppl[1][0]))[4] += 1
             # shots, assists, blocks
             if shooting and ppl:
                 pts = to_int(p.get("pointsAttempted")) or (3 if "three point" in text.lower() else 2)
@@ -496,8 +552,16 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
                 r = row(t)
                 if r:
                     r[0] += last_clock
+            if close(period, last_score):
+                secs = min(last_clock, 300.0)
+                for t in tris:
+                    for pid in floor[t]:
+                        cl(pid)[0] += secs
     acc["stints"][g["id"]] = {t: [[k, round(v[0]), v[1], v[2], round(v[3], 2), round(v[4], 2)] for k, v in stints[t].items() if v[0] > 0]
                               for t in tris}
+    acc.setdefault("clutch", {})[g["id"]] = {pid: [round(v[0])] + v[1:] for pid, v in CL.items() if v[0] or any(v[1:])}
+    for m in moments:
+        acc.setdefault("moments", {}).setdefault(m[0], []).append([g["id"]] + m[1:])
     return second
 
 
@@ -521,7 +585,7 @@ def sub_in_out(p, ppl, nickname):
 # ---------- the season ----------
 def new_acc(label):
     return {"season": label, "source": "espn", "schema": SCHEMA, "done": [], "missing": [], "players": {}, "names": {},
-            "teams": {}, "tgames": {}, "stints": {}, "complete": False}
+            "teams": {}, "tgames": {}, "stints": {}, "clutch": {}, "moments": {}, "complete": False}
 
 
 def update(now, current_year):

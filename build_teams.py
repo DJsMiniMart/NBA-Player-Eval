@@ -38,7 +38,8 @@ def build(now=None, current_year=None):
               or load_json(os.path.join(DATA_DIR, "..", "owners.json"), {})   # the main folder
               or {}).get("owners", {})
 
-    games = sorted(([gid] + row for gid, row in tgames.items()), key=lambda r: (r[1], r[0]))
+    had_clutch = {gid for gid, by in (acc.get("clutch") or {}).items() if any(v[0] > 0 for v in by.values())}
+    games = sorted(([gid] + row + [1 if gid in had_clutch else 0] for gid, row in tgames.items()), key=lambda r: (r[1], r[0]))
     save(os.path.join(TEAMS_DIR, "league.json"), {
         "season": season, "at": now.isoformat(timespec="seconds"),
         "cols": ["pts", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "oreb", "dreb", "ast", "stl", "blk", "tov", "pf",
@@ -110,13 +111,38 @@ def write_player_totals(acc, tgames, season, now):
             dd += cats >= 2
             td += cats >= 3
         mins, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm = t[:15]
+        c = [0] * 14
+        for lg in logs:
+            for i, v in enumerate((acc.get("clutch", {}).get(lg[0], {}) or {}).get(pid, [])):
+                c[i] += v
         rows.append([pid, pl.get("n", pid), team, len(logs), sum(1 for lg in logs if lg[20]), round(mins, 1), pts, ast,
-                     dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, dd, td, max(lg[5] for lg in logs)])
+                     dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, dd, td, max(lg[5] for lg in logs)] + c)
     save(os.path.join(TEAMS_DIR, "players.json"), {
         "season": season, "at": now.isoformat(timespec="seconds"),
         "cols": ["id", "name", "team", "g", "gs", "min", "pts", "ast", "dreb", "oreb", "stl", "blk", "tov", "fgm", "fga",
-                 "fg3m", "fg3a", "ftm", "fta", "pm", "dd", "td", "high"],
-        "players": rows})
+                 "fg3m", "fg3a", "ftm", "fta", "pm", "dd", "td", "high",
+                 # crunch time: last 5 minutes of the 4th/OT with the score within 5
+                 "c_sec", "c_pts", "c_ast", "c_reb", "c_stl", "c_blk", "c_tov", "c_fgm", "c_fga", "c_fg3m", "c_fg3a",
+                 "c_ftm", "c_fta", "c_pm"],
+        "players": rows,
+        # go-ahead and tying baskets in crunch time: [game id, date, opponent, period, seconds left, kind, play, score, opp score]
+        "moments": moments_by_player(acc, tgames)})
+
+
+def moments_by_player(acc, tgames):
+    out = {}
+    for pid, ms in (acc.get("moments") or {}).items():
+        rows = []
+        for gid, period, clock, kind, text, me, them in ms:
+            if gid not in tgames:
+                continue
+            date, home, away = tgames[gid][0], tgames[gid][1], tgames[gid][2]
+            logs = [lg for lg in acc["players"].get(pid, {}).get("logs", []) if lg[0] == gid]
+            opp = logs[0][2] if logs else ""
+            rows.append([gid, date, opp, period, clock, kind, text, me, them])
+        if rows:
+            out[pid] = sorted(rows, key=lambda r: (r[1], r[3], -r[4]))
+    return out
 
 
 def write_box_scores(acc, tgames):
@@ -131,7 +157,8 @@ def write_box_scores(acc, tgames):
             home, away = tgames[gid][1], tgames[gid][2]
             team = home if opp == away else away
             lines[gid][team].append([pid, pl.get("n", pid), lg[20], lg[4], lg[5], lg[6], lg[7], lg[8], lg[9], lg[10],
-                                     lg[11], lg[12], lg[13], lg[14], lg[15], lg[16], lg[17], lg[18]])
+                                     lg[11], lg[12], lg[13], lg[14], lg[15], lg[16], lg[17], lg[18],
+                                     (acc.get("clutch", {}).get(gid, {}) or {}).get(pid)])
     for gid, row in tgames.items():
         date, home, away, hl, al, mins = row
         for t in (home, away):
@@ -139,7 +166,8 @@ def write_box_scores(acc, tgames):
         save(os.path.join(DATA_DIR, "games", f"{gid}.json"), {
             "id": gid, "date": date, "min": mins, "home": home, "away": away,
             "cols": ["id", "name", "starter", "min", "pts", "ast", "dreb", "oreb", "stl", "blk", "tov",
-                     "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "pm"],
+                     "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "pm", "clutch"],
+            "clutchCols": ["sec", "pts", "ast", "reb", "stl", "blk", "tov", "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "pm"],
             "teams": {home: {"line": hl, "players": lines[gid][home]}, away: {"line": al, "players": lines[gid][away]}}})
 
 

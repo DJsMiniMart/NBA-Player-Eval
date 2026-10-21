@@ -188,12 +188,13 @@ def award_list(html, key, label):
 
 
 def all_stars(html):
-    """Every player on an All-Star Game's rosters (/allstar/NBA_<year>.html)."""
+    """Every player picked for that season's All-Star Game, including injured players who didn't play
+    (the season page's "All-Star Game rosters": /leagues/NBA_<year>.html)."""
     out = []
-    for t in soup_all(html).find_all("table"):
-        if t.get("id") in ("line_score", "four_factors"):
-            continue
-        for a in t.find_all("a", href=re.compile(r"/players/\w/[\w.]+\.html")):
+    soup = soup_all(html)
+    boxes = [el for el in soup.find_all(id=re.compile(r"^all_star_game_rosters_\d+$"))]
+    for box in boxes:
+        for a in box.find_all("a", href=re.compile(r"/players/\w/[\w.]+\.html")):
             pid = re.search(r"/players/\w/([\w.]+)\.html", a["href"]).group(1)
             if pid not in [p for p, _ in out]:
                 out.append([pid, a.get_text(strip=True)])
@@ -386,16 +387,18 @@ def update(now, current_year):
             complete = year < last_done or (now.month >= 7 and {"mvp", "roy", "dpoy"} <= keys and len(have) == 3)
             cache["seasons"][str(year)] = {"awards": awards, "have": sorted(have), "complete": complete, "v": PAGE_VERSION}
             save(CACHE_PATH, cache)
-        # All-Star rosters, once per game (this season's after the game in February)
-        cache.setdefault("allstar", {})
-        for year in range(current_year if now.month >= 3 and now.month < 8 else last_done, FIRST_ALL_STAR - 1, -1):
+        # All-Star selections, once per season (this season's once they're named in late January)
+        cache.pop("allstar", None)   # older copies only had the players who played in the game
+        cache.setdefault("allstar_sel", {})
+        for year in range(current_year if 2 <= now.month < 8 else last_done, FIRST_ALL_STAR - 1, -1):
             if out_of_time():
                 break
-            if str(year) in cache["allstar"]:
+            if str(year) in cache["allstar_sel"]:
                 continue
-            html = get(f"{BBR}/allstar/NBA_{year}.html")
-            cache["allstar"][str(year)] = all_stars(html) if html else []   # no game in 1999 (lockout)
-            save(CACHE_PATH, cache)
+            html = get(f"{BBR}/leagues/NBA_{year}.html")
+            if html:
+                cache["allstar_sel"][str(year)] = all_stars(html)   # empty in 1999 (no game: lockout)
+                save(CACHE_PATH, cache)
         # rosters for old seasons whose award teams have no team listed (before our season files start)
         for year in range(FIRST_YEAR, 1974):
             if out_of_time():
@@ -476,7 +479,7 @@ def build(now, cache):
     awards += cache.get("fmvp", [])
     for got in cache.get("extra", {}).values():
         awards += got
-    for year, players in cache.get("allstar", {}).items():
+    for year, players in cache.get("allstar_sel", {}).items():
         y = int(year)
         awards += [[y, "all_star", "All-Star", pid, name, team_for(pid, y, cache), ""] for pid, name in players]
     awards += [a for a in cache.get("roy_list", []) if str(a[0]) not in seasons]   # 1953-55 Rookies of the Year
