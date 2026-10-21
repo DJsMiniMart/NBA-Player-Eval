@@ -124,3 +124,13 @@
 .cmp-tbl td.win{font-weight:800;color:#2f9e44;}
 .cmp-tbl tr.grp td{background:var(--row);font:700 14px "Barlow Condensed";text-transform:uppercase;letter-spacing:.5px;text-align:center;}
 @media (max-width:720px){ .cmp-pick,.cmp-head{grid-template-columns:1fr} .cmp-p .nm{font-size:22px} }
+
+/* awards and championships next to the name */
+.pp-awards{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;max-width:760px;}
+.pp-award{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.24);border:1px solid rgba(255,214,90,.45);color:#fff;border-radius:8px;padding:3px 8px 3px 6px;font-size:12px;line-height:1.2;}
+.pp-award svg{width:14px;height:15px;flex:0 0 auto;}
+.pp-award b{font-weight:600;}
+.pp-award small{color:#ffe08a;font-size:11px;font-weight:600;}
+.pp-award.big{border-color:rgba(255,214,90,.8);background:rgba(0,0,0,.32);}
+.pp-award.big b{font:700 14px/1 "Barlow Condensed",sans-serif;letter-spacing:.3px;text-transform:uppercase;}
+.pp-award.big svg{width:16px;height:18px;}

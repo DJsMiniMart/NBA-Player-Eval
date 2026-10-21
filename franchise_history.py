@@ -383,6 +383,31 @@ def update(now, current_year):
           f"{int(time.time() - started)}s")
 
 
+def write_player_awards(now, cache, awards):
+    """data/player_awards.json: {player id: {"awards": [[year, key, tier, team], ...], "titles": [[year, team], ...]}}
+    for the player pages. Championships come from the champion's roster that season."""
+    out = {}
+    seen = set()
+    for year, key, _, pid, _, team, tier in awards:
+        if key == "coy" or not pid or (year, key, pid) in seen:
+            continue
+        seen.add((year, key, pid))
+        out.setdefault(pid, {"awards": [], "titles": []})["awards"].append([year, key, tier, team or ""])
+    for year, lg, bbr, _ in cache.get("champions", []):
+        path = os.path.join(DATA_DIR, f"season-{year}.json")
+        if os.path.exists(path):
+            roster = [p["id"] for p in load_json(path, {}).get("players", [])
+                      if bbr in (p.get("teams") or [p.get("team")])]
+        else:
+            roster = [pid for pid, t in cache.get("rosters", {}).get(str(year), {}).items() if t == bbr]
+        for pid in roster:
+            out.setdefault(pid, {"awards": [], "titles": []})["titles"].append([year, bbr])
+    for v in out.values():
+        v["awards"].sort()
+        v["titles"].sort()
+    save(os.path.join(DATA_DIR, "player_awards.json"), {"at": now.isoformat(timespec="seconds"), "players": out})
+
+
 def build(now, cache):
     teams = {code: {"titles": [], "awards": [], "leaders": {}, "coaches": [], "draft": []} for code in FRANCHISE_PAGE}
     for year, lg, bbr, name in cache.get("champions", []):
@@ -410,6 +435,7 @@ def build(now, cache):
         if code and key not in seen:
             seen.add(key)
             teams[code]["awards"].append([a[0], season_label(a[0]), a[1], a[2], a[3], a[4], a[6], a[5]])
+    write_player_awards(now, cache, awards)
     for code, t in cache.get("teams", {}).items():
         if code in teams:
             teams[code].update({k: v for k, v in t.items() if v})

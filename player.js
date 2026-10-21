@@ -166,6 +166,7 @@ function heroHtml(team){
       <div class="pp-logo">${team.league ? `<img src="${NBA_LOGO}" alt="NBA logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'NBA',style:'color:#1D428A;font-size:26px'}))">`
         : team.id ? `<img src="https://cdn.nba.com/logos/nba/${team.id}/primary/L/logo.svg" alt="${esc(team.n)} logo" onerror="this.style.display='none'">` : ""}</div>
       <div>
+        <div id="ppAwards">${awardsHtml(REC.id)}</div>
         <h1 class="pp-name">${esc(REC.name)}</h1>
         <div class="pp-teamline">${retired ? `Retired · played ${esc(seasons[0].season)} to ${esc(last.season)} · ${careerTeams().length} team${careerTeams().length===1?"":"s"}` : esc(team.n || "")}${facts ? " · " + esc(facts) : ""}</div>
       </div>
@@ -641,8 +642,38 @@ function render(){
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
 }
 
+/* ---------- awards and championships next to the name ---------- */
+let AWARDS = null;
+async function loadAwards(){
+  if(AWARDS) return AWARDS;
+  const d = await getJSON("data/player_awards.json");
+  return AWARDS = (d && d.players) || {};
+}
+const AWARD_ROWS = [["title","Champion"],["mvp","MVP"],["fmvp","Finals MVP"],["dpoy","Defensive Player of the Year"],["roy","Rookie of the Year"],
+  ["smoy","Sixth Man of the Year"],["mip","Most Improved"],["clutch_poy","Clutch Player"],["all_nba|1st","All-NBA 1st"],["all_nba|2nd","All-NBA 2nd"],
+  ["all_nba|3rd","All-NBA 3rd"],["all_defense|1st","All-Defensive 1st"],["all_defense|2nd","All-Defensive 2nd"],["all_rookie|1st","All-Rookie 1st"],["all_rookie|2nd","All-Rookie 2nd"]];
+const ICON_TROPHY = `<svg viewBox="0 0 16 18" aria-hidden="true"><path fill="#f5c542" d="M4 1h8v5.2c0 2.3-1.6 4.2-3.3 4.6V13h2.3l.8 2H4.2l.8-2h2.3v-2.2C5.6 10.4 4 8.5 4 6.2z"/><path fill="none" stroke="#f5c542" stroke-width="1.2" d="M4 2.5H1.8v1.6c0 1.6 1 2.8 2.4 3M12 2.5h2.2v1.6c0 1.6-1 2.8-2.4 3"/><rect x="3.2" y="15.6" width="9.6" height="1.6" rx=".4" fill="#d9a72e"/></svg>`;
+const ICON_STAR = `<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#f5c542" d="M8 1l2.1 4.4 4.9.7-3.5 3.4.8 4.8L8 12l-4.3 2.3.8-4.8L1 6.1l4.9-.7z"/></svg>`;
+const ICON_TEAM = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="#f5c542" stroke-width="1.6"/><path fill="#f5c542" d="M8 4.2l1.1 2.3 2.5.4-1.8 1.8.4 2.5L8 10l-2.2 1.2.4-2.5-1.8-1.8 2.5-.4z"/></svg>`;
+function awardsHtml(id){
+  const a = AWARDS && AWARDS[id];
+  if(!a) return "";
+  const years = {};
+  (a.titles || []).forEach(([y]) => (years.title = years.title || []).push(y));
+  (a.awards || []).forEach(([y, key, tier]) => { const k = tier ? `${key}|${tier}` : key; (years[k] = years[k] || []).push(y); });
+  const season = y => `${y - 1}-${String(y).slice(2)}`;
+  const chips = AWARD_ROWS.filter(([k]) => years[k]).map(([k, label]) => {
+    const ys = years[k].sort((x, y) => x - y), n = ys.length;
+    const icon = k === "title" ? ICON_TROPHY : k.includes("|") ? ICON_TEAM : ICON_STAR;
+    const shown = n <= 5 ? ys.join(", ") : `${ys[0]}–${ys[n - 1]}`;   // long runs: first and last year (all of them on hover)
+    return `<span class="pp-award${k === "title" || k === "mvp" || k === "fmvp" ? " big" : ""}" title="${esc(label)}: ${ys.map(season).join(", ")}">${icon}<b>${n > 1 ? n + "× " : ""}${esc(label)}</b><small>${shown}</small></span>`;
+  });
+  return chips.length ? `<div class="pp-awards">${chips.join("")}</div>` : "";
+}
+
 async function show(id, el){
   EL = el;
+  loadAwards().then(() => { const box = EL.querySelector("#ppAwards"); if(box && REC && REC.id === id) box.innerHTML = awardsHtml(id); });
   if(!REC || REC.id !== id){
     el.innerHTML = `<div class="pp-loading">Loading player…</div>`;
     const rec = await getJSON("data/players/" + encodeURIComponent(id) + ".json");
