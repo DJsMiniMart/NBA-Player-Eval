@@ -134,3 +134,14 @@
 .pp-award.big{border-color:rgba(255,214,90,.8);background:rgba(0,0,0,.32);}
 .pp-award.big b{font:700 14px/1 "Barlow Condensed",sans-serif;letter-spacing:.3px;text-transform:uppercase;}
 .pp-award.big svg{width:16px;height:18px;}
+
+/* Play Eval by season chart */
+.pp-trend{width:100%;height:auto;display:block;}
+.pp-trend rect{fill:var(--tc1,#1D428A);opacity:.85;}
+.pp-trend rect.now{opacity:.55;}
+.pp-trend rect.best{fill:#d9a72e;opacity:1;}
+.pp-trend g:hover rect{opacity:1;}
+.pp-trend .grid{stroke:var(--line,#dde2ea);stroke-width:1;}
+.pp-trend .avg{stroke:var(--nba-red,#C8102E);stroke-width:1.5;stroke-dasharray:5 4;}
+.pp-trend text{font:10.5px Inter,system-ui,sans-serif;fill:var(--dim,#5b6475);}
+.pp-trend .avgt{fill:var(--nba-red,#C8102E);font-weight:600;}

@@ -427,6 +427,32 @@ function driversCard(tot, lg, title, sub){
     </tbody></table>
     <div class="pp-note">Each piece of the formula per minute played, next to the league-wide average (the dark tick). They add up to Play Eval.</div></div>`;
 }
+/* Play Eval every season of the career, as bars; best season in gold, dashed line = career Play Eval */
+function peTrendCard(seasons, career){
+  const list = (seasons || []).filter(x => x.value != null && (x.mp || 0) >= 100);
+  if(list.length < 2) return `<div class="pp-card c6"><h3>Play Eval by season</h3><div class="pp-empty">Needs at least two seasons.</div></div>`;
+  const W = 560, H = 230, padL = 34, padB = 34, padT = 14, iw = W - padL - 8, ih = H - padT - padB;
+  const vals = list.map(x => x.value).concat(career != null ? [career] : []);
+  const hi = Math.max(...vals) * 1.08, lo = Math.min(0, Math.min(...vals));
+  const y = v => padT + ih - (v - lo) / (hi - lo) * ih;
+  const bw = iw / list.length, best = list.reduce((a, b) => b.value > a.value ? b : a);
+  const step = hi > 1.6 ? .5 : hi > .8 ? .25 : .1, ticks = [];
+  for(let v = 0; v < hi; v += step) ticks.push(+v.toFixed(2));
+  const every = Math.ceil(list.length / 12);
+  const bars = list.map((x, i) => {
+    const h = Math.max(1, y(lo) - y(x.value)), cx = padL + i * bw;
+    return `<g><title>${esc(x.season)} · ${esc(x.team || "")} · ${f3(x.value)} Play Eval in ${x.g} games</title>
+      <rect x="${(cx + bw * .14).toFixed(1)}" y="${y(x.value).toFixed(1)}" width="${(bw * .72).toFixed(1)}" height="${h.toFixed(1)}" rx="2" class="${x === best ? "best" : x.current ? "now" : ""}"></rect>
+      ${i % every === 0 || x === best ? `<text x="${(cx + bw / 2).toFixed(1)}" y="${H - padB + 14}" text-anchor="middle">${esc("'" + x.season.slice(-2))}</text>` : ""}</g>`;
+  }).join("");
+  const line = career != null ? `<line x1="${padL}" x2="${W - 8}" y1="${y(career).toFixed(1)}" y2="${y(career).toFixed(1)}" class="avg"></line>` : "";
+  return `<div class="pp-card c6"><h3>Play Eval by season <small>${list.length} seasons · 100+ minutes</small></h3>
+    <div class="sub" style="margin:0 0 6px">Best: <b>${f3(best.value)}</b> in ${esc(best.season)}${best.team ? ` (${esc(best.team)})` : ""}${career != null ? ` · Career: <b style="color:var(--nba-red,#C8102E)">${f3(career)}</b> (dashed line)` : ""}</div>
+    <svg class="pp-trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Play Eval by season">
+      ${ticks.map(v => `<line x1="${padL}" x2="${W - 8}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="grid"></line><text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`).join("")}
+      ${bars}${line}</svg>
+    <div class="pp-note">Gold = best season. Hover a bar for the team and games. The dashed line is their whole-career Play Eval.</div></div>`;
+}
 function careerLeague(list){
   let mp = 0; const out = {};
   (list || []).forEach(s => { if(!s.lg || !s.mp) return; mp += s.mp; PARTS.forEach(([k]) => out[k] = (out[k]||0) + s.lg[k] * s.mp); });
@@ -624,7 +650,7 @@ function render(){
   }
   const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.")
     + `<div class="pp-grid">${statLineCard(ct, "Career stat line", "per game, whole career", extra)}</div><div class="pp-gap"></div>`
-    + `<div class="pp-grid">${driversCard(ct, careerLeague(REC.seasons), "What drives their Play Eval", "whole career, per minute")}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
+    + `<div class="pp-grid">${retired ? driversCard(ct, careerLeague(REC.seasons), "What drives their Play Eval", "whole career, per minute") : peTrendCard(REC.seasons, ct.value)}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
     + gameCareer + `<div class="pp-gap"></div><div class="pp-grid">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
     + sectionHead("Playoffs", "Every postseason run.") + playoffsBlock();
 
