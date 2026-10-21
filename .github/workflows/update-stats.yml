@@ -2,7 +2,12 @@ name: Update NBA stats
 
 on:
   schedule:
-    - cron: "17 11 * * *"   # every day around 6:17 AM Central (after the night's games)
+    # GitHub sometimes skips or delays scheduled runs, so there are backups. Extra runs are harmless:
+    # each one only adds what's new. Times are UTC (subtract 5 hours for Central, 6 in winter).
+    - cron: "23 8 * * *"    # ~3:23 AM Central, after the late West Coast games
+    - cron: "17 11 * * *"   # ~6:17 AM Central
+    - cron: "41 13 * * *"   # ~8:41 AM Central (backup)
+    - cron: "11 17 * * *"   # ~12:11 PM Central (backup)
   workflow_dispatch: {}      # adds a "Run workflow" button on the Actions tab
 
 permissions:
@@ -34,6 +39,14 @@ jobs:
           git config user.name "stats-bot"
           git config user.email "stats-bot@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -q -m "Daily stats update"
-          git pull --rebase -q || true
-          git push
+          git diff --cached --quiet && { echo "Nothing new to save"; exit 0; }
+          git commit -q -m "Daily stats update"
+          # If files were uploaded while this ran, put the new numbers on top of them and try again.
+          # (-X theirs: when the same data file changed in both places, keep this run's copy.)
+          for i in 1 2 3 4 5; do
+            git pull --rebase -X theirs -q origin "${GITHUB_REF_NAME}" || { git rebase --abort 2>/dev/null; git pull --no-rebase -X ours -q --no-edit origin "${GITHUB_REF_NAME}"; }
+            git push -q origin "HEAD:${GITHUB_REF_NAME}" && { echo "Saved"; exit 0; }
+            echo "Push failed (try $i); retrying"
+            sleep $((i * 10))
+          done
+          exit 1
