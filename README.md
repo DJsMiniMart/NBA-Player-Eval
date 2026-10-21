@@ -63,6 +63,12 @@ Bobcats -> Hornets, and so on), and every row is shown under today's team (hover
   overall pick, school). Old seasons are read once; the rest refreshes weekly. Teams that moved count toward today's
   franchise.
 
+  Click any finished game on a team page (the game list under Team stats, or the schedule) for its box score:
+  both teams' players with each player's PE (Play Eval) for that game, and the players' PE added up on the totals
+  row. Box scores are saved per game in `data/games/<game id>.json` by `build_teams.py`. The Team PE tile next to
+  Pace is the team's (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) per 48 minutes, with its
+  league rank under the same filters.
+
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 
 ## Player pages

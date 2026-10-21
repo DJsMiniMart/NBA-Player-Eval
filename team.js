@@ -23,6 +23,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
 const num = s => +String(s || "").replace(/[^\d]/g, "") || 0;
 const M = n => (n < 0 ? "−" : "") + "$" + (Math.abs(n)/1e6).toFixed(Math.abs(n) >= 1e8 ? 1 : 2) + "M";
+const f3n = n => n == null || !isFinite(n) ? "—" : n.toFixed(3);
 const f1 = n => n == null || !isFinite(n) ? "—" : n.toFixed(1);
 const pct = n => n == null || !isFinite(n) ? "—" : (n*100).toFixed(1) + "%";
 const sgn = n => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : "") + n.toFixed(1);
@@ -77,6 +78,7 @@ function summarize(games){
   const efg = s => (s[I.fgm] + 0.5 * s[I.fg3m]) / s[I.fga];
   return {n, w, l: n - w, winp: w / n,
     pts: t[I.pts]/n, opp: o[I.pts]/n, diff: (t[I.pts]-o[I.pts])/n,
+    pe: (t[I.pts] + 2*t[I.ast] + 2*(t[I.oreb] + t[I.dreb]) + 4*t[I.stl] + t[I.blk] - 4*t[I.tov]) / (48*n),
     ortg: 100*t[I.pts]/P, drtg: 100*o[I.pts]/P, net: 100*(t[I.pts]-o[I.pts])/P, pace: 48*P/(min/1 || 1)*1,
     fgp: t[I.fgm]/t[I.fga], fg3p: t[I.fg3m]/t[I.fg3a], ftp: t[I.ftm]/t[I.fta], efg: efg(t),
     ts: t[I.pts]/(2*(t[I.fga] + 0.44*t[I.fta])), tpar: t[I.fg3a]/t[I.fga], ftr: t[I.fta]/t[I.fga],
@@ -89,7 +91,7 @@ function summarize(games){
 }
 /* stat, label, format, higher is better? */
 const GROUPS = [
-  ["Overall", [["winp","Win %",pct,1],["diff","Point margin",sgn,1],["net","Net rating",sgn,1],["pace","Pace",f1,null]]],
+  ["Overall", [["winp","Win %",pct,1],["diff","Point margin",sgn,1],["net","Net rating",sgn,1],["pace","Pace",f1,null],["pe","Team PE",f3n,1]]],
   ["Offense", [["ortg","Offensive rating",f1,1],["pts","Points",f1,1],["efg","Effective FG%",pct,1],["ts","True shooting %",pct,1],["ast","Assists",f1,1],["tovp","Turnover %",f1,0],["orbp","Off. rebound %",pct,1]]],
   ["Defense", [["drtg","Defensive rating",f1,0],["opp","Points allowed",f1,0],["oefg","Opp. effective FG%",pct,0],["otovp","Opp. turnover %",f1,1],["drbp","Def. rebound %",pct,1],["stl","Steals",f1,1],["blk","Blocks",f1,1]]],
   ["Shooting", [["fgp","FG%",pct,1],["fg3p","3P%",pct,1],["fg3a","3PA",f1,null],["tpar","3PA rate",pct,null],["ftp","FT%",pct,1],["ftr","FT rate",pct,1],["ofg3p","Opp. 3P%",pct,0]]],
@@ -166,21 +168,74 @@ function drawStats(){
   if(!games.length){ $('statsBody').innerHTML = `<div class="card empty" style="margin-top:12px">No games match these filters.</div>`; return; }
   const s = summarize(games), R = ranks(), rk = R.out[CODE] || {};
   const badge = k => rk[k] ? `<span class="rk ${rk[k] <= 10 ? "top" : rk[k] > 20 ? "bot" : ""}" title="${ord(rk[k])} of ${R.teams}">${ord(rk[k])}</span>` : `<span class="rk">—</span>`;
-  const tile = (k, label, fmt) => `<div class="card tile"><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ord(rk[k])} in the NBA` : ""}</div></div>`;
+  const tile = (k, label, fmt, tip) => `<div class="card tile"${tip ? ` title="${esc(tip)}"` : ""}><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ord(rk[k])} in the NBA` : ""}</div></div>`;
   $('statsBody').innerHTML = `
-    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}</div>
+    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team PE",f3n,"Points, assists×2, rebounds×2, steals×4, blocks, minus turnovers×4, per 48 minutes")}</div>
     <div class="groups">${GROUPS.map(([name, rows]) => `<div class="card grp"><h3>${name}</h3>${rows.map(([k, label, fmt]) => `<div class="srow"><span class="k">${label}</span><span class="v">${fmt(s[k])}</span>${badge(k)}</div>`).join("")}</div>`).join("")}</div>
     <div class="card" style="margin-top:12px"><div class="tw"><table>
       <thead><tr><th class="l">Date</th><th class="l">Opponent</th><th class="l">Result</th><th>Pts</th><th>Opp</th><th>Off rtg</th><th>Def rtg</th><th>eFG%</th><th>3P</th><th>TOV</th><th>Reb</th><th>Ast</th></tr></thead>
       <tbody>${games.slice().reverse().map(g => {
         const P = (poss(g.me) + poss(g.them)) / 2, w = g.me[0] > g.them[0];
-        return `<tr><td class="l">${new Date(g.date + "T12:00:00Z").toLocaleDateString("en-US", {month:"short", day:"numeric"})}</td>
+        return `<tr class="game" data-gid="${esc(g.gid)}" title="Click for the box score"><td class="l">${new Date(g.date + "T12:00:00Z").toLocaleDateString("en-US", {month:"short", day:"numeric"})}</td>
           <td class="l">${g.home ? "vs" : "@"} <img class="mini" src="${logo(g.opp)}" alt="" onerror="this.remove()">${esc(g.opp)}</td>
           <td class="l"><span class="${w ? "W" : "L"}">${w ? "W" : "L"}</span> ${g.me[0]}-${g.them[0]}</td>
           <td>${g.me[0]}</td><td>${g.them[0]}</td><td>${f1(100*g.me[0]/P)}</td><td>${f1(100*g.them[0]/P)}</td>
           <td>${pct((g.me[I.fgm] + .5*g.me[I.fg3m]) / g.me[I.fga])}</td><td>${g.me[I.fg3m]}-${g.me[I.fg3a]}</td><td>${g.me[I.tov]}</td><td>${g.me[I.oreb] + g.me[I.dreb]}</td><td>${g.me[I.ast]}</td></tr>`;
-      }).join("")}</tbody></table></div></div>`;
+      }).join("")}</tbody></table></div><div class="note pad" style="margin:0">Click a game for the box score.</div></div>`;
+  wireGames($('statsBody'));
 }
+function wireGames(el){
+  el.querySelectorAll('[data-gid]').forEach(tr => tr.onclick = () => openBox(tr.dataset.gid));
+}
+
+/* ---------- box score pop-up ---------- */
+const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
+async function openBox(gid){
+  let box = $('boxModal');
+  if(!box){
+    box = document.createElement("div");
+    box.id = "boxModal"; box.className = "modal"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
+    box.innerHTML = `<div class="modal-card"><button class="modal-x" aria-label="Close">✕</button><div id="boxBody"></div></div>`;
+    document.body.appendChild(box);
+    box.onclick = e => { if(e.target === box || e.target.classList.contains("modal-x")) closeBox(); };
+    document.addEventListener("keydown", e => { if(e.key === "Escape") closeBox(); });
+  }
+  box.classList.add("open"); document.body.style.overflow = "hidden";
+  $('boxBody').innerHTML = `<div class="empty">Loading box score…</div>`;
+  const g = await getJSON(`data/games/${encodeURIComponent(gid)}.json`);
+  if(!g){ $('boxBody').innerHTML = `<div class="empty">This box score isn't available yet. Box scores are added during the update after each game.</div>`; return; }
+  const ids = new Map(((STATS && STATS.players) || []).map(p => [fold(p.name), p.id]));
+  const sides = [g.away, g.home];
+  const score = t => g.teams[t].line[0];
+  const when = new Date(g.date + "T12:00:00Z").toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric", year:"numeric"});
+  const ot = g.min > 48 ? ` · ${g.min === 53 ? "OT" : (g.min - 48) / 5 + "OT"}` : "";
+  const table = t => {
+    const T = TEAMS[t] || {n:t}, L = g.teams[t].line, rows = g.teams[t].players;
+    let peSum = 0;
+    const body = rows.map((r, i) => {
+      const [id, name, st, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm] = r;
+      const pe = peOf(pts, ast, dreb + oreb, stl, blk, tov, min);
+      if(pe != null) peSum += pe;
+      const bid = ids.get(fold(name));
+      const sep = i > 0 && rows[i-1][2] && !st ? ` class="bench"` : "";
+      return `<tr${sep}><td class="l nm">${bid ? `<a href="index.html#/player/${encodeURIComponent(bid)}">${esc(name)}</a>` : esc(name)}${st ? `<span class="tag">S</span>` : ""}</td>
+        <td>${min}</td><td><b>${pts}</b></td><td>${dreb + oreb}</td><td>${ast}</td><td>${stl}</td><td>${blk}</td><td>${tov}</td>
+        <td>${fgm}-${fga}</td><td>${tpm}-${tpa}</td><td>${ftm}-${fta}</td><td class="${pm >= 0 ? "pos" : "neg"}">${pm > 0 ? "+" : ""}${pm}</td>
+        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td></tr>`;
+    }).join("");
+    const mins = rows.reduce((a, r) => a + r[3], 0);
+    return `<h3 class="box-team"><img src="${logo(t)}" alt="" onerror="this.remove()">${esc(T.n)} <span>${score(t)}</span></h3>
+      <div class="tw"><table class="box"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="Play Eval for this game">PE</th></tr></thead>
+      <tbody>${body}<tr class="tot"><td class="l">Totals</td><td>${mins}</td><td>${L[I.pts]}</td><td>${L[I.oreb] + L[I.dreb]}</td><td>${L[I.ast]}</td><td>${L[I.stl]}</td><td>${L[I.blk]}</td><td>${L[I.tov]}</td>
+        <td>${L[I.fgm]}-${L[I.fga]}</td><td>${L[I.fg3m]}-${L[I.fg3a]}</td><td>${L[I.ftm]}-${L[I.fta]}</td><td></td><td class="pe" title="All the players' PE added up">${peSum.toFixed(3)}</td></tr></tbody></table></div>`;
+  };
+  const winner = score(g.home) > score(g.away) ? g.home : g.away;
+  $('boxBody').innerHTML = `<div class="box-head"><div class="box-score">${sides.map(t => `<div class="${t === winner ? "win" : ""}"><img src="${logo(t)}" alt="" onerror="this.remove()"><b>${score(t)}</b><span>${esc(t)}</span></div>`).join(`<i>${g.home === sides[1] ? "@" : "vs"}</i>`)}</div>
+    <div class="note" style="margin:6px 0 0;text-align:center">Final${ot} · ${when}</div></div>
+    ${sides.map(table).join("")}
+    <p class="note" style="margin:10px 0 0">PE = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. S = starter.</p>`;
+}
+function closeBox(){ const b = $('boxModal'); if(b){ b.classList.remove("open"); document.body.style.overflow = ""; } }
 
 /* ---------- lineups ---------- */
 function stintsFor(games){
@@ -324,12 +379,13 @@ function drawSchedule(){
     const head = m !== month ? `<tr><td colspan="5" class="l" style="background:var(--row);font-weight:700">${m}</td></tr>` : "";
     month = m;
     const my = home ? g[5] : g[6], th = home ? g[6] : g[5], w = my > th;
-    return head + `<tr><td class="l">${fmtD(g[1])}</td><td class="l">${home ? "vs" : "@"} <img class="mini" src="${logo(opp)}" alt="" onerror="this.remove()">${esc(TEAMS[opp] ? TEAMS[opp].n : opp)}${kind(g[0]) ? `<span class="tag">${kind(g[0])}</span>` : ""}</td>
+    return head + `<tr${g[4] === 3 ? ` class="game" data-gid="${esc(g[0])}" title="Click for the box score"` : ""}><td class="l">${fmtD(g[1])}</td><td class="l">${home ? "vs" : "@"} <img class="mini" src="${logo(opp)}" alt="" onerror="this.remove()">${esc(TEAMS[opp] ? TEAMS[opp].n : opp)}${kind(g[0]) ? `<span class="tag">${kind(g[0])}</span>` : ""}</td>
       <td class="l">${g[4] === 3 ? `<span class="${w ? "W" : "L"}">${w ? "W" : "L"}</span> ${my}-${th}` : g[4] === 2 ? "Live" : fmtT(g[1])}</td>
       <td class="l">${esc(g[8] || "")}</td><td class="l">${esc(g[7] || "")}</td></tr>`;
   }).join("");
   $('schedBody').innerHTML = `${upcoming.length ? `<p class="note">Next up (times in your time zone)</p><div class="next">${upcoming.slice(0, 4).map(card).join("")}</div>` : ""}
     <div class="card"><div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th class="l">Date</th><th class="l">Opponent</th><th class="l">Result / time</th><th class="l">TV</th><th class="l">Arena</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  wireGames($('schedBody'));
   const firstOpen = $('schedBody').querySelector('.tw');
   if(firstOpen && upcoming.length){ const i = games.indexOf(upcoming[0]); const tr = firstOpen.querySelectorAll('tbody tr')[i]; if(tr) firstOpen.scrollTop = Math.max(0, tr.offsetTop - 80); }
 }

@@ -82,7 +82,32 @@ def build(now=None, current_year=None):
             "picksAt": extra.get("at", {}).get("picks") if extra.get("picks", {}).get(code) else snap.get("asOf"),
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
             "names": names, "stints": st, "players": plogs[code], "history": history.get(code)})
+    write_box_scores(acc, tgames)
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")
+
+
+def write_box_scores(acc, tgames):
+    """data/games/<game id>.json: both teams' box scores, for the pop-up on the team pages.
+    Player line: [id, name, starter, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, 3pm, 3pa, ftm, fta, +/-]"""
+    lines = {gid: {row[1]: [], row[2]: []} for gid, row in tgames.items()}
+    for pid, pl in acc.get("players", {}).items():
+        for lg in pl.get("logs", []):
+            gid, opp = lg[0], lg[2]
+            if gid not in lines:
+                continue
+            home, away = tgames[gid][1], tgames[gid][2]
+            team = home if opp == away else away
+            lines[gid][team].append([pid, pl.get("n", pid), lg[20], lg[4], lg[5], lg[6], lg[7], lg[8], lg[9], lg[10],
+                                     lg[11], lg[12], lg[13], lg[14], lg[15], lg[16], lg[17], lg[18]])
+    for gid, row in tgames.items():
+        date, home, away, hl, al, mins = row
+        for t in (home, away):
+            lines[gid][t].sort(key=lambda r: (-r[2], -r[3]))   # starters first, then by minutes
+        save(os.path.join(DATA_DIR, "games", f"{gid}.json"), {
+            "id": gid, "date": date, "min": mins, "home": home, "away": away,
+            "cols": ["id", "name", "starter", "min", "pts", "ast", "dreb", "oreb", "stl", "blk", "tov",
+                     "fgm", "fga", "fg3m", "fg3a", "ftm", "fta", "pm"],
+            "teams": {home: {"line": hl, "players": lines[gid][home]}, away: {"line": al, "players": lines[gid][away]}}})
 
 
 if __name__ == "__main__":

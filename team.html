@@ -71,7 +71,28 @@
   .srow .v{font-weight:700;font-size:15px;text-align:right;}
   .rk{font-size:11px;font-weight:700;text-align:center;padding:2px 0;border-radius:999px;background:var(--row);color:var(--dim);}
   .rk.top{background:var(--good-soft);color:var(--good);} .rk.bot{background:var(--bad-soft);color:var(--bad);}
-  .big4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .big4{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
+  tr.game{cursor:pointer;} tr.game:hover td{background:var(--accent-soft);}
+  /* box score pop-up */
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(5,10,25,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto;}
+  .modal.open{display:flex;}
+  .modal-card{position:relative;background:var(--panel);color:var(--ink);border-radius:14px;max-width:1000px;width:100%;padding:18px 18px 16px;box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .modal-x{position:absolute;top:10px;right:10px;border:0;background:var(--row);width:32px;height:32px;border-radius:50%;padding:0;font-size:14px;}
+  .box-head{padding-bottom:12px;border-bottom:1px solid var(--line);}
+  .box-score{display:flex;align-items:center;justify-content:center;gap:22px;}
+  .box-score div{display:flex;align-items:center;gap:10px;opacity:.6;}
+  .box-score div.win{opacity:1;}
+  .box-score img{width:44px;height:44px;object-fit:contain;}
+  .box-score b{font:700 40px/1 "Barlow Condensed";}
+  .box-score span{font-weight:700;color:var(--dim);}
+  .box-score i{font-style:normal;color:var(--dim);}
+  .box-team{display:flex;align-items:center;gap:8px;margin:16px 0 6px;font:700 18px "Barlow Condensed";text-transform:uppercase;letter-spacing:.4px;}
+  .box-team img{width:26px;height:26px;object-fit:contain;}
+  .box-team span{margin-left:auto;font-size:22px;}
+  table.box td,table.box th{padding:6px 7px;font-size:12.5px;}
+  table.box tr.bench td{border-top:2px solid var(--line);}
+  table.box td.pe{font-weight:700;color:var(--accent);}
+  table.box tr.tot td{background:var(--row);}
   .tile{padding:14px 16px;}
   .tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);font-weight:600;}
   .tile .v{font:700 34px/1.05 "Barlow Condensed";margin-top:4px;}
@@ -163,7 +184,7 @@
   footer{color:var(--dim);font-size:12px;margin:30px 0 40px;}
   @media (max-width:900px){
     .filters{grid-template-columns:repeat(4,1fr);}
-    .big4,.capnums{grid-template-columns:repeat(2,1fr);}
+    .big4{grid-template-columns:repeat(3,1fr);} .capnums{grid-template-columns:repeat(2,1fr);}
   }
   @media (max-width:640px){
     .hero-in{grid-template-columns:auto 1fr;}
@@ -171,7 +192,7 @@
     .hero h1{font-size:32px;}
     .facts{grid-column:1/-1;}
     .filters{grid-template-columns:repeat(2,1fr);}
-    .cmp{grid-template-columns:1fr;}
+    .cmp{grid-template-columns:1fr;} .big4{grid-template-columns:repeat(2,1fr);} .modal{padding:10px 6px;} .box-score b{font-size:30px;}
     .cmp .nums{grid-template-columns:repeat(2,1fr);}
   }
 </style>
