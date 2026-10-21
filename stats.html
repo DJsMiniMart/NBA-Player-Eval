@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stats · Play Eval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f4f8; --panel:#ffffff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb;
+    --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A; --nba-blue:#1D428A; --nba-red:#C8102E;
+    --good:#2f9e44; --bad:#d6336c; --gold:#c99a2e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a;
+      --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff; --good:#51cf66; --bad:#ff6b9a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 16px;}
+  a{color:inherit;text-decoration:none;} a:hover{color:var(--court);text-decoration:underline;}
+  button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  button:hover{border-color:var(--court);}
+  button.on{background:var(--nba-blue);border-color:var(--nba-blue);color:#fff;}
+  select,input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
+  .nba-band{background:linear-gradient(180deg,#17366f 0%,var(--nba-blue) 100%);color:#fff;border-bottom:5px solid var(--nba-red);}
+  .band-in{padding-top:22px;padding-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
+  h1 span{background:var(--nba-red);padding:0 8px;border-radius:4px;margin-left:4px;}
+  .meta{color:rgba(255,255,255,.8);font-size:12.5px;margin-top:8px;}
+  .jump{display:flex;gap:8px;}
+  .jump a{color:#fff;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;font-weight:600;font-size:13px;}
+  .jump a:hover{background:rgba(255,255,255,.2);text-decoration:none;color:#fff;}
+  section{padding-top:24px;scroll-margin-top:60px;}
+  h2{font:700 28px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;margin:0 0 4px;letter-spacing:.4px;}
+  .note{color:var(--dim);font-size:12.5px;margin:0 0 12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+  .ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+  .ctl label{font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-right:-2px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .seg button{border:0;border-radius:0;}
+  .tw{overflow:auto;}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel);position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;}
+  th:hover{color:var(--ink);}
+  th.on{color:var(--accent);}
+  th.l,td.l{text-align:left;}
+  th.stick,td.stick{position:sticky;left:0;z-index:2;background:var(--panel);}
+  th.stick{z-index:3;}
+  td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:13px;}
+  tr:hover td{background:var(--row);}
+  td.on{background:var(--accent-soft) !important;font-weight:700;}
+  td.rk{color:var(--dim);width:30px;}
+  td.tm{font-weight:600;}
+  td.tm img{width:22px;height:22px;object-fit:contain;vertical-align:-6px;margin-right:8px;}
+  .best{color:var(--good);} .worst{color:var(--bad);}
+  .pos{color:var(--good);} .neg{color:var(--bad);}
+  /* leaders */
+  .leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
+  .lead h3{margin:0;padding:10px 14px;font:700 15px "Barlow Condensed";text-transform:uppercase;letter-spacing:.6px;color:var(--dim);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;}
+  .lead h3 small{font:500 11px Inter;text-transform:none;letter-spacing:0;}
+  .lead ol{list-style:none;margin:0;padding:0;}
+  .lead li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+  .lead li:last-child{border-bottom:0;}
+  .lead li .n{color:var(--dim);}
+  .lead li .who small{display:block;color:var(--dim);font-size:11px;}
+  .lead li .v{font-weight:700;font-variant-numeric:tabular-nums;}
+  .lead li:first-child{background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 14%,transparent),transparent);}
+  .lead li:first-child .v{color:var(--accent);font-size:15px;}
+  .empty{padding:30px 18px;text-align:center;color:var(--dim);}
+  footer{color:var(--dim);font-size:12px;margin:30px 0 40px;}
+  @media (max-width:640px){ h1{font-size:36px;} }
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="wrap band-in">
+  <div><h1>League <span>Stats</span></h1><div class="meta" id="meta">Loading…</div></div>
+  <div class="jump"><a href="#teams">Team stats</a><a href="#leaders">League leaders</a><a href="#players">All players</a></div>
+</div></div>
+<div class="wrap">
+  <section id="teams">
+    <h2>Team stats</h2>
+    <p class="note">Click any column to sort it; click again to flip the order. The best team in each column is green and the worst is red. Team PE = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ 48 minutes, per game.</p>
+    <div class="ctl">
+      <label for="tGames">Games</label><select id="tGames"><option value="all">Whole season</option><option value="5">Last 5</option><option value="10">Last 10</option><option value="15">Last 15</option><option value="20">Last 20</option></select>
+      <label for="tLoc">Where</label><select id="tLoc"><option value="all">Home &amp; away</option><option value="home">Home</option><option value="away">Away</option></select>
+      <label for="tConf">Teams</label><select id="tConf"><option value="all">All 30</option><option value="East">East</option><option value="West">West</option></select>
+      <span class="seg" id="tMode"><button data-m="pg" class="on">Per game</button><button data-m="tot">Totals</button></span>
+    </div>
+    <div class="card"><div class="tw" style="max-height:760px" id="teamTable"><div class="empty">Loading…</div></div></div>
+  </section>
+  <section id="leaders">
+    <h2>League leaders</h2>
+    <p class="note" id="qualNote"></p>
+    <div class="ctl"><span class="seg" id="lMode"><button data-m="pg" class="on">Per game</button><button data-m="tot">Totals</button></span></div>
+    <div class="leaders" id="leadBody"><div class="empty">Loading…</div></div>
+  </section>
+  <section id="players">
+    <h2>All players</h2>
+    <p class="note">Every player who has played this season. Click a column to sort.</p>
+    <div class="ctl">
+      <input id="pQ" type="search" placeholder="Search player">
+      <select id="pTeam"><option value="">All teams</option></select>
+      <label><input type="checkbox" id="pQual" checked> Only qualified players</label>
+      <span class="seg" id="pMode"><button data-m="pg" class="on">Per game</button><button data-m="tot">Totals</button></span>
+    </div>
+    <div class="card"><div class="tw" style="max-height:760px" id="playerTable"></div></div>
+  </section>
+  <footer>Game data from ESPN's public feeds, collected by the daily update. Ranks and leaders use this season's games so far. <span id="asof"></span></footer>
+</div>
+<script src="nav.js"></script>
+<script src="player.js"></script>
+<script src="stats.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@
 const PAGES = [
   {label:"Home",          sub:"Play Eval leaderboard",          href:"index.html#/",        match:p => /index\.html$|\/$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"Players",       sub:"Every player, by team",          href:"index.html#/players", match:p => /^#\/(players|player|compare)/.test(p.hash)},
+  {label:"Stats",         sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
   {label:"Teams",         sub:"Stats, lineups, cap, picks",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
 ];

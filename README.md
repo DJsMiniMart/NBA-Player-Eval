@@ -42,6 +42,11 @@ The Team list has today's 30 franchises. Teams that moved or were renamed count 
 Bobcats -> Hornets, and so on), and every row is shown under today's team (hover a team to see the name it had then). The list is `FRANCHISE` in
 `index.html`.
 
+- **Stats** (`stats.html`, `stats.js`) -- every team's stats in one table (points, rebounds, assists, shooting,
+  ratings, Team PE and more): click any column to sort it either way, filter by last 5/10/15/20 games, home/away
+  or conference, per game or totals. Below it, league leaders (points, rebounds, assists, steals, blocks, plus/minus,
+  PE, threes, steals+blocks, minutes, shooting percentages, double-doubles, triple-doubles, best scoring game,
+  turnovers) and a sortable table of every player. Uses `data/teams/league.json` and `data/teams/players.json`.
 - **Teams** (`team.html#OKC`, `team.js`) -- one page per team: team stats with league ranks (offense, defense and
   net rating per 100 possessions, pace, shooting, rebounding, turnovers...), filters (last 5/10/15/20/30 games,
   home/away, opponents above or below .500, wins/losses, opponent conference or division, rest days, month,

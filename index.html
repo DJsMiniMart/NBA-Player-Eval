@@ -523,11 +523,14 @@ async function showSeason(file){
   if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Play Eval, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
   if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Play Eval since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
   $('team').innerHTML = `<option value="">All teams</option>` + franchiseOptions().map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("");
-  const dG = VIEW==="current" ? DEFAULT_MIN_GAMES : VIEW==="past" ? PAST_MIN_GAMES : VIEW==="careers" ? CAREER_MIN_GAMES : ALLTIME_MIN_GAMES;
+  // early in the season nobody has 5 games yet: ask for half the most games anyone has played (at least 1)
+  const most = VIEW==="current" ? Math.max(0, ...DATA.players.map(p => p.g || 0)) : 0;
+  const curG = Math.min(DEFAULT_MIN_GAMES, Math.max(1, Math.ceil(most / 2)));
+  const dG = VIEW==="current" ? curG : VIEW==="past" ? PAST_MIN_GAMES : VIEW==="careers" ? CAREER_MIN_GAMES : ALLTIME_MIN_GAMES;
   const dM = VIEW==="current" ? DEFAULT_MIN_MPG : VIEW==="past" ? PAST_MIN_MPG : VIEW==="careers" ? CAREER_MIN_MPG : ALLTIME_MIN_MPG;
-  $('minG').value = store.get(mkey("minG")) ?? dG;
+  const savedG = store.get(mkey("minG"));
+  $('minG').value = savedG != null && !(VIEW === "current" && +savedG > most) ? savedG : dG;
   $('minM').value = store.get(mkey("minM")) ?? dM;
-  store.set("season", s.file);
   draw(); topChart();
   if(typeof syncLogoStrip === "function") syncLogoStrip();
 }
@@ -546,12 +549,12 @@ async function load(){
     if(BASE && BASE.players) BASEMAP = new Map(BASE.players.map(p=>[p.id, p])); else BASE = null;
   }
   $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");
-  $('season').onchange = () => showSeason($('season').value);
+  $('season').onchange = () => { store.set("pickedSeason", $('season').value); showSeason($('season').value); };
   $('q').oninput = draw;
   $('team').onchange = applyTeam;
   $('minG').oninput = () => { store.set(mkey("minG"), $('minG').value); draw(); topChart(); };
   $('minM').oninput = () => { store.set(mkey("minM"), $('minM').value); draw(); topChart(); };
-  const saved = store.get("season");
+  const saved = store.get("pickedSeason");   // only a season the viewer picked themselves
   const fallback = (!CUR.players.length && index.length) ? index[0].file : "stats.json";
   showSeason(SEASONS.some(s=>s.file===saved) ? saved : fallback);
 }

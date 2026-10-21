@@ -83,7 +83,40 @@ def build(now=None, current_year=None):
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
             "names": names, "stints": st, "players": plogs[code], "history": history.get(code)})
     write_box_scores(acc, tgames)
+    write_player_totals(acc, tgames, season, now)
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")
+
+
+def write_player_totals(acc, tgames, season, now):
+    """data/teams/players.json: every player's season so far (from the game logs), for the Stats page's leaders.
+    Row: [id, name, team, g, gs, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, 3pm, 3pa, ftm, fta, +/-,
+          double-doubles, triple-doubles, best game points]"""
+    rows = []
+    for pid, pl in acc.get("players", {}).items():
+        logs = [lg for lg in pl.get("logs", []) if lg[0] in tgames]
+        if not logs:
+            continue
+        logs.sort(key=lambda lg: (lg[1], lg[0]))
+        last = logs[-1]
+        home, away = tgames[last[0]][1], tgames[last[0]][2]
+        team = home if last[2] == away else away
+        t = [0] * 16
+        dd = td = 0
+        for lg in logs:
+            for i, k in enumerate(range(4, 20)):
+                if k != 19:
+                    t[i] += lg[k] if isinstance(lg[k], (int, float)) else 0
+            cats = sum(1 for v in (lg[5], lg[7] + lg[8], lg[6], lg[9], lg[10]) if v >= 10)
+            dd += cats >= 2
+            td += cats >= 3
+        mins, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm = t[:15]
+        rows.append([pid, pl.get("n", pid), team, len(logs), sum(1 for lg in logs if lg[20]), round(mins, 1), pts, ast,
+                     dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, dd, td, max(lg[5] for lg in logs)])
+    save(os.path.join(TEAMS_DIR, "players.json"), {
+        "season": season, "at": now.isoformat(timespec="seconds"),
+        "cols": ["id", "name", "team", "g", "gs", "min", "pts", "ast", "dreb", "oreb", "stl", "blk", "tov", "fgm", "fga",
+                 "fg3m", "fg3a", "ftm", "fta", "pm", "dd", "td", "high"],
+        "players": rows})
 
 
 def write_box_scores(acc, tgames):
