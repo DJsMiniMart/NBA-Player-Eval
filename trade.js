@@ -40,6 +40,7 @@ function maxBackRule(out){
 }
 
 /* ---------- data ---------- */
+let RIGHTS = null, RIGHTS_AT = "";   // team -> year -> round -> {assets, ownOwed, frozen} (picks.js)
 let P = new Map();          // id -> player
 let ROSTER = {};            // team -> [ids]
 let DATA_AT = null;
@@ -54,6 +55,11 @@ async function load(){
   const curMap = new Map(((cur && cur.players) || []).map(p => [p.id, p]));
   const lastMap = new Map(((last && last.players) || []).map(p => [p.id, p]));
   DATA_AT = ct && ct.at;
+  /* who owns which picks: RealGM via the morning update, or the saved copy */
+  const ex = await getJSON("data/team_extra.json");
+  let pk = ex && ex.picks && Object.keys(ex.picks).length >= 30 ? {teams: ex.picks, asOf: (ex.at || {}).picks} : null;
+  if(!pk) pk = await getJSON("data/picks.json") || await getJSON("picks.json");
+  if(pk && pk.teams && window.PickRights){ RIGHTS = PickRights.parseAll(pk.teams); RIGHTS_AT = pk.asOf || ""; }
   Object.entries((ct && ct.players) || {}).forEach(([id, c]) => {
     const team = BBR_TO_NBA[c.team] || c.team;
     if(!TEAMS[team]) return;
@@ -184,10 +190,20 @@ function evaluate(){
     });
     const own1 = r.outPicks.filter(k => k.round === 1 && k.orig === t && k.prot !== "swap").map(k => k.year);
     const get1 = new Set(r.inPicks.filter(k => k.round === 1 && k.prot !== "swap").map(k => k.year));
-    const bad = own1.filter(y => own1.includes(y + 1) && !get1.has(y) && !get1.has(y + 1));
-    if(bad.length) ck.push({lvl:"bad", msg:`Stepien rule: a team can't be left without a first-round pick in back-to-back future drafts. ${short(t)} trade their own ${bad.map(y => `${y} and ${y+1}`).join(", ")} firsts.`});
-    else if(own1.length) ck.push({lvl:"info", msg:`Trades its own ${own1.sort().join(", ")} first${own1.length > 1 ? "s" : ""}. Check it doesn't already owe the first in the year before or after (Stepien rule).`});
-    if(r.outPicks.some(k => k.orig !== t)) ck.push({lvl:"info", msg:`Sends a pick it got from another team. Make sure ${short(t)} actually own it and that its protections allow it to be traded again.`});
+    if(RIGHTS && RIGHTS[t]){
+      /* firsts the team would hold each year after the trade (frozen picks still count as held) */
+      const held = y => { const c = RIGHTS[t][y] && RIGHTS[t][y][1]; if(!c) return 1;
+        return c.assets.length + (c.frozen ? 1 : 0) - r.outPicks.filter(k => k.round === 1 && k.year === y && k.prot !== "swap").length + r.inPicks.filter(k => k.round === 1 && k.year === y && k.prot !== "swap").length; };
+      const bad = [];
+      for(let y = RULES.firstDraft; y < LAST_DRAFT; y++) if(held(y) <= 0 && held(y + 1) <= 0 && (own1.includes(y) || own1.includes(y + 1) || r.outPicks.some(k => k.round === 1 && (k.year === y || k.year === y + 1)))) bad.push(y);
+      if(bad.length) ck.push({lvl:"bad", msg:`Stepien rule: a team can't be left without a first-round pick in back-to-back future drafts. After this trade ${short(t)} would have no first in ${bad.map(y => `${y} and ${y + 1}`).join(", ")}.`});
+      else if(r.outPicks.some(k => k.round === 1)) ck.push({lvl:"ok", msg:`Stepien rule: ${short(t)} still have a first-round pick in at least every other draft.`});
+    } else {
+      const bad = own1.filter(y => own1.includes(y + 1) && !get1.has(y) && !get1.has(y + 1));
+      if(bad.length) ck.push({lvl:"bad", msg:`Stepien rule: a team can't be left without a first-round pick in back-to-back future drafts. ${short(t)} trade their own ${bad.map(y => `${y} and ${y+1}`).join(", ")} firsts.`});
+      else if(own1.length) ck.push({lvl:"info", msg:`Trades its own ${own1.sort().join(", ")} first${own1.length > 1 ? "s" : ""}. Check it doesn't already owe the first in the year before or after (Stepien rule).`});
+    }
+    if(r.outPicks.some(k => k.kind === "complex")) ck.push({lvl:"info", msg:`Includes swap or combined pick rights. Those depend on where several teams' picks land; see the RealGM wording on the pick.`});
     if(after > RULES.apron2 && !r.outPicks.some(k => k.year === LAST_DRAFT && k.round === 1))
       ck.push({lvl:"warn", msg:`Ends above the second apron. If ${short(t)} finish the season there, their ${LAST_DRAFT} first becomes frozen, and finishing above it in 3 of 5 seasons drops that pick to No. 30.`});
 
@@ -216,8 +232,37 @@ const PROT1 = [["none","Unprotected"],["top3","Top-3 protected"],["top5","Top-5 
 const PROT2 = [["none","Unprotected"],["top40","Top-40 protected"],["top45","Top-45 protected"],["top50","Top-50 protected"],["top55","Top-55 protected"],["swap","Pick swap (rights only)"]];
 function pickName(k){
   const prot = (k.round === 1 ? PROT1 : PROT2).find(x => x[0] === k.prot);
+  const rd = `${k.year} ${k.round === 1 ? "1st" : "2nd"}`;
+  if(k.kind === "complex") return `${rd} · ${k.prot === "swap" ? "swap of " : ""}rights: ${clip(k.note || "", 70)}`;
   const via = k.orig !== k.from ? ` (via ${short(k.orig)})` : "";
-  return `${k.year} ${k.round === 1 ? "1st" : "2nd"}${via}${prot && k.prot !== "none" ? ` · ${prot[1].toLowerCase()}` : ""}`;
+  const range = k.range ? ` · conveys only if ${k.range}` : "";
+  return `${rd}${via}${range}${prot && k.prot !== "none" ? ` · ${prot[1].toLowerCase()}` : ""}`;
+}
+const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + "…" : s;
+/* every pick a team can trade right now: [{year, round, asset, label, ok, why}] */
+function pickOptions(t){
+  const out = [];
+  const R = RIGHTS && RIGHTS[t];
+  if(!R) return null;
+  for(let y = RULES.firstDraft; y <= LAST_DRAFT; y++){
+    [1, 2].forEach(rd => {
+      const c = R[y] && R[y][rd];
+      const tag = `${y} ${rd === 1 ? "1st" : "2nd"}`;
+      if(!c) return;
+      if(c.frozen) out.push({year:y, round:rd, label:`${tag} · own pick frozen (second apron), can't be traded`, ok:false});
+      if(c.forfeited) out.push({year:y, round:rd, label:`${tag} · own pick forfeited by the league`, ok:false});
+      if((c.ownOwed || c.outgoing) && !c.assets.some(a => a.kind === "own")) out.push({year:y, round:rd, label:`${tag} · own pick already traded away (${clip(c.raw, 60)})`, ok:false});
+      c.assets.forEach((a, i) => {
+        const inUse = S.picks.some(k => k.from === t && k.year === y && k.round === rd && k.idx === i);
+        let label;
+        if(a.kind === "own") label = `${tag} · own pick${a.range ? ` (only if it lands ${a.range})` : ""}${a.cond ? ` (${a.cond})` : ""}${a.swapWith ? ` · already has a swap with ${short(a.swapWith)}` : ""}`;
+        else if(a.kind === "acquired") label = `${tag} · ${TEAMS[a.orig] ? TEAMS[a.orig].n : a.orig} pick${a.range ? ` (conveys if ${a.range})` : ""}${a.cond ? ` (${clip(a.cond, 60)})` : ""}`;
+        else label = `${tag} · swap/combined rights: ${clip(a.text, 80)}`;
+        out.push({year:y, round:rd, idx:i, asset:a, label: inUse ? label + " · already in this trade" : label, ok: !inUse});
+      });
+    });
+  }
+  return out;
 }
 
 /* ---------- drawing ---------- */
@@ -293,6 +338,15 @@ function teamCard(t, r){
 function pickForm(t){
   const years = []; for(let y = RULES.firstDraft; y <= LAST_DRAFT; y++) years.push(y);
   const others = otherTeams(t);
+  const opts = pickOptions(t);
+  if(opts) return `<div class="pickform" data-form="${t}" data-rights="1">
+    <div class="full"><label class="k">Pick ${esc(short(t))} can trade</label><select id="pkWhich">${opts.map((o, i) => `<option value="${i}" ${o.ok ? "" : "disabled"}>${esc(o.label)}</option>`).join("")}</select></div>
+    <div class="full"><label class="k">Deal</label><select id="pkType"><option value="pick">Trade the pick</option><option value="swap">Give a pick swap (the other team may swap picks with ${esc(short(t))} that year)</option></select></div>
+    <div class="full"><label class="k">Add protection</label><select id="pkProt"></select></div>
+    ${others.length > 1 ? `<div class="full"><label class="k">Goes to</label><select id="pkTo">${others.map(o => `<option value="${o}">${esc(TEAMS[o].n)}</option>`).join("")}</select></div>` : ""}
+    <div class="full muted" id="pkNote"></div>
+    <div class="full" style="display:flex;gap:8px"><button class="primary" id="pkAdd">Add pick</button><button id="pkCancel">Cancel</button></div>
+  </div>`;
   return `<div class="pickform" data-form="${t}">
     <div><label class="k">Draft</label><select id="pkYear">${years.map(y => `<option>${y}</option>`).join("")}</select></div>
     <div><label class="k">Round</label><select id="pkRound"><option value="1">1st round</option><option value="2">2nd round</option></select></div>
@@ -330,7 +384,30 @@ function wire(){
   box.querySelectorAll('[data-cashto]').forEach(s => s.onchange = () => { const t = s.dataset.cashto; S.cash[t] = {amt:(S.cash[t] && S.cash[t].amt) || 0, to:s.value}; drawTeams(); });
   box.querySelectorAll('[data-extra]').forEach(inp => inp.onchange = () => { const v = +inp.value || 0; if(v) S.extra[inp.dataset.extra] = v; else delete S.extra[inp.dataset.extra]; drawTeams(); });
   const form = box.querySelector('[data-form]');
-  if(form){
+  if(form && form.dataset.rights){
+    const t = form.dataset.form, opts = pickOptions(t);
+    const which = $('pkWhich'), type = $('pkType'), prot = $('pkProt');
+    const first = opts.findIndex(o => o.ok);
+    if(first >= 0) which.value = String(first);
+    const sync = () => {
+      const o = opts[+which.value];
+      if(!o || !o.ok){ $('pkAdd').disabled = true; $('pkNote').textContent = "Pick a pick this team still owns."; return; }
+      $('pkAdd').disabled = false;
+      const complex = o.asset.kind === "complex";
+      const list = (o.round === 1 ? PROT1 : PROT2).filter(([v]) => v !== "swap");
+      prot.innerHTML = list.map(([v, l]) => `<option value="${v}">${v === "none" ? (o.asset.range || complex ? "No extra protection (keeps its current terms)" : "Unprotected") : l}</option>`).join("");
+      prot.disabled = complex;
+      $('pkNote').textContent = complex ? `RealGM: ${o.asset.text}` : o.asset.kind === "acquired" ? `RealGM: ${o.asset.text}` : "";
+    };
+    which.onchange = sync; type.onchange = sync; sync();
+    $('pkCancel').onclick = () => { pickFormOpen = null; drawTeams(); };
+    $('pkAdd').onclick = () => {
+      const o = opts[+which.value]; if(!o || !o.ok) return;
+      S.picks.push({from:t, to: $('pkTo') ? $('pkTo').value : otherTeams(t)[0], year:o.year, round:o.round, orig:o.asset.orig, idx:o.idx,
+        kind:o.asset.kind, range:o.asset.range || "", note:o.asset.kind === "complex" ? o.asset.text : "", prot: type.value === "swap" ? "swap" : prot.value});
+      pickFormOpen = null; drawTeams();
+    };
+  } else if(form){
     const t = form.dataset.form;
     const round = $('pkRound'), prot = $('pkProt');
     round.onchange = () => { prot.innerHTML = (round.value === "1" ? PROT1 : PROT2).map(([v,l]) => `<option value="${v}">${l}</option>`).join(""); };
@@ -400,7 +477,8 @@ function rulesHtml(){
   <h5>Draft picks</h5>
   <ul>
     <li>Picks can be traded up to seven drafts out (${RULES.firstDraft}–${LAST_DRAFT}).</li>
-    <li>Stepien rule: a team can't be left without a first-round pick in two back-to-back future drafts. The tool checks the picks in this trade; it can't see picks a team already owes.</li>
+    <li>Only picks a team actually holds can be added (own picks it hasn't traded, and picks it got from other teams), from RealGM's list of every team's future picks${RIGHTS_AT ? ` (as of ${esc(String(RIGHTS_AT).slice(0, 10))})` : ""}. Frozen picks can't be traded. A team can also give a pick swap on any pick it holds.</li>
+    <li>Stepien rule: a team can't be left without a first-round pick in two back-to-back future drafts, counting the picks it already owes.</li>
   </ul>
   <h5>Cash and rosters</h5>
   <ul>
@@ -422,8 +500,8 @@ function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add(
 async function init(){
   $('lines').innerHTML = [["Salary cap",RULES.cap,"var(--z-cap)"],["Tax line",RULES.tax,"var(--z-tax)"],["1st apron",RULES.apron1,"var(--z-a1)"],["2nd apron",RULES.apron2,"var(--z-a2)"]]
     .map(([l,v,c]) => `<div><i style="--c:${c}">${l}</i><b>${M(v)}</b></div>`).join("");
-  $('rulesBody').innerHTML = rulesHtml();
   await load();
+  $('rulesBody').innerHTML = rulesHtml();
   if(!P.size){ $('teams').innerHTML = `<div class="empty">Couldn't load contracts. They're added by the morning update (data/contracts.json).</div>`; $('meta').textContent = ""; return; }
   $('meta').textContent = `${RULES.season} salaries · ${P.size} players under contract` + (DATA_AT ? ` · updated ${new Date(DATA_AT).toLocaleDateString([], {month:"short", day:"numeric"})}` : "");
   S = restore() || Object.assign(blank(), {teams: defaultTeams()});
