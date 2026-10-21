@@ -50,7 +50,10 @@
   .pod .nm{font-weight:700;font-size:16px;margin:2px 0;}
   .pod .tm{color:var(--dim);font-size:12px;}
   .pod .val{font:700 34px/1 "Barlow Condensed";margin-top:8px;}
-  .controls{display:grid;grid-template-columns:1.4fr 2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+  .controls{display:grid;grid-template-columns:1.3fr 1.8fr 1fr .8fr .9fr 1.2fr;gap:10px;margin-bottom:12px;}
+  .controls.nometric{grid-template-columns:1.4fr 2fr 1fr 1fr 1fr;}
+  .metric-note{background:#fff4e6;border:1px solid #ffd8a8;color:#7a4100;border-radius:10px;padding:9px 14px;font-size:13px;margin:-2px 0 12px;}
+  @media (prefers-color-scheme: dark){ .metric-note{background:#3a2c10;border-color:#5c4314;color:#ffd8a8;} }
   .controls label{display:block;font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
   input,select{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
@@ -121,6 +124,8 @@
     <div><label for="team">Team</label><select id="team"><option value="">All teams</option></select></div>
     <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
     <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
+    <div id="metricBox"><label for="metric">Rank by</label><select id="metric">
+      <option value="pe">Play Eval</option><option value="cpe">Clutch PE</option><option value="crunch">Crunch-time PE only</option></select></div>
   </div>
 
   <div class="card">
@@ -199,7 +204,9 @@ const COLS = [
   {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
-const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || BASE))
+const METRIC_LABEL = {pe: STAT_NAME, cpe: "Clutch PE", crunch: "Crunch PE"};
+const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || (BASE && metric() === "pe")))
+  .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
   .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
   .map(c => c.k === "team" && (VIEW === "alltime" || VIEW === "careers") ? Object.assign({}, c, {sm:true}) : c);
 /* Play Eval from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
@@ -299,7 +306,50 @@ function enrich(p, season){
 
 function qualified(){
   const minG = +$('minG').value || 0, minM = +$('minM').value || 0;
-  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM);
+  const m = metric();
+  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM && p.value != null && (m !== "crunch" || (p.cmin || 0) >= CRUNCH_MIN_MINUTES));
+}
+
+/* ---------- Rank by: Play Eval, Clutch PE, or crunch-time PE only (this season) ----------
+   Crunch time = the last 5 minutes of the 4th quarter or overtime with the score within 5 (the NBA's "clutch").
+   Clutch PE   = Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5x.
+   Crunch PE   = Play Eval worked out from crunch-time minutes only. */
+const CRUNCH_MIN_MINUTES = 3;
+let METRIC = "pe", CLUTCH = null;
+const metric = () => VIEW === "current" ? METRIC : "pe";
+async function loadClutch(){
+  const d = await getJSON("data/teams/players.json");
+  CLUTCH = new Map();
+  if(!d || !d.cols) return;
+  const C = Object.fromEntries(d.cols.map((c, i) => [c, i]));
+  if(C.c_sec == null) return;
+  d.players.forEach(r => CLUTCH.set(fold(r[C.name]), {
+    sec: r[C.c_sec] || 0, pts: r[C.c_pts] || 0, ast: r[C.c_ast] || 0, reb: r[C.c_reb] || 0, stl: r[C.c_stl] || 0,
+    blk: r[C.c_blk] || 0, tov: r[C.c_tov] || 0, fgm: r[C.c_fgm] || 0, fga: r[C.c_fga] || 0, pm: r[C.c_pm] || 0}));
+}
+function attachClutch(players){
+  players.forEach(p => {
+    if(p.pe0 == null) p.pe0 = p.value;
+    const c = CLUTCH && CLUTCH.get(fold(p.name));
+    const base = c ? c.pts + 2*c.ast + 2*c.reb + 4*c.stl + c.blk - 4*c.tov : 0;
+    p.clutch = c || null;
+    p.cmin = c ? c.sec / 60 : 0;
+    p.cpe = p.pe0 != null && p.mp ? p.pe0 + .5 * base / p.mp : p.pe0;
+    p.crunchPE = p.cmin ? base / p.cmin : null;
+  });
+}
+function applyMetric(){
+  const m = metric();
+  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : m === "crunch" ? p.crunchPE : p.pe0; });
+  $('metricBox').hidden = VIEW !== "current";
+  document.querySelector('.controls').classList.toggle("nometric", VIEW !== "current");
+  let note = $('metricNote');
+  if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
+  const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
+  note.hidden = m === "pe";
+  note.innerHTML = m === "cpe"
+    ? `<b>Clutch PE</b> is Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5×. Crunch time is the last 5 minutes of the 4th quarter or overtime with the score within 5.${any ? "" : " No game has had crunch time yet this season, so it matches Play Eval for now."}`
+    : `<b>Crunch-time PE</b> is Play Eval worked out only from crunch-time minutes (the last 5 minutes of the 4th or overtime with the score within 5), so it shows who plays best when games are close. Players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
 }
 
 function drawHead(){
@@ -354,7 +404,7 @@ function draw(){
       <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
       <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
-      <td class="score"><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE) ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
+      <td class="score"${p.clutch && metric() !== "pe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. Play Eval ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
     return row + (openKey===p.key ? detailRow(p) : "");
   }).join("");
   const word = VIEW==="alltime" ? "seasons" : VIEW==="careers" ? "careers" : "players";
@@ -396,7 +446,7 @@ function detailRow(p){
   return `<tr class="detail"><td colspan="${cols().length}">
     <div class="parts">
       ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${m < 0 ? (p.season && p.season < "1977-78" ? "not tracked yet" : "subtracted") : (total ? Math.round(100*v*m/total) + "% of total" : "")}</div></div>`).join("")}
-      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.value)}</div></div>
+      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.pe0 != null ? p.pe0 : p.value)}${p.pe0 != null && metric() !== "pe" ? ` Play Eval · ${METRIC_LABEL[metric()]} ${f3(p.value)}` : ""}</div></div>
     </div>
     ${compareHtml(p)}
     <div class="chartbox"><canvas id="pChart"></canvas></div>
@@ -450,8 +500,8 @@ function careerChart(p){
 }
 
 function topChart(){
-  $('trendCard').hidden = VIEW !== "current";
-  if(VIEW !== "current") return;
+  $('trendCard').hidden = VIEW !== "current" || metric() !== "pe";
+  if(VIEW !== "current" || metric() !== "pe") return;
   const box = $('trendCard').querySelector('.chartbox');
   if(!$('topChart')) box.innerHTML = `<canvas id="topChart"></canvas>`;
   const c = $('topChart'); if(typeof Chart==="undefined") return;
@@ -510,6 +560,8 @@ async function showSeason(file){
   }
   DATA.players = DATA.players || [];
   DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
+  if(VIEW === "current") attachClutch(DATA.players);
+  applyMetric();
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
   setMeta();
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
@@ -535,6 +587,7 @@ async function load(){
   if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
   CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
   CUR.players = CUR.players || [];
+  await loadClutch();
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
   SEASONS = [{label:CUR.season || "This season", file:"stats.json", current:true}];
@@ -546,6 +599,7 @@ async function load(){
   }
   $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");
   $('season').onchange = () => { store.set("pickedSeason", $('season').value); showSeason($('season').value); };
+  $('metric').onchange = () => { METRIC = $('metric').value; applyMetric(); openKey = null; sortKey = "value"; sortDir = -1; draw(); topChart(); };
   $('q').oninput = draw;
   $('team').onchange = applyTeam;
   $('minG').oninput = () => { store.set(mkey("minG"), $('minG').value); draw(); topChart(); };
