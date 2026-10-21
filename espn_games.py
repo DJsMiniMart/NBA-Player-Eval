@@ -635,6 +635,8 @@ def backfill(now, current_year, started):
     status = load(STATUS_PATH, {"complete": [], "noPlays": None})
     t0 = time.time()
     out_of_time = lambda: time.time() - t0 > BACKFILL_BUDGET_SEC  # noqa: E731
+    if not status.get("retried"):   # seasons finished before retries existed: look at their failed games again
+        status["complete"], status["retried"] = [], True
     for year in range(current_year - 1, OLDEST_TRY, -1):
         if out_of_time():
             break
@@ -649,7 +651,12 @@ def backfill(now, current_year, started):
             acc = new_acc(label)
         games = [g for g in scoreboard(year, dt.date(year, 10, 31), wide=True)
                  if g["state"] == 3 and g["reg"] and (g["sy"] == year if g.get("sy") else g["date"][:10] <= f"{year}-08-31")]
-        done = set(acc["done"]) | set(acc.get("missing", []))
+        tries = acc.setdefault("tries", {})
+        for gid in acc.pop("missing", []):          # older files: a game that failed once counts as one try
+            tries[gid] = max(tries.get(gid, 0), 1)
+        acc["missing"] = []
+        gave_up = {gid for gid, n in tries.items() if n >= 3}   # ESPN doesn't have it: stop asking after 3 tries
+        done = set(acc["done"]) | gave_up
         todo = [g for g in games if g["id"] not in done]
         print(f"ESPN backfill {label}: {len(games)} games, {len(todo)} to go")
         added = no_plays = 0
@@ -658,16 +665,19 @@ def backfill(now, current_year, started):
                 break
             summary = get_json(f"{SITE}/summary?event={g['id']}")
             if not summary:
-                acc.setdefault("missing", []).append(g["id"])
+                tries[g["id"]] = tries.get(g["id"], 0) + 1
                 continue
             plays = plays_for(g["id"])
             no_plays += not plays
             try:
                 if add_game(acc, g, summary, plays):
                     added += 1
+                    tries.pop(g["id"], None)
+                else:
+                    tries[g["id"]] = tries.get(g["id"], 0) + 1
             except Exception as e:  # noqa: BLE001
                 print(f"ESPN: skipped game {g['id']} ({e})")
-                acc.setdefault("missing", []).append(g["id"])
+                tries[g["id"]] = tries.get(g["id"], 0) + 1
             if added % 50 == 0:
                 save(path, acc)
             if added + no_plays >= 30 and no_plays > 0.8 * (added + no_plays):
@@ -675,7 +685,8 @@ def backfill(now, current_year, started):
                 status["noPlays"] = year
                 break
         acc["stints"] = {}   # lineups are only used for this season's team pages; leaving them out keeps the file small
-        finished = not out_of_time() and len(set(acc["done"]) | set(acc.get("missing", []))) >= len(games) > 0
+        left = [g for g in games if g["id"] not in set(acc["done"]) and tries.get(g["id"], 0) < 3]
+        finished = not out_of_time() and not left and len(games) > 0
         if finished:
             acc["complete"] = True
             status["complete"] = sorted(set(status["complete"]) | {year})
