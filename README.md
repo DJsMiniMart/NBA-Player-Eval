@@ -1,6 +1,7 @@
 # Play Eval
 
-A ranked list of every NBA player by Play Eval, updated automatically every morning:
+A ranked list of every NBA player by Play Eval, updated automatically every morning (the workflow is set to run
+at four times a day, because GitHub sometimes skips a scheduled run; extra runs only add what's new):
 
     ((Points + Assists x2 + Rebounds x2 + Steals x4 + Blocks) - Turnovers x4) / Minutes
 
@@ -47,7 +48,7 @@ Bobcats -> Hornets, and so on), and every row is shown under today's team (hover
   close games or blowouts), a lineup tool (pick 2-5 players to see the team's offense and defense per 100
   possessions with all of them on the floor vs. the rest of the time, plus the best 2/3/4/5-man groups), roster
   stats, schedule, injury report, cap sheet, draft picks, head coach, executive and owner.
-  Built each morning by `build_teams.py` from the NBA game feed (`nba_games.py` now also saves each game's team box
+  Built each morning by `build_teams.py` from this season's games (`espn_games.py` saves each game's team box
   score and every five-man lineup's minutes, points and possessions) and `teams_extra.py` (coach/executive from
   Basketball-Reference, future draft picks from RealGM, injuries from ESPN). Owners are typed into
   `data/owners.json` -- edit it when a team is sold. League salary numbers live in `cap.js`.
@@ -63,10 +64,10 @@ Each morning the update also runs:
 
 - `bbr_extra.py` -- bios (weekly), draft picks (once per draft), contracts (daily) and past salaries (each
   team-season page once, about 40 minutes' worth per run) from Basketball-Reference
-- `nba_games.py` -- every game's box score and play-by-play from the NBA's public feed (cdn.nba.com):
-  game logs, shot zones and locations, assist partners, steal types, block locations. It finishes this
-  season's games, then backfills older seasons, newest first, until the feed runs out. Each run stops
-  starting new games after 150 minutes; the rest is picked up the next morning.
+- `espn_games.py` -- this season's schedule and every finished game's box score and play-by-play from ESPN's
+  public feeds: game logs, shot zones and locations, assist partners, steal types, block locations, team box
+  scores and five-man lineups. (`nba_games.py` reads the NBA's own feed, cdn.nba.com, but that feed turns
+  away GitHub's servers, so the daily update doesn't use it.)
 - `build_players.py` -- writes `data/players/<id>.json`, one per player since 1973-74
 
 Player pages also show: Play Eval rank, percentile and position rank; what drives their Play Eval (each

@@ -34,7 +34,9 @@ def build(now=None, current_year=None):
     tgames = acc.get("tgames", {})
     stints = acc.get("stints", {})
     extra = load_json(os.path.join(DATA_DIR, "team_extra.json"), {})
-    owners = (load_json(os.path.join(DATA_DIR, "owners.json"), {}) or {}).get("owners", {})
+    owners = (load_json(os.path.join(DATA_DIR, "owners.json"), {})          # data/owners.json, or
+              or load_json(os.path.join(DATA_DIR, "..", "owners.json"), {})   # the main folder
+              or {}).get("owners", {})
 
     games = sorted(([gid] + row for gid, row in tgames.items()), key=lambda r: (r[1], r[0]))
     save(os.path.join(TEAMS_DIR, "league.json"), {

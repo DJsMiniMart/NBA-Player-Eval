@@ -306,7 +306,8 @@ function drawSchedule(){
   const when = iso => new Date(iso);
   const fmtD = iso => when(iso).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric"});
   const fmtT = iso => when(iso).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
-  const kind = gid => ({"004":"Playoffs","005":"Play-in","006":"NBA Cup"})[gid.slice(0,3)] || "";
+  const kinds = {}; games.forEach(g => kinds[g[0]] = g[9] || ({"004":"Playoffs","005":"Play-in","006":"NBA Cup"})[String(g[0]).slice(0,3)] || "");
+  const kind = gid => kinds[gid] || "";
   const upcoming = games.filter(g => g[4] !== 3);
   const card = g => { const home = g[2] === CODE, opp = home ? g[3] : g[2];
     return `<div class="card gcard"><div class="d">${fmtD(g[1])}${kind(g[0]) ? " · " + kind(g[0]) : ""}</div>
