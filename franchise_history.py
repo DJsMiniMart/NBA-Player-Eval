@@ -159,6 +159,16 @@ def finals_mvps(html):
     return out
 
 
+def roy_list(html):
+    """Every NBA Rookie of the Year with his team (covers the seasons before award pages start, 1953-55)."""
+    out = []
+    for tr in body_rows(soup_all(html), "roy_NBA"):
+        season, pid, team = cell(tr, "season"), link_id(tr.find(attrs={"data-stat": "player"})), team_of(tr)
+        if re.match(r"^\d{4}-\d{2}$", season) and pid and team:
+            out.append([to_int(season[:4]) + 1, "roy", "Rookie of the Year", pid, clean_name(cell(tr, "player")), team, ""])
+    return out
+
+
 def clean_name(s):
     return re.sub(r"\s*\((Tie)\)\s*$", "", re.sub(r"\s+[CFG](-[CFG])?$", "", s.replace("*", ""))).strip()
 
@@ -312,6 +322,11 @@ def update(now, current_year):
                 if got:
                     cache[key] = got
                     stamp(key)
+        if not fresh("roy_list", 7):
+            got = roy_list(get(f"{BBR}/awards/roy.html"))
+            if got:
+                cache["roy_list"] = got
+                stamp("roy_list")
         for _, _, _, page in TEAMS3:
             if not fresh(page, 7):
                 got = team_lists(get(f"{BBR}/awards/{page}.html"), page)
@@ -375,7 +390,10 @@ def build(now, cache):
         if code:
             teams[code]["titles"].append([year, name, lg])
     awards = []
-    for year, s in cache.get("seasons", {}).items():
+    seasons = cache.get("seasons", {})
+    years = set(seasons) | {y for _, _, _, page in TEAMS3 for y in cache.get(page, {})}
+    for year in sorted(years):
+        s = seasons.get(year, {"awards": [], "have": []})   # before 1956 there's no season award page
         awards += s["awards"]
         y = int(year)
         for tid, _, label, page in TEAMS3:
@@ -384,6 +402,7 @@ def build(now, cache):
             for tier, pid, name in cache.get(page, {}).get(year, []):
                 awards.append([y, tid.replace("leading_", ""), label, pid, name, team_for(pid, y, cache), tier])
     awards += cache.get("fmvp", [])
+    awards += [a for a in cache.get("roy_list", []) if str(a[0]) not in seasons]   # 1953-55 Rookies of the Year
     seen = set()
     for a in awards:
         code = HIST.get(a[5] or "")
