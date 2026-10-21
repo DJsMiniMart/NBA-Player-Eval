@@ -507,7 +507,8 @@ function drawRecords(){
   $('recBody').innerHTML = `<div class="recs">${cards.join("")}</div>`;
   $('recBody').querySelectorAll('[data-more]').forEach(b => b.onclick = () => { recOpen[b.dataset.more] = !recOpen[b.dataset.more]; drawRecords(); });
 }
-const AW_ORDER = ["mvp","fmvp","dpoy","roy","smoy","mip","clutch_poy","coy","all_nba","all_defense","all_rookie"];
+const AW_ORDER = ["mvp","fmvp","dpoy","roy","smoy","mip","clutch_poy","coy","all_nba","all_defense","all_rookie","all_star","all_star_mvp",
+  "ecf_mvp","wcf_mvp","ist_mvp","cpoy","player_of_the_seeding_games","hustle","sportsmanship","tmoy","citizenship","social_justice"];
 let awPick = "all";
 function drawAwards(){
   const H = TEAM && TEAM.history, list = (H && H.awards) || [];

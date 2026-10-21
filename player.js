@@ -651,7 +651,9 @@ async function loadAwards(){
 }
 const AWARD_ROWS = [["title","Champion"],["mvp","MVP"],["fmvp","Finals MVP"],["dpoy","Defensive Player of the Year"],["roy","Rookie of the Year"],
   ["smoy","Sixth Man of the Year"],["mip","Most Improved"],["clutch_poy","Clutch Player"],["all_nba|1st","All-NBA 1st"],["all_nba|2nd","All-NBA 2nd"],
-  ["all_nba|3rd","All-NBA 3rd"],["all_defense|1st","All-Defensive 1st"],["all_defense|2nd","All-Defensive 2nd"],["all_rookie|1st","All-Rookie 1st"],["all_rookie|2nd","All-Rookie 2nd"]];
+  ["all_nba|3rd","All-NBA 3rd"],["all_defense|1st","All-Defensive 1st"],["all_defense|2nd","All-Defensive 2nd"],["all_rookie|1st","All-Rookie 1st"],["all_rookie|2nd","All-Rookie 2nd"],["all_star","All-Star"],["all_star_mvp","All-Star MVP"],
+  ["ecf_mvp","East Finals MVP"],["wcf_mvp","West Finals MVP"],["ist_mvp","NBA Cup MVP"],["cpoy","Comeback Player"],["player_of_the_seeding_games","Player of the Seeding Games"],
+  ["hustle","Hustle Award"],["sportsmanship","Sportsmanship Award"],["tmoy","Teammate of the Year"],["citizenship","Citizenship Award"],["social_justice","Social Justice Champion"]];
 const ICON_TROPHY = `<svg viewBox="0 0 16 18" aria-hidden="true"><path fill="#f5c542" d="M4 1h8v5.2c0 2.3-1.6 4.2-3.3 4.6V13h2.3l.8 2H4.2l.8-2h2.3v-2.2C5.6 10.4 4 8.5 4 6.2z"/><path fill="none" stroke="#f5c542" stroke-width="1.2" d="M4 2.5H1.8v1.6c0 1.6 1 2.8 2.4 3M12 2.5h2.2v1.6c0 1.6-1 2.8-2.4 3"/><rect x="3.2" y="15.6" width="9.6" height="1.6" rx=".4" fill="#d9a72e"/></svg>`;
 const ICON_STAR = `<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="#f5c542" d="M8 1l2.1 4.4 4.9.7-3.5 3.4.8 4.8L8 12l-4.3 2.3.8-4.8L1 6.1l4.9-.7z"/></svg>`;
 const ICON_TEAM = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="#f5c542" stroke-width="1.6"/><path fill="#f5c542" d="M8 4.2l1.1 2.3 2.5.4-1.8 1.8.4 2.5L8 10l-2.2 1.2.4-2.5-1.8-1.8 2.5-.4z"/></svg>`;
@@ -664,7 +666,7 @@ function awardsHtml(id){
   const season = y => `${y - 1}-${String(y).slice(2)}`;
   const chips = AWARD_ROWS.filter(([k]) => years[k]).map(([k, label]) => {
     const ys = years[k].sort((x, y) => x - y), n = ys.length;
-    const icon = k === "title" ? ICON_TROPHY : k.includes("|") ? ICON_TEAM : ICON_STAR;
+    const icon = k === "title" ? ICON_TROPHY : k.includes("|") || k === "all_star" ? ICON_TEAM : ICON_STAR;
     const shown = n <= 5 ? ys.join(", ") : `${ys[0]}–${ys[n - 1]}`;   // long runs: first and last year (all of them on hover)
     return `<span class="pp-award${k === "title" || k === "mvp" || k === "fmvp" ? " big" : ""}" title="${esc(label)}: ${ys.map(season).join(", ")}">${icon}<b>${n > 1 ? n + "× " : ""}${esc(label)}</b><small>${shown}</small></span>`;
   });

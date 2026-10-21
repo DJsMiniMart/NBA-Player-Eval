@@ -66,7 +66,15 @@ SINGLE = [("mvp", "MVP"), ("dpoy", "Defensive Player of the Year"), ("roy", "Roo
 TEAMS3 = [("leading_all_nba", "all_nba_team", "All-NBA", "all_league"),
           ("leading_all_defense", "all_defense_team", "All-Defensive", "all_defense"),
           ("leading_all_rookie", "all_rookie_team", "All-Rookie", "all_rookie")]
-ORDER = ["mvp", "fmvp", "dpoy", "roy", "smoy", "mip", "clutch_poy", "coy", "all_nba", "all_defense", "all_rookie"]
+# more league awards, each from its own page (/awards/<key>.html, table "<key>_NBA": season, player, team)
+EXTRA = [("all_star_mvp", "All-Star MVP"), ("wcf_mvp", "West Finals MVP"), ("ecf_mvp", "East Finals MVP"),
+         ("ist_mvp", "NBA Cup MVP"), ("cpoy", "Comeback Player of the Year"), ("hustle", "Hustle Award"),
+         ("sportsmanship", "Sportsmanship Award"), ("tmoy", "Teammate of the Year"), ("citizenship", "Citizenship Award"),
+         ("social_justice", "Social Justice Champion"), ("player_of_the_seeding_games", "Player of the Seeding Games")]
+FIRST_ALL_STAR = 1951
+ORDER = ["mvp", "fmvp", "dpoy", "roy", "smoy", "mip", "clutch_poy", "coy", "all_nba", "all_defense", "all_rookie",
+         "all_star", "all_star_mvp", "ecf_mvp", "wcf_mvp", "ist_mvp", "cpoy", "hustle", "sportsmanship", "tmoy",
+         "citizenship", "social_justice", "player_of_the_seeding_games"]
 LEADER_STATS = [("pts", "Points"), ("trb", "Rebounds"), ("ast", "Assists"), ("stl", "Steals"), ("blk", "Blocks"),
                 ("g", "Games"), ("fg3", "3-pointers")]
 
@@ -166,6 +174,29 @@ def roy_list(html):
         season, pid, team = cell(tr, "season"), link_id(tr.find(attrs={"data-stat": "player"})), team_of(tr)
         if re.match(r"^\d{4}-\d{2}$", season) and pid and team:
             out.append([to_int(season[:4]) + 1, "roy", "Rookie of the Year", pid, clean_name(cell(tr, "player")), team, ""])
+    return out
+
+
+def award_list(html, key, label):
+    """One award's page (/awards/<key>.html): every NBA winner with his team."""
+    out = []
+    for tr in body_rows(soup_all(html), f"{key}_NBA"):
+        season, pid, team = cell(tr, "season"), link_id(tr.find(attrs={"data-stat": "player"})), team_of(tr)
+        if re.match(r"^\d{4}-\d{2}$", season) and pid:
+            out.append([to_int(season[:4]) + 1, key, label, pid, clean_name(cell(tr, "player")), team or "", ""])
+    return out
+
+
+def all_stars(html):
+    """Every player on an All-Star Game's rosters (/allstar/NBA_<year>.html)."""
+    out = []
+    for t in soup_all(html).find_all("table"):
+        if t.get("id") in ("line_score", "four_factors"):
+            continue
+        for a in t.find_all("a", href=re.compile(r"/players/\w/[\w.]+\.html")):
+            pid = re.search(r"/players/\w/([\w.]+)\.html", a["href"]).group(1)
+            if pid not in [p for p, _ in out]:
+                out.append([pid, a.get_text(strip=True)])
     return out
 
 
@@ -327,6 +358,12 @@ def update(now, current_year):
             if got:
                 cache["roy_list"] = got
                 stamp("roy_list")
+        for key, label in EXTRA:
+            if not fresh(key, 7):
+                got = award_list(get(f"{BBR}/awards/{key}.html"), key, label)
+                if got:
+                    cache.setdefault("extra", {})[key] = got
+                    stamp(key)
         for _, _, _, page in TEAMS3:
             if not fresh(page, 7):
                 got = team_lists(get(f"{BBR}/awards/{page}.html"), page)
@@ -348,6 +385,16 @@ def update(now, current_year):
             keys = {a[1] for a in awards}
             complete = year < last_done or (now.month >= 7 and {"mvp", "roy", "dpoy"} <= keys and len(have) == 3)
             cache["seasons"][str(year)] = {"awards": awards, "have": sorted(have), "complete": complete, "v": PAGE_VERSION}
+            save(CACHE_PATH, cache)
+        # All-Star rosters, once per game (this season's after the game in February)
+        cache.setdefault("allstar", {})
+        for year in range(current_year if now.month >= 3 and now.month < 8 else last_done, FIRST_ALL_STAR - 1, -1):
+            if out_of_time():
+                break
+            if str(year) in cache["allstar"]:
+                continue
+            html = get(f"{BBR}/allstar/NBA_{year}.html")
+            cache["allstar"][str(year)] = all_stars(html) if html else []   # no game in 1999 (lockout)
             save(CACHE_PATH, cache)
         # rosters for old seasons whose award teams have no team listed (before our season files start)
         for year in range(FIRST_YEAR, 1974):
@@ -427,6 +474,11 @@ def build(now, cache):
             for tier, pid, name in cache.get(page, {}).get(year, []):
                 awards.append([y, tid.replace("leading_", ""), label, pid, name, team_for(pid, y, cache), tier])
     awards += cache.get("fmvp", [])
+    for got in cache.get("extra", {}).values():
+        awards += got
+    for year, players in cache.get("allstar", {}).items():
+        y = int(year)
+        awards += [[y, "all_star", "All-Star", pid, name, team_for(pid, y, cache), ""] for pid, name in players]
     awards += [a for a in cache.get("roy_list", []) if str(a[0]) not in seasons]   # 1953-55 Rookies of the Year
     seen = set()
     for a in awards:
