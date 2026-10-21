@@ -33,6 +33,7 @@ BBR = "https://www.basketball-reference.com"
 PAUSE = 5
 TIME_BUDGET_SEC = 30 * 60
 TEAM_REFRESH_DAYS = 7
+PAGE_VERSION = 2             # bump when the award-page reader changes, so affected seasons are read again
 FIRST_YEAR = 1947            # 1946-47, the BAA's first season (the NBA counts it as its own)
 
 # today's 30 teams: NBA code -> Basketball-Reference franchise code
@@ -41,20 +42,21 @@ FRANCHISE_PAGE = {"ATL": "ATL", "BOS": "BOS", "BKN": "NJN", "CHA": "CHA", "CHI":
                   "MEM": "MEM", "MIA": "MIA", "MIL": "MIL", "MIN": "MIN", "NOP": "NOH", "NYK": "NYK", "OKC": "OKC",
                   "ORL": "ORL", "PHI": "PHI", "PHX": "PHO", "POR": "POR", "SAC": "SAC", "SAS": "SAS", "TOR": "TOR",
                   "UTA": "UTA", "WAS": "WAS"}
-# every Basketball-Reference season code -> today's NBA franchise (defunct teams are left out)
+# every Basketball-Reference NBA/BAA season code -> today's NBA franchise (defunct teams are left out, and so are
+# ABA codes, so ABA awards aren't counted as NBA ones)
 HIST = {
     "ATL": "ATL", "STL": "ATL", "MLH": "ATL", "TRI": "ATL",
-    "BOS": "BOS", "BRK": "BKN", "NJN": "BKN", "NYN": "BKN", "NJA": "BKN", "NYA": "BKN",
+    "BOS": "BOS", "BRK": "BKN", "NJN": "BKN", "NYN": "BKN",
     "CHO": "CHA", "CHA": "CHA", "CHH": "CHA",
-    "CHI": "CHI", "CLE": "CLE", "DAL": "DAL", "DEN": "DEN", "DNR": "DEN", "DNA": "DEN",
+    "CHI": "CHI", "CLE": "CLE", "DAL": "DAL", "DEN": "DEN",
     "DET": "DET", "FTW": "DET", "GSW": "GSW", "SFW": "GSW", "PHW": "GSW",
-    "HOU": "HOU", "SDR": "HOU", "IND": "IND", "INA": "IND",
+    "HOU": "HOU", "SDR": "HOU", "IND": "IND",
     "LAC": "LAC", "SDC": "LAC", "BUF": "LAC", "LAL": "LAL", "MNL": "LAL",
     "MEM": "MEM", "VAN": "MEM", "MIA": "MIA", "MIL": "MIL", "MIN": "MIN",
     "NOP": "NOP", "NOH": "NOP", "NOK": "NOP", "NYK": "NYK", "OKC": "OKC", "SEA": "OKC",
     "ORL": "ORL", "PHI": "PHI", "SYR": "PHI", "PHO": "PHX", "POR": "POR",
     "SAC": "SAC", "KCK": "SAC", "KCO": "SAC", "CIN": "SAC", "ROC": "SAC",
-    "SAS": "SAS", "SAA": "SAS", "DLC": "SAS", "TEX": "SAS", "TOR": "TOR", "UTA": "UTA", "NOJ": "UTA",
+    "SAS": "SAS", "TOR": "TOR", "UTA": "UTA", "NOJ": "UTA",
     "WAS": "WAS", "WSB": "WAS", "CAP": "WAS", "BAL": "WAS", "CHZ": "WAS", "CHP": "WAS",
 }
 # award table on a season page -> (key, label)
@@ -87,6 +89,14 @@ def soup_all(html):
         if "<table" in c or "<div" in c:
             c.replace_with(BeautifulSoup(c, "html.parser"))
     return soup
+
+
+def body_rows(soup, table_id):
+    """A table's rows. Some pages leave out <tbody>, so fall back to every row in the table."""
+    t = soup.find("table", id=table_id)
+    if not t:
+        return []
+    return (t.find("tbody") or t).find_all("tr")
 
 
 def cell(tr, stat):
@@ -128,7 +138,7 @@ def champions(html):
     """[[end year, league, BBR code, team name], ...]"""
     out = []
     soup = soup_all(html)
-    for tr in soup.select("table#stats tbody tr"):
+    for tr in body_rows(soup, "stats"):
         td = tr.find(attrs={"data-stat": "champion"})
         lg = cell(tr, "lg_id")
         if not td or lg not in ("NBA", "BAA"):
@@ -142,7 +152,7 @@ def champions(html):
 
 def finals_mvps(html):
     out = []
-    for tr in soup_all(html).select("table#finals_mvp_NBA tbody tr"):
+    for tr in body_rows(soup_all(html), "finals_mvp_NBA"):
         season, pid, team = cell(tr, "season"), link_id(tr.find(attrs={"data-stat": "player"})), team_of(tr)
         if re.match(r"^\d{4}-\d{2}$", season) and pid and team:
             out.append([to_int(season[:4]) + 1, "fmvp", "Finals MVP", pid, clean_name(cell(tr, "player")), team, ""])
@@ -158,10 +168,10 @@ def season_awards(html, year):
     soup = soup_all(html)
     out, have = [], set()
     for key, label in SINGLE:
-        t = soup.find("table", id=key)
+        t = soup.find("table", id=key) or soup.find("table", id=f"nba_{key}")   # "nba_mvp" while the ABA existed
         if not t:
             continue
-        for tr in t.select("tbody tr"):
+        for tr in (t.find("tbody") or t).find_all("tr"):
             if not re.match(r"^1T?$", cell(tr, "rank")):
                 continue
             who = "coaches" if key == "coy" else "players"
@@ -174,7 +184,7 @@ def season_awards(html, year):
         if not t:
             continue
         found = False
-        for tr in t.select("tbody tr"):
+        for tr in (t.find("tbody") or t).find_all("tr"):
             tier = cell(tr, col)
             m = re.match(r"^(\d)", tier)
             td = tr.find(attrs={"data-stat": "player"})
@@ -192,7 +202,7 @@ def season_awards(html, year):
 def team_lists(html, page):
     """/awards/all_league.html etc.: {end year: [[tier, player id, name], ...]} (NBA/BAA only, no team)."""
     out = {}
-    for tr in soup_all(html).select(f"table#awards_{page} tbody tr"):
+    for tr in body_rows(soup_all(html), f"awards_{page}"):
         season, lg, tier = cell(tr, "season"), cell(tr, "lg_id"), cell(tr, "all_team")
         if lg not in ("NBA", "BAA") or not re.match(r"^\d{4}-\d{2}$", season):
             continue
@@ -210,7 +220,7 @@ def rosters(html):
     for t in soup_all(html).find_all("table"):
         if not t.find("a", href=re.compile(r"/players/")):
             continue
-        for tr in t.select("tbody tr"):
+        for tr in (t.find("tbody") or t).find_all("tr"):
             pid = link_id(tr)
             a = tr.find("a", href=re.compile(r"/teams/\w+/\d{4}\.html"))
             if pid and a:   # combined "TOT" rows have no team link; later rows are his teams in order
@@ -239,7 +249,7 @@ def leaders(html):
 
 def coaches(html):
     out = []
-    for tr in soup_all(html).select("table#coaches tbody tr"):
+    for tr in body_rows(soup_all(html), "coaches"):
         name = cell(tr, "coach")
         if not name or name == "Coach":
             continue
@@ -253,7 +263,7 @@ def coaches(html):
 
 def draft(html):
     out = []
-    for tr in soup_all(html).select("table#draft tbody tr"):
+    for tr in body_rows(soup_all(html), "draft"):
         year, lg = to_int(cell(tr, "year_id")), cell(tr, "lg_id")
         if not year or lg not in ("NBA", "BAA", ""):
             continue
@@ -313,7 +323,8 @@ def update(now, current_year):
             if out_of_time():
                 break
             done = cache["seasons"].get(str(year))
-            if done and (year < last_done or done.get("complete")):
+            stale = done and done.get("v", 1) < PAGE_VERSION and 1968 <= year <= 1976   # re-read: ABA-era table names
+            if done and not stale and (year < last_done or done.get("complete")):
                 continue
             html = get(f"{BBR}/awards/awards_{year}.html")
             if not html:
@@ -321,7 +332,7 @@ def update(now, current_year):
             awards, have = season_awards(html, year)
             keys = {a[1] for a in awards}
             complete = year < last_done or (now.month >= 7 and {"mvp", "roy", "dpoy"} <= keys and len(have) == 3)
-            cache["seasons"][str(year)] = {"awards": awards, "have": sorted(have), "complete": complete}
+            cache["seasons"][str(year)] = {"awards": awards, "have": sorted(have), "complete": complete, "v": PAGE_VERSION}
             save(CACHE_PATH, cache)
         # rosters for old seasons whose award teams have no team listed (before our season files start)
         for year in range(FIRST_YEAR, 1974):
