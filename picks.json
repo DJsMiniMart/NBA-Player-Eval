@@ -1,0 +1,1327 @@
+{
+ "_note": "Snapshot of RealGM's future draft picks by team (basketball.realgm.com/nba/draft/future_drafts/team). The morning update refreshes data/team_extra.json from RealGM when it can; the team pages use this file when it can't.",
+ "asOf": "2026-10-21",
+ "source": "https://basketball.realgm.com/nba/draft/future_drafts/team",
+ "teams": {
+  "ATL": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "To SAN; Less favorable of MIL and NOP if either or both 5-30 (via NOP)",
+     "31-55 Own; 56-60 to DAL"
+    ],
+    [
+     "2028",
+     "More favorable of (i) ATL and (ii) less favorable of UTH and CLE then least favorable of all to CLE (via UTH swap for CLE; via ATL swap for CLE or UTH)",
+     "To BRK (via GOS)"
+    ],
+    [
+     "2029",
+     "Own",
+     "More favorable of ATL and MIA to CHA then other to OKC (via OKC); CLE"
+    ],
+    [
+     "2030",
+     "Own",
+     "To OKC; NYK (via POR)"
+    ],
+    [
+     "2031",
+     "Own",
+     "More favorable of ATL and HOU 31-55 [or ATL if HOU 56-60] to OKC then other to HOU (via ATL swap for HOU)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To OKC (via LAL to ATL; via LAL to ATL)"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own; SAC"
+    ]
+   ]
+  },
+  "BOS": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "More favorable of BOS and ORL to UTH then other to PHX (via BOS to ORL to BOS to UTH; via ORL to CHA to PHX)"
+    ],
+    [
+     "2028",
+     "1 Own; 2-30 Own or SAN (via SAN swap for BOS) [BOS then has a complex swap right with PHL]; LAC 17-30 or [by swap from BOS] more favorable of (i) less favorable of BOS and SAN and (ii) more favorable of PHL 1-8 and LAC 1-16 [or (ii) LAC 1-16 if PHL 9-30] then least favorable of all to PHL (via SAN swap for BOS; via BOS swap of BOS or SAN for PHL or LAC)",
+     "31-45 to SAN if BOS 1 in 2028; 46-60 to NYK (via ORL to PHX); Most favorable of GOS, MIL and OKC (via GOS to POR to WAS to PHL; via MIL to BRK to HOU to OKC to PHL; via OKC to PHL)"
+    ],
+    [
+     "2029",
+     "Most and least favorable of BOS, POR and MIL to POR; second most favorable to WAS (via BOS to POR; via MIL to POR; via POR to WAS)",
+     "To OKC"
+    ],
+    [
+     "2030",
+     "Own",
+     "To BRK (via HOU); CHA 56-60; Most favorable of PHX, POR and WAS (via PHX and POR to WAS to PHL)"
+    ],
+    [
+     "2031",
+     "Own; PHL",
+     "Less favorable of BOS and CLE then other to UTH (via CLE to ATL to BOS); HOU 56-60"
+    ],
+    [
+     "2032",
+     "Frozen (through 2027-28)",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "BKN": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own or HOU (via HOU swap for BRK); NYK",
+     "More favorable of BRK and DAL to WAS then other to MIL (via DAL to BRK to DET to MIL; via DET to WAS); LAL if LAL conveys 1st round pick to UTH in 2027"
+    ],
+    [
+     "2028",
+     "If (i) PHL 9-30 is third most favorable and (ii) NYK is most or second most favorable of BRK, PHL 9-30, PHX and NYK, then most and third most favorable to BRK; or most / two most favorable to BRK in all other scenarios; least favorable of BRK, PHX and NYK to NYK if NYK and / or if PHL 9-30 is less favorable than BRK and PHX; or second most favorable of BRK, PHX and NYK to NYK in all other scenarios; more favorable of (i) WAS and (ii) least / less favorable of BRK, PHL 9-30 and PHX to WAS then least favorable of all to PHX [WAS can then swap with MIL] (via BRK swap of BRK or PHL for PHX; via BRK swap of BRK or PHX for NYK; via WAS swap for PHX, BRK or PHL)",
+     "Own; ATL (via GOS); MEM (via PHX); PHL if PHL 1-8 in 2028"
+    ],
+    [
+     "2029",
+     "Own; Least favorable of DAL, PHX and HOU (via DAL and PHX to BRK; via DAL or PHX to HOU; via HOU swap for DAL or PHX); NYK",
+     "Own; DAL; GOS; MEM (via PHX)"
+    ],
+    [
+     "2030",
+     "Own",
+     "Own; BOS (via HOU); DAL (via BOS to MEM); LAL"
+    ],
+    [
+     "2031",
+     "Own; NYK",
+     "Own; LAL"
+    ],
+    [
+     "2032",
+     "Own; DEN",
+     "Own; DEN; MIA; TOR"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "CHA": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own; DAL 3-30; MIA 15-30",
+     "To OKC if SAN 1-16 in 2027 or to SAC if SAN 17-30 in 2027 (via NYK to ATL to SAN to SAC); MEM (via LAC to HOU); More favorable of POR and NOP (via POR)"
+    ],
+    [
+     "2028",
+     "Own or swap for MIN; MIA if not already settled",
+     "More favorable of CHA and LAC then other to DET [DET may convey to UTH] (via CHA to DAL); HOU; MIA if DAL does not convey 1st round pick to CHA in 2027 (via SAN to DAL); ORL"
+    ],
+    [
+     "2029",
+     "Own; Least / less favorable of UTH, CLE and MIN 6-30 (via UTH to PHX)* *CHA will also have a complex swap right with MIN and PHX will receive a least favorable pick",
+     "Own; More favorable of ATL and MIA (via OKC); DEN if DEN has conveyed a first potential 1st round pick to OKC by 2029; MIN if MIN conveys 1st round pick to UTH in 2029"
+    ],
+    [
+     "2030",
+     "Own* *CHA will have a complex swap right with MIN, receiving MIN, SAN or DAL",
+     "31-55 Own; 56-60 to BOS; More favorable of UTH and LAC (via UTH)"
+    ],
+    [
+     "2031",
+     "Own",
+     "Own; MIL; PHX"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own; MIL; MIN"
+    ],
+    [
+     "2033",
+     "Own; MIN; PHX",
+     "Own; HOU; MIN"
+    ]
+   ]
+  },
+  "CHI": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "To OKC (via WAS to NOP to WAS to DAL); CLE (via ATL to MIN)"
+    ],
+    [
+     "2028",
+     "Own",
+     "Most favorable of CHI, IND and PHX; less favorable of (i) CHI and (ii) more favorable of IND and PHX to IND (via PHX to IND; via CHI swap for IND or PHX)"
+    ],
+    [
+     "2029",
+     "Own",
+     "Own; Least favorable of DET, MIL and NYK (via MIL to BRK to DET; via NYK to DET; via SAC to CHI)"
+    ],
+    [
+     "2030",
+     "Own",
+     "Own or swap for IND"
+    ],
+    [
+     "2031",
+     "Own",
+     "Own; DEN (via PHX to CHA); More favorable of MIN and GOS (via MIN swap for GOS); NYK (via CHA)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own; More favorable of PHX and HOU (via PHX to MIN)"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "CLE": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Most favorable of CLE, MIN and UTH (cannot be 1-5) to MEM; second most favorable to UTH and least favorable to PHX (via UTH)",
+     "To CHI (via ATL to MIN)"
+    ],
+    [
+     "2028",
+     "Least favorable of CLE, UTH and ATL; less favorable of (i) more favorable of CLE and UTH and (ii) LAL to LAL then most favorable of all to UTH; more favorable of (i) ATL and (ii) less favorable of CLE and UTH to ATL (via UTH swap for CLE; via UTH swap of UTH or CLE for LAL; via ATL swap for CLE or UTH)",
+     "To UTH"
+    ],
+    [
+     "2029",
+     "Most / two most favorable of CLE, UTH and MIN 6-30 to UTH; least / less favorable to CHA (via CLE and MIN to UTH; via UTH to PHX to CHA; via CHA swap of CHA, CLE or UTH for MIN)* *CHA will also have a complex swap right with MIN and PHX will receive a least favorable pick",
+     "To ATL"
+    ],
+    [
+     "2030",
+     "Own",
+     "To SAN"
+    ],
+    [
+     "2031",
+     "To DEN",
+     "More favorable of CLE and BOS to UTH then other to BOS (via CLE to ATL to BOS)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To UTH"
+    ],
+    [
+     "2033",
+     "Frozen (through 2028-29)",
+     "Own"
+    ]
+   ]
+  },
+  "DAL": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "1-2 Own; 3-30 to CHA",
+     "More favorable of DAL and BRK to WAS then other to MIL (via DET to WAS; via DAL to BRK to DET to MIL); ATL 56-60"
+    ],
+    [
+     "2028",
+     "Own or OKC (via OKC swap for DAL)",
+     "To LAC (via SAC to IND)"
+    ],
+    [
+     "2029",
+     "Two most favorable of DAL, HOU and PHX to HOU then other to BRK (via DAL and PHX to BRK; via DAL or PHX to HOU; via HOU swap for DAL or PHX); LAL",
+     "To BRK"
+    ],
+    [
+     "2030",
+     "Own or SAN (via SAN swap for DAL); less favorable of (i) MIN 2-30 and (ii) more favorable of DAL and SAN [or MIN if MIN not conveyable] to MIN then most / more favorable of all to SAN [MIN may convey to CHA] (via SAN swap for DAL; via SAN swap of SAN or DAL for MIN)",
+     "To BRK (via BOS to MEM)"
+    ],
+    [
+     "2031",
+     "Own",
+     "To DET (via PHL to DET to MEM)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To NYK"
+    ],
+    [
+     "2033",
+     "Own",
+     "To WAS"
+    ]
+   ]
+  },
+  "DEN": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "1-5 Own; two most / more favorable of DEN 6-30, OKC and LAC to OKC; more favorable of (i) least / less favorable of DEN 6-30, OKC and LAC and (ii) TOR to LAC then least favorable of all to TOR (via OKC swap of OKC or DEN for LAC; via LAC swap of DEN, OKC or LAC for TOR)",
+     "To UTH (via CLE to CHI to BOS)"
+    ],
+    [
+     "2028",
+     "1-5 Own; 6-30 to OKC if not already settled",
+     "31-33 Own; 34-60 to WAS (via SAN to SAC); MIN (via SAN)"
+    ],
+    [
+     "2029",
+     "1-5 Own; 6-30 to OKC if not already settled; or 1-5 Own; 6-30 to OKC if DEN conveys a first potential 1st round pick to OKC in 2027",
+     "To CHA if DEN has conveyed a first potential 1st round pick to OKC by 2029 or to OKC if DEN has not conveyed a first potential 1st round pick to OKC by 2029"
+    ],
+    [
+     "2030",
+     "1-5 Own; 6-30 to OKC if not already settled and if DEN has conveyed a first potential 1st round pick to OKC by 2028",
+     "Most favorable of DEN, HOU and MIA to MEM; two least favorable to OKC (via DEN to CHA to OKC or DEN to OKC; via OKC to MEM)"
+    ],
+    [
+     "2031",
+     "Own; CLE",
+     "To CHI (via PHX to CHA); SAC (via SAN)"
+    ],
+    [
+     "2032",
+     "To BRK",
+     "To BRK; SAC (via CLE)"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "DET": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "Own"
+    ],
+    [
+     "2028",
+     "Own",
+     "31-55 Own*; 56-60 to PHL; Less favorable of CHA and LAC (via CHA to DAL)*; MIA if DAL conveys 1st round pick to CHA in 2027 (via SAN to DAL)*; NYK* *Least / less favorable of these to UTH"
+    ],
+    [
+     "2029",
+     "Own",
+     "Two most favorable of DET, MIL and NYK then other to CHI (via MIL to BRK to DET; via NYK to DET; via DET to MEM; via MEM to DET; via SAC to CHI)"
+    ],
+    [
+     "2030",
+     "Own",
+     "Own"
+    ],
+    [
+     "2031",
+     "Own",
+     "To OKC; DAL (via PHL to DET to MEM); Less favorable of GOS and MIN (via MIN swap for GOS)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own (via MEM)"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own --- DET heavily protected and unspecified 2nd round pick to LAC"
+    ]
+   ]
+  },
+  "GSW": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "More favorable of GOS and PHX to PHL then other to WAS [PHL may convey to WAS] (via WAS)"
+    ],
+    [
+     "2028",
+     "Own",
+     "Most favorable of GOS, MIL and OKC to BOS then others to PHL (via GOS to POR to WAS to PHL; via MIL to BRK to HOU to OKC to PHL; via OKC to PHL)"
+    ],
+    [
+     "2029",
+     "Own",
+     "To BRK"
+    ],
+    [
+     "2030",
+     "1-20 Own; 21-30 to MEM (via WAS to DAL)",
+     "To MEM if GOS does not convey 1st round pick to MEM in 2030 (via WAS to DAL)"
+    ],
+    [
+     "2031",
+     "Own",
+     "More favorable of GOS and MIN to CHI then other to DET (via MIN swap for GOS)"
+    ],
+    [
+     "2032",
+     "Own",
+     "31-50 Own; 51-60 to MEM"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "HOU": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own or swap for BRK; PHX (via BRK)",
+     "Most favorable of HOU, OKC, IND and MIA to PHL; second most favorable to NOP and third most favorable to NYK; more favorable of (i) SAN and (ii) least favorable of HOU, OKC, IND and MIA to SAN then least favorable of all to MIA [PHL may convey to WAS] (via HOU to DET to OKC to NYK to NOP; via IND and MIA to OKC to UTH to SAN to MIA; via OKC to PHL); Less favorable of POR and NOP if 56-60 (via POR to BOS)"
+    ],
+    [
+     "2028",
+     "Own",
+     "To CHA"
+    ],
+    [
+     "2029",
+     "Two most favorable of HOU, DAL and PHX then other to BRK (via DAL and PHX to BRK; via DAL or PHX to HOU; via HOU swap for DAL or PHX)",
+     "To MEM (via OKC to WAS to DAL)"
+    ],
+    [
+     "2030",
+     "Own",
+     "Most favorable of HOU, DEN and MIA to MEM then others to OKC (via DEN to CHA to OKC or DEN to OKC; via OKC to MEM)"
+    ],
+    [
+     "2031",
+     "Own",
+     "Less favorable of HOU 31-55 and ATL then other [or ATL if HOU 56-60] to OKC (via ATL swap for HOU); 56-60 to BOS"
+    ],
+    [
+     "2032",
+     "Own",
+     "More favorable of HOU and PHX to CHI then other to PHX (via PHX to MIN)"
+    ],
+    [
+     "2033",
+     "Own",
+     "To CHA"
+    ]
+   ]
+  },
+  "IND": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "Most favorable of IND, OKC, HOU and MIA to PHL; second most favorable to NOP and third most favorable to NYK; more favorable of (i) SAN and (ii) least favorable of IND, OKC, HOU and MIA to SAN then least favorable of all to MIA [PHL may convey to WAS] (via IND and MIA to OKC to UTH to SAN to MIA; via HOU to DET to OKC to NYK to NOP; via OKC to PHL); UTH (via CLE)"
+    ],
+    [
+     "2028",
+     "Own",
+     "Less favorable of (i) more favorable of IND and PHX and (ii) CHI then most favorable of all to CHI; less favorable of IND and PHX to NYK (via PHX to IND; via CHI swap for IND or PHX)"
+    ],
+    [
+     "2029",
+     "Forfeited by LAC: To LAC",
+     "More favorable of IND and WAS then other to POR (via IND to NYK)"
+    ],
+    [
+     "2030",
+     "Own",
+     "Own or CHI (via CHI swap for IND)"
+    ],
+    [
+     "2031",
+     "Own",
+     "Least favorable of IND, MIA and MEM; more favorable of IND and MIA to WAS; more favorable of (i) MEM and (ii) less favorable of IND and MIA to MEM (via MIA swap for IND; via UTH to WAS; via MEM swap for IND or MIA)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "LAC": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "More favorable of (i) least / less favorable of LAC, DEN 6-30 and OKC and (ii) TOR then least favorable of all to TOR; two most / more favorable of LAC, DEN 6-30 and OKC to OKC (via OKC swap of OKC or DEN for LAC; via LAC swap of LAC, DEN or OKC for TOR)",
+     "To UTH (via ATL to LAC)"
+    ],
+    [
+     "2028",
+     "LAC 17-30 to BOS or [via swap from BOS] more favorable of (i) more favorable of LAC 1-16 and PHL 1-8 [or (i) LAC 1-16 if PHL 9-30] and (ii) less favorable of BOS and SAN to BOS then least favorable of all to PHL (via SAN swap for BOS; via BOS swap of BOS or SAN for LAC or PHL)",
+     "More favorable of LAC and CHA to CHA then other to DET [DET may convey to UTH] (via CHA to DAL); DAL (via SAC to IND)"
+    ],
+    [
+     "2029",
+     "1-3 Own; 4-30 Own or PHL (via PHL swap for LAC); Forfeited by LAC: IND",
+     "To SAN (via PHL)"
+    ],
+    [
+     "2030",
+     "Forfeited",
+     "More favorable of LAC and UTH to CHA then other to LAC (via LAC to UTH); TOR"
+    ],
+    [
+     "2031",
+     "Forfeited; TOR",
+     "Own"
+    ],
+    [
+     "2032",
+     "Forfeited",
+     "Own"
+    ],
+    [
+     "2033",
+     "Forfeited; TOR",
+     "Own; TOR --- DET heavily protected and unspecified 2nd round pick to LAC"
+    ]
+   ]
+  },
+  "LAL": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "1-4 Own; 5-30 to MEM (via UTH)",
+     "To BRK if LAL conveys 1st round pick to MEM in 2027 or to MEM if LAL does not convey 1st round pick to MEM in 2027 (via UTH to MEM)"
+    ],
+    [
+     "2028",
+     "Less favorable of (i) LAL and (ii) more favorable of UTH and CLE then most favorable of all to UTH (via UTH swap for CLE; via UTH swap of UTH or CLE for LAL)",
+     "More favorable of LAL and WAS to ORL then other to WAS (via WAS to LAL to ORL; via LAL to WAS)"
+    ],
+    [
+     "2029",
+     "To DAL",
+     "To MEM (via WAS)"
+    ],
+    [
+     "2030",
+     "Own or UTH (via UTH swap for LAL)",
+     "To BRK"
+    ],
+    [
+     "2031",
+     "To UTH",
+     "To BRK; WAS"
+    ],
+    [
+     "2032",
+     "Own",
+     "To OKC (via ATL; via ATL); WAS"
+    ],
+    [
+     "2033",
+     "To UTH",
+     "Own"
+    ]
+   ]
+  },
+  "MEM": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own; LAL 5-30; Most favorable of UTH (cannot be 1-5), CLE and MIN (via UTH)",
+     "To CHA (via LAC to HOU); LAL if LAL does not convey 1st round pick to MEM in 2027 (via UTH)"
+    ],
+    [
+     "2028",
+     "Own",
+     "To BRK (via PHX)"
+    ],
+    [
+     "2029",
+     "Own or swap for ORL 3-30",
+     "To BRK (via PHX); HOU (via OKC to WAS to DAL); LAL (via WAS); ORL if ORL 1-2 in 2029; POR (via PHL to IND)"
+    ],
+    [
+     "2030",
+     "More favorable of (i) MEM and (ii) less favorable of PHX and WAS then least favorable of all to PHX (via WAS swap for PHX; via MEM swap for PHX or WAS); GOS 21-30 (via WAS to DAL); ORL",
+     "31-50 Own; 51-60 to MIN; Most favorable of DEN, HOU and MIA (via DEN to CHA to OKC or DEN to OKC; via OKC to MEM); GOS if GOS does not convey 1st round pick to MEM in 2030 (via WAS to DAL)"
+    ],
+    [
+     "2031",
+     "Own; PHX (via UTH)",
+     "More favorable of (i) MEM and (ii) less favorable of IND and MIA then least favorable of all to IND (via MIA swap for IND; via MEM swap for IND or MIA)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Most favorable of MEM, PHL and UTH; less favorable of (i) more favorable of MEM and PHL and (ii) UTH to WAS; less favorable of MEM and PHL to PHL (via MEM swap for PHL; via UTH to WAS; via MEM swap of MEM or PHL for UTH); GOS 51-60"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own; OKC; WAS --- NOP unspecified 2nd round pick to MEM NOP unspecified 2nd round pick swap to MEM"
+    ]
+   ]
+  },
+  "MIA": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "1-14 Own; 15-30 to CHA",
+     "Least favorable of MIA, OKC, HOU, IND and SAN; most favorable of MIA, OKC, HOU and IND to PHL; second most favorable to NOP and third most favorable to NYK; more favorable of (i) SAN and (ii) least favorable of MIA, OKC, HOU and IND to SAN [PHL may convey to WAS] (via MIA and IND to OKC to UTH to SAN to MIA; via HOU to DET to OKC to NYK to NOP; via OKC to PHL)"
+    ],
+    [
+     "2028",
+     "To CHA if not already settled",
+     "To DET if DAL conveys 1st round pick to CHA in 2027 or to CHA if DAL does not convey 1st round pick to CHA in 2027 [DET may convey to UTH] (via SAN to DAL)"
+    ],
+    [
+     "2029",
+     "Own",
+     "More favorable of MIA and ATL to CHA then other to OKC (via OKC)"
+    ],
+    [
+     "2030",
+     "Least favorable of MIA, MIL and POR; more favorable of (i) MIA and (ii) less favorable MIL and POR to MIL (via POR swap for MIL; via MIL swap of MIL or POR for MIA)",
+     "Most favorable of MIA, DEN and HOU to MEM then others to OKC (via DEN to CHA to OKC or DEN to OKC; via OKC to MEM)"
+    ],
+    [
+     "2031",
+     "To MIL",
+     "More favorable of MIA and IND to WAS; more favorable of (i) MEM and (ii) less favorable of MIA and IND to MEM then least favorable of all to IND (via MIA swap for IND; via UTH to WAS; via MEM swap for IND or MIA)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To BRK"
+    ],
+    [
+     "2033",
+     "To MIL",
+     "To MIL"
+    ]
+   ]
+  },
+  "MIL": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "More favorable of MIL and NOP to NOP then other to ATL if 5-30 or MIL and NOP to NOP if both 1-4 (via NOP)",
+     "Own (via PHL to DET); Less favorable of BRK and DAL (via DAL to BRK to DET to MIL)"
+    ],
+    [
+     "2028",
+     "Less favorable of (i) less favorable of MIL and POR and (ii) more favorable of (a) WAS and (b) least / less favorable of BRK, PHL 9-30 and PHX then more favorable of (i) and (ii) to WAS (via POR swap for MIL; via BRK swap of BRK or PHL for PHX; via WAS swap for PHX, BRK or PHL; via WAS swap of WAS, BRK, PHL or PHX for MIL or POR)",
+     "Most favorable of MIL, GOS and OKC to BOS then others to PHL (via MIL to BRK to HOU to OKC to PHL; via GOS to POR to WAS to PHL; via OKC to PHL)"
+    ],
+    [
+     "2029",
+     "Most and least favorable of MIL, BOS and POR to POR; second most favorable to WAS (via BOS to POR; via MIL to POR; via POR to WAS)",
+     "Two most favorable of MIL, DET and NYK to DET then other to CHI (via MIL to BRK to DET; via NYK to DET; via DET to MEM; via MEM to DET; via SAC to CHI)"
+    ],
+    [
+     "2030",
+     "More favorable of (i) less favorable MIL and POR and (ii) MIA then least favorable of all to MIA; more favorable of MIL and POR to POR (via POR swap for MIL; via MIL swap of MIL or POR for MIA)",
+     "To ORL"
+    ],
+    [
+     "2031",
+     "Own; MIA",
+     "To CHA"
+    ],
+    [
+     "2032",
+     "Own",
+     "To CHA"
+    ],
+    [
+     "2033",
+     "Own; MIA",
+     "Own; MIA"
+    ]
+   ]
+  },
+  "MIN": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Most favorable of MIN, CLE and UTH (cannot be 1-5) to MEM; second most favorable to UTH and least favorable to PHX (via UTH)",
+     "To POR (via HOU to OKC to NYK)"
+    ],
+    [
+     "2028",
+     "Own or CHA (via CHA swap for MIN)",
+     "To DEN (via SAN)"
+    ],
+    [
+     "2029",
+     "1-5 Own; most / two most favorable of MIN 6-30, CLE and UTH to UTH then other to CHA (via CLE and MIN to UTH; via UTH to PHX to CHA; via CHA swap of CHA, CLE or UTH for MIN)* *CHA will also have a complex swap right with MIN and PHX will receive a least favorable pick",
+     "To CHA if MIN conveys 1st round pick to UTH in 2029 or to UTH if MIN does not convey 1st round pick to UTH in 2029"
+    ],
+    [
+     "2030",
+     "1 Own; less favorable of (i) MIN 2-30 and (ii) more favorable of SAN and DAL then most / more favorable of all to SAN [MIN may convey to CHA] (via SAN swap for DAL; via SAN swap of SAN or DAL for MIN)* *CHA will have a complex swap right with MIN, receiving MIN, SAN or DAL",
+     "To OKC (via DET); MEM 51-60"
+    ],
+    [
+     "2031",
+     "To SAC (via SAN)",
+     "More favorable of MIN and GOS to CHI then other to DET (via MIN swap for GOS)"
+    ],
+    [
+     "2032",
+     "Frozen (through 2027-28)",
+     "To CHA"
+    ],
+    [
+     "2033",
+     "To CHA",
+     "To CHA"
+    ]
+   ]
+  },
+  "NOP": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "More favorable of NOP and MIL then other to ATL if 5-30 or NOP and MIL if both 1-4 (via NOP)",
+     "More favorable of NOP and POR to CHA then other to POR [POR may convey to HOU] (via NOP); Second most favorable of OKC, HOU, IND and MIA (via HOU to DET to OKC to NYK)"
+    ],
+    [
+     "2028",
+     "Own",
+     "To SAN"
+    ],
+    [
+     "2029",
+     "Own",
+     "To SAN"
+    ],
+    [
+     "2030",
+     "Own",
+     "Own or ORL (via ORL swap for NOP)"
+    ],
+    [
+     "2031",
+     "Own",
+     "More favorable of NOP and ORL to ORL then other to OKC (via ORL swap for NOP); TOR"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own --- NOP unspecified 2nd round pick to MEM NOP unspecified 2nd round pick swap to MEM"
+    ]
+   ]
+  },
+  "NYK": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "To BRK",
+     "Own; Third most favorable of OKC, HOU, IND and MIA (via HOU to DET to OKC); WAS (via HOU to OKC)"
+    ],
+    [
+     "2028",
+     "Least favorable of NYK, BRK and PHX if NYK and / or if PHL 9-30 is less favorable than BRK and PHX; or second most favorable of NYK, BRK and PHX in all other scenarios; if (i) PHL 9-30 is third most favorable and (ii) NYK is most or second most favorable of NYK, BRK, PHL 9-30 and PHX, then most and third most favorable to BRK; or most / two most favorable to BRK in all other scenarios (via BRK swap of BRK or PHL for PHX; via BRK swap of BRK or PHX for NYK; via WAS swap for PHX, BRK or PHL)",
+     "To DET [DET may convey to UTH]; BOS 46-60 (via ORL to PHX); Less favorable of IND and PHX (via IND)"
+    ],
+    [
+     "2029",
+     "To BRK",
+     "Two most favorable of NYK, DET and MIL to DET then other to CHI (via MIL to BRK to DET; via NYK to DET; via DET to MEM; via MEM to DET; via SAC to CHI); PHX; SAC (via WAS to HOU)"
+    ],
+    [
+     "2030",
+     "Own",
+     "To ATL (via POR); PHL (via DAL)"
+    ],
+    [
+     "2031",
+     "To BRK",
+     "To CHI (via CHA)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own; DAL"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own; PHX"
+    ]
+   ]
+  },
+  "OKC": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Two most / more favorable of OKC, DEN 6-30 and LAC; more favorable of (i) least / less favorable of OKC, DEN 6-30 and LAC and (ii) TOR to LAC then least favorable of all to TOR (via OKC swap of OKC or DEN for LAC; via LAC swap of DEN, OKC or LAC for TOR); SAN 17-30 (via SAC)",
+     "Most favorable of OKC, HOU, IND and MIA to PHL; second most favorable to NOP and third most favorable to NYK; more favorable of (i) SAN and (ii) least favorable of OKC, HOU, IND and MIA to SAN then least favorable of all to MIA [PHL may convey to WAS] (via HOU to DET to OKC to NYK to NOP; via IND and MIA to OKC to UTH to SAN to MIA; via OKC to PHL); CHA if SAN 1-16 in 2027 (via SAC); CHI (via WAS to NOP to WAS to DAL); SAC if SAN 1-16 in 2027"
+    ],
+    [
+     "2028",
+     "Own or swap for DAL; DEN 6-30 if not already settled",
+     "Most favorable of OKC, GOS and MIL to BOS then others to PHL (via OKC to PHL; GOS to POR to WAS to PHL; via MIL to BRK to HOU to OKC to PHL); UTH"
+    ],
+    [
+     "2029",
+     "Own; DEN 6-30 if not already settled; or DEN 6-30 if DEN conveys a first potential 1st round pick to OKC in 2027",
+     "Own; Less favorable of ATL and MIA; BOS; DEN if DEN has not conveyed a first potential 1st round pick to OKC by 2029"
+    ],
+    [
+     "2030",
+     "Own; DEN 6-30 if not already settled and if DEN has conveyed a first potential 1st round pick to OKC by 2028",
+     "Own; ATL; Two least favorable of DEN, HOU and MIA (via DEN to CHA or DEN to OKC); MIN (via DET)"
+    ],
+    [
+     "2031",
+     "Own",
+     "Own; More favorable of ATL and HOU 31-55 [or ATL if HOU 56-60] (via ATL swap for HOU); DET; Less favorable of NOP and ORL (via ORL swap for NOP)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own; ATL (via LAL to ATL; via LAL to ATL); LAL (via ATL; via ATL)"
+    ],
+    [
+     "2033",
+     "Own",
+     "To MEM"
+    ]
+   ]
+  },
+  "ORL": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "More favorable of ORL and BOS to UTH then other to PHX (via BOS to ORL to BOS to UTH; via ORL to CHA to PHX)"
+    ],
+    [
+     "2028",
+     "To POR (via MEM)",
+     "To CHA; More favorable of LAL and WAS (via LAL)"
+    ],
+    [
+     "2029",
+     "1-2 Own; 3-30 Own or MEM (via MEM swap for ORL)",
+     "To MEM if ORL 1-2 in 2029"
+    ],
+    [
+     "2030",
+     "To MEM",
+     "Own or swap for NOP; MIL"
+    ],
+    [
+     "2031",
+     "Own",
+     "More favorable of ORL and NOP then other to OKC (via ORL swap for NOP)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "PHI": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "Own*; More favorable of GOS and PHX (via WAS)*; Most favorable of OKC, HOU, IND and MIA (via HOU to DET to OKC; via IND and MIA to OKC; via OKC to PHL)* *Second most favorable of these to WAS"
+    ],
+    [
+     "2028",
+     "1-8 Own if LAC 17-30; or [via swap from BOS] least favorable of (i) PHL 1-8, LAC 1-16, BOS and SAN or (ii) LAC 1-16, BOS and SAN; more favorable of (i) more favorable of PHL 1-8 and LAC 1-16 [or (i) LAC 1-16 if PHL 9-30] and (ii) less favorable of BOS and SAN to BOS; if (i) PHL 9-30 is third most favorable and (ii) NYK is most or second most favorable of PHL 9-30, PHX, BRK and NYK, then most and third most favorable to BRK; or most / two most favorable to BRK in all other scenarios; least favorable of PHX, BRK and NYK to NYK if NYK and / or if PHL 9-30 is less favorable than PHX and BRK; or second most favorable of PHX, BRK and NYK to NYK in all other scenarios; more favorable of (i) WAS and (ii) least / less favorable of PHL 9-30, PHX and BRK to WAS then least favorable of all to PHX [WAS can then swap with MIL] (via SAN swap for BOS; via BOS swap of BOS or SAN for PHL or LAC; via BRK swap of BRK or PHL for PHX; via BRK swap of BRK or PHX for NYK; via WAS swap for PHX, BRK or PHL)",
+     "To BRK if PHL 1-8 in 2028; DET 56-60; Two least favorable of GOS, MIL and OKC (via GOS to POR to WAS; via MIL to BRK to HOU to OKC)"
+    ],
+    [
+     "2029",
+     "Own or swap for LAC 4-30",
+     "Own"
+    ],
+    [
+     "2030",
+     "Own",
+     "To NYK (via DAL); Less favorable of (i) more favorable of PHX and POR and (ii) WAS (via PHX and POR to WAS)"
+    ],
+    [
+     "2031",
+     "To BOS",
+     "Own"
+    ],
+    [
+     "2032",
+     "Own",
+     "Less favorable of PHL and MEM; less favorable of (i) more favorable of PHL and MEM and (ii) UTH to WAS then most favorable of all to MEM (via MEM swap for PHL; via UTH to WAS; via MEM swap of MEM or PHL for UTH)"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "PHX": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "To HOU (via BRK); Least favorable of UTH (cannot be 1-5), CLE and MIN (via UTH)",
+     "More favorable of PHX and GOS to PHL then other to WAS [PHL may convey to WAS] (via WAS); Less favorable of BOS and ORL (via BOS to ORL to CHA)"
+    ],
+    [
+     "2028",
+     "Least favorable of PHX, PHL 9-30, WAS and BRK; more favorable of (i) WAS and (ii) least / less favorable of PHX, PHL 9-30 and BRK to WAS [WAS can then swap with MIL]; if (i) PHL 9-30 is third most favorable and (ii) NYK is most or second most favorable of PHX, PHL 9-30, BRK and NYK, then most and third most favorable to BRK; or most / two most favorable to BRK in all other scenarios; least favorable of PHX, BRK and NYK to NYK if NYK and / or if PHL 9-30 is less favorable than PHX and BRK; or second most favorable of PHX, BRK and NYK to NYK in all other scenarios (via BRK swap of BRK or PHL for PHX; via BRK swap of BRK or PHX for NYK; via WAS swap for PHX, BRK or PHL)",
+     "Less favorable of (i) more favorable of PHX and IND and (ii) CHI to IND then most favorable of all to CHI; less favorable of PHX and IND to NYK (via PHX to IND; via CHI swap for IND or PHX)"
+    ],
+    [
+     "2029",
+     "Two most favorable of PHX, DAL and HOU to HOU then other to BRK (via DAL and PHX to BRK; via DAL or PHX to HOU; via HOU swap for DAL or PHX) --- PHX will receive a least favorable pick from a complex CHA-MIN conveyance, including CHA's swap right",
+     "To NYK"
+    ],
+    [
+     "2030",
+     "Least favorable of PHX, WAS and MEM; more favorable of (i) MEM and (ii) less favorable of PHX and WAS to MEM; more favorable of PHX and WAS to WAS (via WAS swap for PHX; via MEM swap for PHX or WAS)",
+     "Less favorable of (i) more favorable of PHX and POR and (ii) WAS to PHL then most favorable of all to BOS; less favorable of PHX and POR to WAS (via PHX and POR to WAS to PHL)"
+    ],
+    [
+     "2031",
+     "To MEM (via UTH)",
+     "To CHA"
+    ],
+    [
+     "2032",
+     "Frozen (through 2027-28)",
+     "Less favorable of PHX and HOU then other to CHI (via PHX to MIN)"
+    ],
+    [
+     "2033",
+     "To CHA",
+     "To NYK"
+    ]
+   ]
+  },
+  "POR": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own",
+     "Less favorable of POR and NOP then other to CHA [POR may convey to HOU; see following]; then less favorable of POR and NOP to HOU if 56-60 (via POR to NOP to CHA; via POR to BOS to HOU); MIN (via HOU to OKC to NYK)"
+    ],
+    [
+     "2028",
+     "Own or swap for MIL [WAS then has a complex swap right with MIL]; ORL (via MEM)",
+     "Own; SAC (via CHI to SAC to MEM)"
+    ],
+    [
+     "2029",
+     "Most and least favorable of POR, BOS and MIL; second most favorable to WAS (via BOS to POR; via MIL to POR; via POR to WAS)",
+     "To MEM (via PHL to IND); Less favorable of IND and WAS (via IND to NYK)"
+    ],
+    [
+     "2030",
+     "Own or swap for MIL; more favorable of (i) less favorable MIL and POR and (ii) MIA to MIL then least favorable of all to MIA (via POR swap for MIL; via MIL swap of MIL or POR for MIA)",
+     "Less favorable of (i) more favorable of POR and PHX and (ii) WAS to PHL then most favorable of all to BOS; less favorable of POR and PHX to WAS (via PHX and POR to WAS to PHL)"
+    ],
+    [
+     "2031",
+     "Own",
+     "Own"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "SAC": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own; SAN 1-16",
+     "To OKC if SAN 1-16 in 2027; CHA if SAN 17-30 in 2027 (via NYK to ATL to SAN)"
+    ],
+    [
+     "2028",
+     "Own",
+     "To POR (via CHI to SAC to MEM)"
+    ],
+    [
+     "2029",
+     "Own",
+     "To NYK (via WAS to HOU)"
+    ],
+    [
+     "2030",
+     "Own",
+     "To SAN (via IND)"
+    ],
+    [
+     "2031",
+     "Own or SAN (via SAN swap for SAC); MIN (via SAN)",
+     "To DEN (via SAN)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To DEN (via CLE)"
+    ],
+    [
+     "2033",
+     "Own",
+     "To ATL"
+    ]
+   ]
+  },
+  "SAS": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "1-16 to SAC; 17-30 to OKC (via SAC); ATL",
+     "More favorable of (i) SAN and (ii) least favorable of OKC, HOU, IND and MIA then least favorable of all to MIA (via HOU to DET to OKC; via MIA to OKC to UTH to SAN to MIA)"
+    ],
+    [
+     "2028",
+     "Own or swap for BOS 2-30 [BOS then has a complex swap right with PHL]",
+     "Own; BOS 31-45 if BOS 1 in 2028; NOP"
+    ],
+    [
+     "2029",
+     "Own",
+     "Own; LAC (via PHL); NOP"
+    ],
+    [
+     "2030",
+     "Most / more favorable of SAN, DAL and MIN 2-30; less favorable of (i) more favorable of SAN and DAL and (ii) MIN 2-30 [or MIN if MIN not conveyable] to MIN [MIN may convey to CHA]; less favorable of SAN and DAL to DAL (via SAN swap for DAL; via SAN swap of SAN or DAL for MIN)",
+     "Own; CLE; SAC (via IND)"
+    ],
+    [
+     "2031",
+     "Own or swap for SAC",
+     "Own"
+    ],
+    [
+     "2032",
+     "Own",
+     "Own"
+    ],
+    [
+     "2033",
+     "Own",
+     "Own"
+    ]
+   ]
+  },
+  "TOR": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Least / less favorable of TOR, LAC, DEN 6-30 and OKC; more favorable of (i) TOR and (i) least / less favorable of LAC, DEN 6-30 and OKC to LAC (via OKC swap of OKC or DEN for LAC; via LAC swap of LAC, DEN or OKC for TOR)",
+     "Own"
+    ],
+    [
+     "2028",
+     "Own",
+     "Own"
+    ],
+    [
+     "2029",
+     "Own",
+     "Own"
+    ],
+    [
+     "2030",
+     "Own",
+     "To LAC"
+    ],
+    [
+     "2031",
+     "To LAC",
+     "To NOP"
+    ],
+    [
+     "2032",
+     "Own",
+     "To BRK"
+    ],
+    [
+     "2033",
+     "To LAC",
+     "To LAC"
+    ]
+   ]
+  },
+  "UTA": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Second most favorable of UTH (cannot be 1-5), CLE and MIN; most favorable to MEM and least favorable to PHX (via UTH)",
+     "To IND (via CLE); More favorable of BOS and ORL (via BOS to ORL to BOS); DEN (via CLE to CHI to BOS); LAC (via ATL to LAC)"
+    ],
+    [
+     "2028",
+     "Most favorable of UTH, CLE and LAL; less favorable of (i) more favorable of UTH and CLE and (ii) LAL to LAL; less favorable of UTH and CLE to CLE [CLE may convey UTH to ATL] (via UTH swap for CLE; via UTH swap of UTH or CLE for LAL)",
+     "To OKC; CLE; Least / less favorable of (i) DET 31-55, (ii) less favorable of CHA and LAC (via CHA to DAL), (iii) MIA if DAL conveys 1st round pick to CHA in 2027 (via SAN to DAL) and (iv) NYK"
+    ],
+    [
+     "2029",
+     "Most / two most favorable of UTH, CLE and MIN 6-30 to UTH; least / less favorable to CHA (via CLE and MIN to UTH; via UTH to PHX to CHA; via CHA swap of CHA, CLE or UTH for MIN)* *CHA will also have a complex swap right with MIN and PHX will receive a least favorable pick",
+     "Own; MIN if MIN does not convey 1st round pick to UTH in 2029"
+    ],
+    [
+     "2030",
+     "Own or swap for LAL",
+     "Less favorable of UTH and LAC then other to CHA (via LAC to UTH)"
+    ],
+    [
+     "2031",
+     "Own; LAL",
+     "Own; More favorable of BOS and CLE (via CLE to ATL to BOS)"
+    ],
+    [
+     "2032",
+     "Own",
+     "Less favorable of (i) UTH and (i) more favorable of MEM and PHL to WAS then most favorable of all to MEM (via UTH to WAS; via MEM swap for PHL; via MEM swap of MEM or PHL for UTH); CLE"
+    ],
+    [
+     "2033",
+     "Own; LAL",
+     "Own"
+    ]
+   ]
+  },
+  "WAS": {
+   "headers": [
+    "Year",
+    "First Round",
+    "Second Round"
+   ],
+   "rows": [
+    [
+     "2027",
+     "Own (cannot be 1)",
+     "To NYK (via HOU to OKC); More favorable of BRK and DAL (via DAL to BRK to DET to WAS); Less favorable of GOS and PHX; Second most favorable of (i) PHL (via LAC), (ii) more favorable of GOS and PHX (via WAS to LAC) and (iii) most favorable of OKC, HOU, IND and MIA (via HOU to DET to OKC to LAC; via IND and MIA to OKC to LAC)"
+    ],
+    [
+     "2028",
+     "More favorable of (i) more favorable of (a) WAS and (b) least / less favorable of BRK, PHL 9-30 and PHX and (ii) less favorable of MIL and POR then less favorable of (i) and (ii) to MIL; least favorable of WAS, PHL 9-30, BRK and PHX to PHX (via POR swap for MIL; via BRK swap of BRK or PHL for PHX; via WAS swap for PHX, BRK or PHL; via WAS swap of WAS, BRK, PHL or PHX for MIL or POR)",
+     "Less favorable of WAS and LAL then other to ORL (via WAS to LAL to ORL; via LAL to WAS); DEN 34-60 (via SAN to SAC)"
+    ],
+    [
+     "2029",
+     "Own; Second most favorable of POR, BOS and MIL (via BOS to POR; via MIL to POR; via POR to WAS)",
+     "More favorable of WAS and IND to IND then other to POR (via IND to NYK)"
+    ],
+    [
+     "2030",
+     "More favorable of WAS and PHX; more favorable of (i) MEM and (ii) less favorable of WAS and PHX to MEM then least favorable of all to PHX (via WAS swap for PHX; via MEM swap for WAS or PHX)",
+     "Less favorable of (i) WAS and (ii) more favorable of PHX and POR to PHL then most favorable of all to BOS (via PHX and POR to WAS to PHL); Less favorable of PHX and POR"
+    ],
+    [
+     "2031",
+     "Own",
+     "To LAL; More favorable of MIA and IND (via MIA swap for IND; via UTH)"
+    ],
+    [
+     "2032",
+     "Own",
+     "To LAL; Less favorable of (i) UTH and (i) more favorable of MEM and PHL (via MEM swap for PHL; via MEM swap of MEM or PHL for UTH; via UTH to WAS)"
+    ],
+    [
+     "2033",
+     "Own",
+     "To MEM; DAL"
+    ]
+   ]
+  }
+ }
+}
