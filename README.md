@@ -92,7 +92,10 @@ Each morning the update also runs:
   team-season page once, about 40 minutes' worth per run) from Basketball-Reference
 - `espn_games.py` -- this season's schedule and every finished game's box score and play-by-play from ESPN's
   public feeds: game logs, shot zones and locations, assist partners, steal types, block locations, team box
-  scores and five-man lineups. (`nba_games.py` reads the NBA's own feed, cdn.nba.com, but that feed turns
+  scores and five-man lineups. After this season's games, each run also fills in earlier seasons from ESPN (newest
+  first, about 75 minutes' worth per run, until ESPN's play-by-play runs out around 2002-03), so player pages'
+  career shooting charts, passing, splits, highs, on/off and game logs cover whole careers. Progress is in
+  `data/pbp/espn_status.json`. (`nba_games.py` reads the NBA's own feed, cdn.nba.com, but that feed turns
   away GitHub's servers, so the daily update doesn't use it.)
 - `build_players.py` -- writes `data/players/<id>.json`, one per player since 1973-74
 

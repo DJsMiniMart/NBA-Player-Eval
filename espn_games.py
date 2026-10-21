@@ -103,18 +103,20 @@ def made_att(v):
 
 
 # ---------- schedule ----------
-def season_days(end_year, today):
-    d, last = dt.date(end_year - 1, 10, 1), min(dt.date(end_year, 6, 30), today + dt.timedelta(days=200))
+def season_days(end_year, today, wide=False):
+    # wide: past seasons, covering the bubble season (to October 2020) and the late-starting 2020-21 one
+    d = dt.date(end_year - 1, 9, 1) if wide else dt.date(end_year - 1, 10, 1)
+    last = dt.date(end_year, 10, 31) if wide else min(dt.date(end_year, 6, 30), today + dt.timedelta(days=200))
     while d <= last:
         yield d
         d += dt.timedelta(days=1)
 
 
-def scoreboard(end_year, today):
-    """Every game this season: [{id, date, home, away, state, hs, as, arena, tv, kind, reg}]"""
+def scoreboard(end_year, today, wide=False):
+    """Every game this season: [{id, date, home, away, state, hs, as, arena, tv, kind, reg, sy}]"""
     games = {}
     # one request per month; fall back to one per day if a month comes back short
-    months = sorted({(d.year, d.month) for d in season_days(end_year, today)})
+    months = sorted({(d.year, d.month) for d in season_days(end_year, today, wide)})
     for y, m in months:
         start = dt.date(y, m, 1)
         end = (dt.date(y + (m == 12), m % 12 + 1, 1) - dt.timedelta(days=1))
@@ -158,7 +160,7 @@ def parse_event(e):
         return {"id": str(e["id"]), "date": e.get("date") or comp.get("date") or "", "home": tri(h["team"].get("abbreviation")),
                 "away": tri(a["team"].get("abbreviation")), "state": state, "hs": score(h), "as": score(a),
                 "arena": (comp.get("venue") or {}).get("fullName", ""), "tv": ", ".join(dict.fromkeys(tv)),
-                "kind": kind, "reg": stype == 2}
+                "kind": kind, "reg": stype == 2, "sy": to_int((e.get("season") or {}).get("year"))}
     except Exception as ex:  # noqa: BLE001
         print(f"ESPN: skipped an event ({ex})")
         return None
@@ -619,6 +621,69 @@ def update(now, current_year):
             save(path, acc)
     save(path, acc)
     print(f"ESPN: added {added} games ({len(acc['done'])} so far this season) in {int(time.time() - started)}s")
+    backfill(now, current_year, started)
+
+
+# ---------- earlier seasons, for careers ----------
+STATUS_PATH = os.path.join(PBP_DIR, "espn_status.json")
+BACKFILL_BUDGET_SEC = 75 * 60    # per run, on top of this season; the whole history takes a few days of runs
+OLDEST_TRY = 2002                # ESPN's play-by-play starts around 2002-03; stop at the first season it doesn't have
+
+
+def backfill(now, current_year, started):
+    """Fill in past seasons from ESPN, newest first, a little each run, so player pages cover whole careers."""
+    status = load(STATUS_PATH, {"complete": [], "noPlays": None})
+    t0 = time.time()
+    out_of_time = lambda: time.time() - t0 > BACKFILL_BUDGET_SEC  # noqa: E731
+    for year in range(current_year - 1, OLDEST_TRY, -1):
+        if out_of_time():
+            break
+        if status.get("noPlays") and year <= status["noPlays"]:
+            break
+        if year in status["complete"]:
+            continue
+        label = season_label(year)
+        path = os.path.join(PBP_DIR, f"{label}.json")
+        acc = load(path, None)
+        if not acc or acc.get("schema") != SCHEMA or acc.get("source") != "espn":
+            acc = new_acc(label)
+        games = [g for g in scoreboard(year, dt.date(year, 10, 31), wide=True)
+                 if g["state"] == 3 and g["reg"] and (g["sy"] == year if g.get("sy") else g["date"][:10] <= f"{year}-08-31")]
+        done = set(acc["done"]) | set(acc.get("missing", []))
+        todo = [g for g in games if g["id"] not in done]
+        print(f"ESPN backfill {label}: {len(games)} games, {len(todo)} to go")
+        added = no_plays = 0
+        for g in todo:
+            if out_of_time():
+                break
+            summary = get_json(f"{SITE}/summary?event={g['id']}")
+            if not summary:
+                acc.setdefault("missing", []).append(g["id"])
+                continue
+            plays = plays_for(g["id"])
+            no_plays += not plays
+            try:
+                if add_game(acc, g, summary, plays):
+                    added += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"ESPN: skipped game {g['id']} ({e})")
+                acc.setdefault("missing", []).append(g["id"])
+            if added % 50 == 0:
+                save(path, acc)
+            if added + no_plays >= 30 and no_plays > 0.8 * (added + no_plays):
+                print(f"ESPN has no play-by-play for {label}; the backfill stops here")
+                status["noPlays"] = year
+                break
+        acc["stints"] = {}   # lineups are only used for this season's team pages; leaving them out keeps the file small
+        finished = not out_of_time() and len(set(acc["done"]) | set(acc.get("missing", []))) >= len(games) > 0
+        if finished:
+            acc["complete"] = True
+            status["complete"] = sorted(set(status["complete"]) | {year})
+        save(path, acc)
+        save(STATUS_PATH, status)
+        print(f"ESPN backfill {label}: {len(acc['done'])} games saved{' (complete)' if finished else ''}")
+        if status.get("noPlays") == year:
+            break
 
 
 if __name__ == "__main__":
