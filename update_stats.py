@@ -327,6 +327,8 @@ def main():
     run_step("bios, drafts, contracts", lambda: __import__("bbr_extra").update(now, year))
     run_step("games (box scores + play-by-play)", lambda: __import__("nba_games").update(now, year))
     run_step("player pages", lambda: __import__("build_players").build(now, year))
+    run_step("team extras (coach, picks, injuries)", lambda: __import__("teams_extra").update(now, year))
+    run_step("team pages", lambda: __import__("build_teams").build(now, year))
     return 0
 
 

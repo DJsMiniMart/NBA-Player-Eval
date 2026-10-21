@@ -5,8 +5,18 @@
 const PAGES = [
   {label:"Home",          sub:"Play Eval leaderboard",          href:"index.html#/",        match:p => /index\.html$|\/$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"Players",       sub:"Every player, by team",          href:"index.html#/players", match:p => /^#\/(players|player|compare)/.test(p.hash)},
+  {label:"Teams",         sub:"Stats, lineups, cap, picks",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
 ];
+/* [code, NBA logo id, name] for the team grid in the menu */
+const TEAM_LIST = [["ATL",1610612737,"Hawks"],["BOS",1610612738,"Celtics"],["BKN",1610612751,"Nets"],["CHA",1610612766,"Hornets"],
+  ["CHI",1610612741,"Bulls"],["CLE",1610612739,"Cavaliers"],["DAL",1610612742,"Mavericks"],["DEN",1610612743,"Nuggets"],
+  ["DET",1610612765,"Pistons"],["GSW",1610612744,"Warriors"],["HOU",1610612745,"Rockets"],["IND",1610612754,"Pacers"],
+  ["LAC",1610612746,"Clippers"],["LAL",1610612747,"Lakers"],["MEM",1610612763,"Grizzlies"],["MIA",1610612748,"Heat"],
+  ["MIL",1610612749,"Bucks"],["MIN",1610612750,"Timberwolves"],["NOP",1610612740,"Pelicans"],["NYK",1610612752,"Knicks"],
+  ["OKC",1610612760,"Thunder"],["ORL",1610612753,"Magic"],["PHI",1610612755,"76ers"],["PHX",1610612756,"Suns"],
+  ["POR",1610612757,"Trail Blazers"],["SAC",1610612758,"Kings"],["SAS",1610612759,"Spurs"],["TOR",1610612761,"Raptors"],
+  ["UTA",1610612762,"Jazz"],["WAS",1610612764,"Wizards"]];
 
 const css = `
 .sitenav{position:sticky;top:0;z-index:50;background:#0e2350;color:#fff;border-bottom:1px solid rgba(255,255,255,.12);font:14px/1.4 Inter,system-ui,sans-serif;}
@@ -32,7 +42,15 @@ const css = `
   .sitenav-list a.on{background:#3a1720;}
   .sitenav-list small{color:#93a0b8;}
 }
-@media (max-width:520px){ .sitenav-cur{display:none;} }
+.sitenav-list{max-height:calc(100vh - 70px);overflow:auto;}
+.sitenav-teams{border-top:1px solid #dde2ea;margin-top:6px;padding:8px 4px 2px;}
+.sitenav-teams > small{display:block;padding:0 8px 6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10.5px;}
+.sitenav-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;}
+.sitenav-list .sitenav-grid a{border:0;padding:6px;display:flex;align-items:center;justify-content:center;border-radius:8px;}
+.sitenav-grid img{width:30px;height:30px;object-fit:contain;}
+.sitenav-grid a.on{background:#fbe7ea;box-shadow:inset 0 0 0 2px #C8102E;}
+@media (prefers-color-scheme: dark){ .sitenav-teams{border-top-color:#22304a;} .sitenav-grid a{background:rgba(255,255,255,.92);} }
+@media (max-width:520px){ .sitenav-cur{display:none;} .sitenav-list{min-width:280px;} }
 `;
 
 function where(){ return {path: location.pathname, hash: location.hash || ""}; }
@@ -45,10 +63,13 @@ function build(){
     <a class="sitenav-brand" href="index.html#/">Play <span class="red">Eval</span><span class="sitenav-cur" id="sitenavCur"></span></a>
     <div class="sitenav-menu">
       <button class="sitenav-btn" id="sitenavBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitenavList">
-        Pages <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+        Team Pages <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
       </button>
       <div class="sitenav-list" id="sitenavList" role="menu">
         ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
+        <div class="sitenav-teams"><small>Team pages</small><div class="sitenav-grid">
+          ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="https://cdn.nba.com/logos/nba/${id}/primary/L/logo.svg" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
+        </div></div>
       </div>
     </div></div>`;
   document.body.insertBefore(nav, document.body.firstChild);
@@ -71,7 +92,8 @@ function build(){
 function mark(){
   const w = where();
   let cur = null;
-  document.querySelectorAll("#sitenavList a").forEach(a => {
+  document.querySelectorAll("#sitenavList a[data-team]").forEach(a => a.classList.toggle("on", /team\.html$/.test(w.path) && w.hash.replace("#", "").toUpperCase() === a.dataset.team));
+  document.querySelectorAll("#sitenavList a[data-i]").forEach(a => {
     const on = PAGES[+a.dataset.i].match(w);
     a.classList.toggle("on", on);
     if(on && !cur) cur = PAGES[+a.dataset.i].label;

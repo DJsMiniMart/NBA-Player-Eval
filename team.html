@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team · Play Eval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f4f8; --panel:#ffffff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb;
+    --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A; --nba-blue:#1D428A; --nba-red:#C8102E;
+    --good:#2f9e44; --good-soft:#e6f4ea; --bad:#d6336c; --bad-soft:#fde8ef; --warn:#b7791f; --warn-soft:#fdf3dc;
+    --z-cap:#2f9e44; --z-tax:#e8a317; --z-a1:#e8590c; --z-a2:#c92a2a;
+    --c1:#1D428A; --c2:#C8102E;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a;
+      --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff;
+      --good:#51cf66; --good-soft:#14301c; --bad:#ff6b9a; --bad-soft:#3a1525; --warn:#f2b84b; --warn-soft:#3a2c10; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px;}
+  a{color:var(--court);}
+  button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  button:hover{border-color:var(--court);}
+  input,select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
+  /* team picker */
+  .picker{background:#0b1a3c;overflow-x:auto;scrollbar-width:thin;}
+  .picker-in{display:flex;gap:6px;padding:8px 16px;width:max-content;margin:0 auto;}
+  .picker a{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:4px;border:2px solid transparent;text-decoration:none;font:700 9px Inter;color:#1D428A;}
+  .picker a.on{border-color:var(--nba-red);box-shadow:0 0 0 3px rgba(200,16,46,.45);}
+  .picker img{width:100%;height:100%;object-fit:contain;}
+  /* hero */
+  .hero{background:linear-gradient(120deg,var(--c1) 0%,color-mix(in srgb,var(--c1) 70%,#000) 100%);color:#fff;border-bottom:5px solid var(--c2);}
+  .hero-in{display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;padding:22px 16px;}
+  .hero .logo{width:96px;height:96px;background:#fff;border-radius:50%;padding:10px;display:flex;align-items:center;justify-content:center;}
+  .hero .logo img{width:100%;height:100%;object-fit:contain;}
+  .hero h1{font:700 46px/1 "Barlow Condensed",sans-serif;margin:0;text-transform:uppercase;letter-spacing:.5px;}
+  .hero .sub{color:rgba(255,255,255,.85);margin-top:6px;font-size:13.5px;}
+  .facts{display:grid;grid-template-columns:repeat(2,minmax(150px,auto));gap:6px 22px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 16px;font-size:13px;}
+  .facts span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:rgba(255,255,255,.65);font-weight:600;}
+  .facts b{font-weight:600;}
+  .record{font:700 30px/1 "Barlow Condensed";margin-top:8px;}
+  .record small{font:500 13px Inter;color:rgba(255,255,255,.8);margin-left:6px;}
+  /* section tabs */
+  .tabs{position:sticky;top:48px;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);}
+  .tabs-in{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1180px;margin:0 auto;scrollbar-width:none;}
+  .tabs a{white-space:nowrap;text-decoration:none;color:var(--dim);font-weight:600;font-size:13px;padding:6px 12px;border-radius:999px;}
+  .tabs a:hover{color:var(--ink);background:var(--panel);}
+  .tabs a.on{color:#fff;background:var(--c1);}
+  section{padding-top:22px;scroll-margin-top:110px;}
+  h2{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;margin:0 0 4px;letter-spacing:.4px;}
+  .note{color:var(--dim);font-size:12.5px;margin:0 0 12px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+  .pad{padding:14px 16px;}
+  .empty{padding:28px 18px;text-align:center;color:var(--dim);}
+  /* filters */
+  .filters{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;padding:12px 14px;}
+  .filters label{display:block;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+  .filters select{width:100%;padding:6px 8px;font-size:13px;}
+  .fsum{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim);flex-wrap:wrap;}
+  .fsum b{color:var(--ink);}
+  /* stat tiles */
+  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:12px;}
+  .grp h3{margin:0;padding:10px 14px;font:700 15px "Barlow Condensed";text-transform:uppercase;letter-spacing:.6px;color:var(--dim);border-bottom:1px solid var(--line);}
+  .srow{display:grid;grid-template-columns:1fr auto 52px;gap:10px;align-items:center;padding:7px 14px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;}
+  .srow:last-child{border-bottom:0;}
+  .srow .k{color:var(--dim);font-size:13px;}
+  .srow .v{font-weight:700;font-size:15px;text-align:right;}
+  .rk{font-size:11px;font-weight:700;text-align:center;padding:2px 0;border-radius:999px;background:var(--row);color:var(--dim);}
+  .rk.top{background:var(--good-soft);color:var(--good);} .rk.bot{background:var(--bad-soft);color:var(--bad);}
+  .big4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .tile{padding:14px 16px;}
+  .tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);font-weight:600;}
+  .tile .v{font:700 34px/1.05 "Barlow Condensed";margin-top:4px;}
+  .tile .r{font-size:12px;color:var(--dim);}
+  /* tables */
+  .tw{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel);}
+  th.s{cursor:pointer;user-select:none;} th.on{color:var(--accent);}
+  td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:13px;}
+  th.l,td.l{text-align:left;}
+  tr:hover td{background:var(--row);}
+  td.nm{font-weight:600;}
+  td.nm a{color:inherit;text-decoration:none;} td.nm a:hover{color:var(--court);text-decoration:underline;}
+  .W{color:var(--good);font-weight:700;} .L{color:var(--bad);font-weight:700;}
+  .pos{color:var(--good);} .neg{color:var(--bad);}
+  .tag{font-size:10px;font-weight:700;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:0 3px;margin-left:4px;}
+  .mini{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:6px;}
+  /* lineups */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;}
+  .chip.on{background:var(--c1);border-color:var(--c1);color:#fff;}
+  .chip small{font-weight:400;opacity:.75;margin-left:4px;}
+  .cmp{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px;}
+  .cmp .card{padding:14px 16px;}
+  .cmp h4{margin:0 0 8px;font-size:13px;color:var(--dim);font-weight:600;}
+  .cmp .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .cmp .nums div span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+  .cmp .nums div b{font:700 26px/1.1 "Barlow Condensed";}
+  .row2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 8px;}
+  /* cap */
+  .meter{position:relative;height:34px;margin:10px 0 4px;}
+  .meter .track{position:absolute;left:0;right:0;top:10px;height:12px;border-radius:6px;overflow:hidden;background:var(--row);}
+  .meter .zone{position:absolute;top:0;bottom:0;opacity:.2;}
+  .meter .fill{position:absolute;left:0;top:10px;height:12px;border-radius:6px;}
+  .meter .tick{position:absolute;top:5px;height:22px;width:2px;background:var(--c);}
+  .meter .tick span{position:absolute;top:22px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--c);white-space:nowrap;}
+  .capnums{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;}
+  .capnums div span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+  .capnums div b{font:700 22px/1.1 "Barlow Condensed";}
+  .pill{display:inline-block;font-weight:700;font-size:11.5px;padding:3px 10px;border-radius:999px;color:#fff;background:var(--c);}
+  td.opt{background:var(--warn-soft);} td.opt i{font-style:normal;font-size:10px;font-weight:700;margin-left:4px;color:var(--warn);}
+  tr.tot td{font-weight:700;border-top:2px solid var(--line);}
+  /* schedule */
+  .next{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px;}
+  .gcard{padding:12px 14px;}
+  .gcard .d{font-size:11.5px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+  .gcard .o{display:flex;align-items:center;gap:8px;font-weight:700;margin:6px 0 2px;}
+  .gcard .o img{width:28px;height:28px;object-fit:contain;}
+  .gcard .t{font-size:12px;color:var(--dim);}
+  /* injuries */
+  .inj{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .inj:last-child{border-bottom:0;}
+  .inj .who{font-weight:600;}
+  .inj .st{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;align-self:start;}
+  .st.out{background:var(--bad-soft);color:var(--bad);} .st.dtd{background:var(--warn-soft);color:var(--warn);} .st.oth{background:var(--row);color:var(--dim);}
+  .inj .why{grid-column:1/-1;color:var(--dim);font-size:12.5px;}
+  /* picks */
+  td.pk{white-space:normal;text-align:left;min-width:220px;line-height:1.35;}
+  footer{color:var(--dim);font-size:12px;margin:30px 0 40px;}
+  @media (max-width:900px){
+    .filters{grid-template-columns:repeat(4,1fr);}
+    .big4,.capnums{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width:640px){
+    .hero-in{grid-template-columns:auto 1fr;}
+    .hero .logo{width:64px;height:64px;}
+    .hero h1{font-size:32px;}
+    .facts{grid-column:1/-1;}
+    .filters{grid-template-columns:repeat(2,1fr);}
+    .cmp{grid-template-columns:1fr;}
+    .cmp .nums{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="picker"><div class="picker-in" id="picker"></div></div>
+<div class="hero"><div class="wrap hero-in" id="hero"><div class="empty" style="color:#fff">Loading…</div></div></div>
+<nav class="tabs"><div class="tabs-in" id="tabs">
+  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
+  <a href="#injuries">Injuries</a><a href="#cap">Cap sheet</a><a href="#picks">Draft picks</a>
+</div></nav>
+<div class="wrap">
+  <section id="stats">
+    <h2>Team stats &amp; league ranks</h2>
+    <p class="note">Ranks compare all 30 teams with the same filters (so "Last 10" ranks every team's last 10 games). Per-100 numbers use possessions.</p>
+    <div class="card">
+      <div class="filters" id="filters"></div>
+      <div class="fsum" id="fsum"></div>
+    </div>
+    <div id="statsBody"></div>
+  </section>
+  <section id="lineups">
+    <h2>Lineups: who plays well together</h2>
+    <p class="note">Pick 2 to 5 players to see how the team scores and defends per 100 possessions when they're all on the floor, and when they aren't. Uses the filters above.</p>
+    <div id="lineBody"></div>
+  </section>
+  <section id="roster">
+    <h2>Roster</h2>
+    <p class="note">This season's numbers for this team, using the filters above. Click a name for the player page.</p>
+    <div class="card"><div class="tw" id="rosterBody"></div></div>
+  </section>
+  <section id="schedule">
+    <h2>Schedule</h2>
+    <div id="schedBody"></div>
+  </section>
+  <section id="injuries">
+    <h2>Injury report</h2>
+    <div class="card" id="injBody"></div>
+  </section>
+  <section id="cap">
+    <h2>Cap sheet</h2>
+    <div id="capBody"></div>
+  </section>
+  <section id="picks">
+    <h2>Draft picks</h2>
+    <p class="note">Who owns this team's picks, and any picks it holds from other teams, for the next seven drafts. From RealGM, refreshed every morning.</p>
+    <div class="card"><div class="tw" id="picksBody"></div></div>
+  </section>
+  <footer>
+    Games, lineups and box scores from the NBA's public game feed; contracts, coaches and executives from Basketball-Reference;
+    draft picks from RealGM; injuries from ESPN. Owners are entered by hand. Everything refreshes each morning. <span id="asof"></span>
+  </footer>
+</div>
+<script src="nav.js"></script>
+<script src="player.js"></script>
+<script src="cap.js"></script>
+<script src="team.js"></script>
+</body>
+</html>

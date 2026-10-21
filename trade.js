@@ -3,22 +3,8 @@
 (function(){
 "use strict";
 
-/* ===== League numbers for the season (update each July when the NBA announces them) ===== */
-const RULES = {
-  season:       "2026-27",
-  cap:          164961000,   // salary cap
-  tax:          200428000,   // luxury tax line
-  apron1:       209015000,   // first apron
-  apron2:       221686000,   // second apron
-  minPayroll:   148465000,   // minimum team salary
-  bracket:      9096000,     // salary-matching amount (was $7.5M in 2023-24; rises with the cap)
-  buffer:       250000,      // the "+ $250K" in salary matching
-  cashLimit:    8495000,     // most cash a team can send (and, separately, receive) in trades this season
-  rosterMax:    15,          // standard contracts (two-way players don't count)
-  rosterMin:    14,
-  firstDraft:   2027,        // the next draft
-  yearsOut:     7,           // picks can be traded up to seven drafts out
-};
+/* League numbers for the season live in cap.js (shared with the team pages). */
+const RULES = window.CAP_RULES;
 const LAST_DRAFT = RULES.firstDraft + RULES.yearsOut - 1;   // 2033: also the pick a 2nd-apron team can't trade
 /* ========================================================================================== */
 
@@ -428,7 +414,7 @@ function rulesHtml(){
     <li>Picks a team has already traded away, and pick protections that carry over from earlier deals.</li>
     <li>Dead money and cap holds, unless you add them under "Other cap charges".</li>
   </ul>
-  <p class="muted">${RULES.season} figures: cap ${Mfull(RULES.cap)}, tax ${Mfull(RULES.tax)}, first apron ${Mfull(RULES.apron1)}, second apron ${Mfull(RULES.apron2)}, cash limit ${Mfull(RULES.cashLimit)}. Change them at the top of trade.js each July.</p>`;
+  <p class="muted">${RULES.season} figures: cap ${Mfull(RULES.cap)}, tax ${Mfull(RULES.tax)}, first apron ${Mfull(RULES.apron1)}, second apron ${Mfull(RULES.apron2)}, cash limit ${Mfull(RULES.cashLimit)}. Change them in cap.js each July.</p>`;
 }
 
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 1800); }

@@ -30,8 +30,7 @@ A **Pages** menu at the top of every page (`nav.js`) links to:
   seven drafts out, with protections or swaps) and cash, and see whether it would go through: salary matching,
   the first and second apron limits (no taking back extra salary above the first apron; no aggregating salaries,
   sending cash or trading the frozen pick seven years out above the second), the Stepien rule, the cash limit and
-  roster size. Salaries come from `data/contracts.json`. **Update the cap, tax and apron numbers in `RULES` at the
-  top of `trade.js` each July.** "Copy link to this trade" saves the whole trade in the address.
+  roster size. Salaries come from `data/contracts.json`. **Update the cap, tax and apron numbers in `cap.js` each July.** "Copy link to this trade" saves the whole trade in the address.
 
 On the all-time lists (best seasons and best careers), picking a team counts only what each player did for that
 team, games played included. Players who changed teams mid-season have their team-by-team numbers saved as
@@ -39,8 +38,19 @@ team, games played included. Players who changed teams mid-season have their tea
 
 The Team list has today's 30 franchises. Teams that moved or were renamed count toward the franchise they became
 (Seattle SuperSonics -> Thunder, New Jersey Nets -> Nets, Vancouver -> Grizzlies, Charlotte Hornets 1988-2002 and
-Bobcats -> Hornets, and so on), but each row keeps the team's name from that season. The list is `FRANCHISE` in
+Bobcats -> Hornets, and so on), and every row is shown under today's team (hover a team to see the name it had then). The list is `FRANCHISE` in
 `index.html`.
+
+- **Teams** (`team.html#OKC`, `team.js`) -- one page per team: team stats with league ranks (offense, defense and
+  net rating per 100 possessions, pace, shooting, rebounding, turnovers...), filters (last 5/10/15/20/30 games,
+  home/away, opponents above or below .500, wins/losses, opponent conference or division, rest days, month,
+  close games or blowouts), a lineup tool (pick 2-5 players to see the team's offense and defense per 100
+  possessions with all of them on the floor vs. the rest of the time, plus the best 2/3/4/5-man groups), roster
+  stats, schedule, injury report, cap sheet, draft picks, head coach, executive and owner.
+  Built each morning by `build_teams.py` from the NBA game feed (`nba_games.py` now also saves each game's team box
+  score and every five-man lineup's minutes, points and possessions) and `teams_extra.py` (coach/executive from
+  Basketball-Reference, future draft picks from RealGM, injuries from ESPN). Owners are typed into
+  `data/owners.json` -- edit it when a team is sold. League salary numbers live in `cap.js`.
 
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 

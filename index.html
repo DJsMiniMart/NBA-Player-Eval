@@ -218,6 +218,19 @@ const FRANCHISE = {SEA:"OKC", NJN:"BRK", NYN:"BRK", CHA:"CHO", CHH:"CHO", NOH:"N
   WSB:"WAS", CAP:"WAS", KCK:"SAC", KCO:"SAC", SDC:"LAC", BUF:"LAC", NOJ:"UTA", SDR:"HOU"};
 const fr = c => FRANCHISE[c] || c;
 const teamsOf = p => (p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ")).filter(Boolean);
+/* Show every row under today's franchise (SEA -> OKC, NJN -> BRK...). The old name stays in p.was for the tooltip. */
+function normRow(p){
+  if(!p || p._n) return p;
+  p._n = true;
+  const orig = teamsOf(p);
+  const mapped = orig.map(fr).filter((t,i,a) => i === 0 || t !== a[i-1]);
+  if(orig.some(t => fr(t) !== t)) p.was = orig.join(" → ");
+  if(p.teams){ if(mapped.length > 1) p.teams = mapped; else delete p.teams; p.team = mapped[mapped.length-1] || ""; }
+  else p.team = mapped.join(" → ");
+  (p.splits || []).forEach(x => { if(fr(x.team) !== x.team){ x.was = x.team; x.team = fr(x.team); } });
+  return p;
+}
+function normSeason(d){ if(d && d.players) d.players.forEach(normRow); return d; }
 function franchiseOptions(){
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
   return Object.keys(T).map(n => [NBA_TO_BBR[n] || n, T[n].n]).sort((a,b) => a[1].localeCompare(b[1]));
@@ -231,6 +244,7 @@ function onTeam(r, team){
     const parts = r.splits.filter(x => fr(x.team) === team);
     if(!parts.length) return null;
     const o = {id:r.id, name:r.name, season:r.season, team:[...new Set(parts.map(x => x.team))].join(" → "), pos:r.pos, partOf:r.team};
+    if(parts.some(x => x.was)) o.was = [...new Set(parts.map(x => x.was || x.team))].join(" → ");
     SPLIT_KEYS.forEach(k => o[k] = parts.reduce((t,x) => t + (x[k] || 0), 0));
     o.value = playEval(o);
     return o.value == null ? null : o;
@@ -369,12 +383,13 @@ function shortYears(p){
 }
 /* Team cell: careers show their last team plus how many others (full list on hover and in the breakdown) */
 function teamCell(p){
+  const was = p.was ? ` (then: ${p.was})` : "";
   if(p.partOf && VIEW === "alltime")
-    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Whole season: " + p.partOf)}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
+    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Whole season: " + p.partOf) + was}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
   const all = p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ").filter(Boolean);
   if(VIEW === "careers" && all.length > 1)
-    return `<td class="l teamcell${VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(", "))}">${esc(p.team || all[all.length-1])} <span class="more">+${all.length-1}</span></td>`;
-  return `<td class="l teamcell${VIEW === "alltime" || VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(" → "))}">${esc(all.join(" → "))}</td>`;
+    return `<td class="l teamcell${VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(", ") + was)}">${esc(p.team || all[all.length-1])} <span class="more">+${all.length-1}</span></td>`;
+  return `<td class="l teamcell${VIEW === "alltime" || VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(" → ") + was)}">${esc(all.join(" → "))}</td>`;
 }
 function detailRow(p){
   const parts = [
@@ -461,7 +476,7 @@ async function loadAlltime(){
   ALLTIME = {season:"All-time", final:true, players:(raw && raw.rows || []).map(r => {
       const o = Object.fromEntries(cols.map((c,i)=>[c, r[i]]));
       o.splits = Array.isArray(o.splits) ? o.splits.map(x => Object.fromEntries(["team", ...SPLIT_KEYS].map((k,i) => [k, x[i]]))) : null;
-      return o;
+      return normRow(o);
     }),
     note:"All-time seasons haven't been downloaded yet. They're added on the next daily update."};
   CAREER = new Map();
@@ -494,7 +509,7 @@ async function showSeason(file){
   else if(s.file === "careers"){ VIEW = "careers"; DATA = buildCareers(""); }
   else {
     VIEW = "past";
-    DATA = fileCache[s.file] || (fileCache[s.file] = await getJSON("data/" + s.file)) || {players:[], note:"Couldn't load that season."};
+    DATA = fileCache[s.file] || (fileCache[s.file] = normSeason(await getJSON("data/" + s.file))) || {players:[], note:"Couldn't load that season."};
     DATA.final = true;
   }
   DATA.players = DATA.players || [];
@@ -519,7 +534,7 @@ async function showSeason(file){
 
 async function load(){
   if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
-  CUR = await getJSON("data/stats.json") || {players:[], note:"Couldn't load the stats file."};
+  CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
   CUR.players = CUR.players || [];
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
@@ -527,7 +542,7 @@ async function load(){
   if(index.length) SEASONS.push({label:"All-time best seasons", file:"alltime"}, {label:"All-time best careers", file:"careers"});
   SEASONS.push(...index);
   if(index.length){
-    BASE = fileCache[index[0].file] = await getJSON("data/" + index[0].file);
+    BASE = fileCache[index[0].file] = normSeason(await getJSON("data/" + index[0].file));
     if(BASE && BASE.players) BASEMAP = new Map(BASE.players.map(p=>[p.id, p])); else BASE = null;
   }
   $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");

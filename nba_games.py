@@ -8,6 +8,10 @@ For every regular-season game it reads the box score and the play-by-play and ad
   - their team's margin and the game's length, for on/off (plus-minus on vs. off the floor)
   - steals, split by the kind of turnover they caused (bad pass -> off-ball, lost ball -> on-ball)
   - blocks, split by where the blocked shot was taken (rim, paint, mid-range, three)
+and, per game, for the team pages:
+  - each team's box score totals ("tgames")
+  - every five-man lineup each team used: seconds, points for/against, possessions for/against ("stints")
+The league schedule is saved to data/schedule.json.
 
 Results live in data/pbp/<season>.json (one file per season). Each run:
   1. finishes this season's games so far (from the league schedule), then
@@ -34,7 +38,8 @@ TIME_BUDGET_SEC = 150 * 60     # stop starting new games after this long (the wo
 PAUSE_SEC = 0.35               # between requests
 SAVE_EVERY = 75                # write progress to disk this often
 MAX_GAME_NUMBER = 1320         # regular-season game numbers run 00001..01230 (fewer in short seasons)
-ACC_SCHEMA = 2                 # bump when new fields are collected: older season files are rebuilt
+ACC_SCHEMA = 3                 # bump when new fields are collected: older season files are rebuilt
+                               # (3: team box scores + five-man lineup stints, for the team pages)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
@@ -218,8 +223,164 @@ def add_game(acc, box, pbp):
                 thief["st"]["on"] += 1       # stripped / poked it from the ball handler
             else:
                 thief["st"]["oth"] += 1
+    acc.setdefault("tgames", {})[gid] = [date, g["homeTeam"]["teamTricode"], g["awayTeam"]["teamTricode"],
+                                         team_line(g["homeTeam"]), team_line(g["awayTeam"]), game_min]
+    try:
+        acc.setdefault("stints", {})[gid] = lineup_stints(g, pbp)
+    except Exception as e:  # noqa: BLE001 -- odd play-by-play shouldn't lose the game
+        print(f"Lineups skipped for {gid}: {e}")
     acc["done"].append(gid)
     acc["teams"].update({str(k): v for k, v in teams.items()})
+
+
+# ---------- team pages ----------
+# team box score line: [pts, fgm, fga, 3pm, 3pa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf,
+#                       paint pts, fast-break pts, second-chance pts, pts off turnovers, bench pts]
+TEAM_KEYS = [("points",), ("fieldGoalsMade",), ("fieldGoalsAttempted",), ("threePointersMade",),
+             ("threePointersAttempted",), ("freeThrowsMade",), ("freeThrowsAttempted",), ("reboundsOffensive",),
+             ("reboundsDefensive",), ("assists",), ("steals",), ("blocks",), ("turnoversTotal", "turnovers"),
+             ("foulsPersonal",), ("pointsInThePaint",), ("pointsFastBreak",), ("pointsSecondChance",),
+             ("pointsFromTurnovers",), ("benchPoints",)]
+
+
+def team_line(t):
+    st = t.get("statistics") or {}
+    out = []
+    for keys in TEAM_KEYS:
+        v = next((st[k] for k in keys if st.get(k) is not None), None)
+        if v is None:   # no team totals in the feed: add up the players
+            v = sum(int((pl.get("statistics") or {}).get(keys[-1]) or 0) for pl in t.get("players", []))
+        out.append(int(v or 0))
+    if not out[0]:
+        out[0] = int(t.get("score") or 0)
+    return out
+
+
+def clock_sec(iso):
+    m = re.match(r"PT(?:(\d+)M)?(?:([\d.]+)S)?", str(iso or ""))
+    return (int(m.group(1) or 0) * 60 + float(m.group(2) or 0)) if m else 0.0
+
+
+def lineup_stints(g, pbp):
+    """{tricode: [["id,id,id,id,id", seconds, pts for, pts against, poss for, poss against], ...]} for one game.
+    Who is on the floor comes from the box score starters and the substitutions; at the start of each
+    overtime/quarter the five are worked out from who shows up in the play-by-play before being subbed in."""
+    actions = (pbp or {}).get("game", {}).get("actions", [])
+    if not actions:
+        return {}
+    home, away = g["homeTeam"], g["awayTeam"]
+    tri_of = {}
+    for t in (home, away):
+        for pl in t.get("players", []):
+            tri_of[str(pl["personId"])] = t["teamTricode"]
+    tris = [home["teamTricode"], away["teamTricode"]]
+    other = {tris[0]: tris[1], tris[1]: tris[0]}
+    starters = {t["teamTricode"]: [str(pl["personId"]) for pl in t.get("players", []) if str(pl.get("starter", "0")) == "1"]
+                for t in (home, away)}
+    by_period = {}
+    for a in actions:
+        by_period.setdefault(int(a.get("period") or 1), []).append(a)
+
+    def involved(a):
+        """(player, is a sub-in) for everyone an action names."""
+        kind = str(a.get("actionType", "")).lower()
+        out = []
+        if a.get("personId") and str(a["personId"]) != "0":
+            out.append((str(a["personId"]), kind == "substitution" and str(a.get("subType", "")).lower() == "in"))
+        for k in ("assistPersonId", "stealPersonId", "blockPersonId", "foulDrawnPersonId"):
+            if a.get(k):
+                out.append((str(a[k]), False))
+        return out
+
+    floor = {t: list(starters[t]) for t in tris}
+    acc = {t: {} for t in tris}
+    score = None
+    for period in sorted(by_period):
+        acts = by_period[period]
+        if period > 1:   # who started this period
+            seen, first = set(), {t: [] for t in tris}
+            for a in acts:
+                for pid, sub_in in involved(a):
+                    team = tri_of.get(pid)
+                    if not team or pid in seen:
+                        continue
+                    seen.add(pid)
+                    if not sub_in:
+                        first[team].append(pid)
+            for t in tris:
+                five = first[t][:5]
+                for pid in floor[t] + starters[t]:
+                    if len(five) >= 5:
+                        break
+                    if pid not in five and pid not in seen:
+                        five.append(pid)
+                floor[t] = five
+        length = 720 if period <= 4 else 300
+        last = float(length)
+        key = {t: ",".join(sorted(floor[t])) if len(floor[t]) == 5 else None for t in tris}
+
+        def row(t):
+            k = key[t]
+            if not k:
+                return None
+            return acc[t].setdefault(k, [0.0, 0, 0, 0.0, 0.0])
+
+        for a in acts:
+            now = clock_sec(a.get("clock"))
+            if now < last:
+                for t in tris:
+                    r = row(t)
+                    if r:
+                        r[0] += last - now
+                last = now
+            kind = str(a.get("actionType", "")).lower()
+            team = a.get("teamTricode") or tri_of.get(str(a.get("personId")))
+            if kind == "substitution" and team in floor:
+                pid = str(a.get("personId"))
+                if str(a.get("subType", "")).lower() == "out":
+                    floor[team] = [x for x in floor[team] if x != pid]
+                elif pid not in floor[team]:
+                    floor[team].append(pid)
+                if len(floor[team]) == 5:
+                    key[team] = ",".join(sorted(floor[team]))
+                continue
+            try:
+                sh, sa = int(a.get("scoreHome") or 0), int(a.get("scoreAway") or 0)
+            except ValueError:
+                sh, sa = score or (0, 0)
+            if score is not None and (sh, sa) != score:
+                for t, pts in ((tris[0], sh - score[0]), (tris[1], sa - score[1])):
+                    if pts > 0:
+                        r, ro = row(t), row(other[t])
+                        if r:
+                            r[1] += pts
+                        if ro:
+                            ro[2] += pts
+            score = (sh, sa)
+            if team not in other:
+                continue
+            poss = 0.0
+            if kind in ("2pt", "3pt"):
+                poss = 1.0
+            elif kind == "freethrow":
+                poss = 0.44
+            elif kind == "turnover":
+                poss = 1.0
+            elif kind == "rebound" and str(a.get("subType", "")).lower() == "offensive":
+                poss = -1.0
+            if poss:
+                r, ro = row(team), row(other[team])
+                if r:
+                    r[3] += poss
+                if ro:
+                    ro[4] += poss
+        if last > 0:
+            for t in tris:
+                r = row(t)
+                if r:
+                    r[0] += last
+    return {t: [[k, round(v[0]), v[1], v[2], round(v[3], 2), round(v[4], 2)] for k, v in acc[t].items() if v[0] > 0]
+            for t in tris}
 
 
 def new_acc(end_year):
@@ -260,6 +421,7 @@ def current_final_games(end_year):
     ls = sched.get("leagueSchedule", {})
     if ls.get("seasonYear") and ls["seasonYear"] != want:
         print(f"Schedule is for {ls.get('seasonYear')}, not {want}")
+    save_schedule(ls)
     out = []
     for day in ls.get("gameDates", []):
         for g in day.get("games", []):
@@ -267,6 +429,29 @@ def current_final_games(end_year):
             if gid.startswith(f"002{str(end_year - 1)[2:]}") and int(g.get("gameStatus", 0)) == 3:
                 out.append(gid)
     return out
+
+
+SCHEDULE_PATH = os.path.join(HERE, "data", "schedule.json")
+
+
+def save_schedule(ls):
+    """data/schedule.json: every game this season (regular season, NBA Cup knockouts, play-in, playoffs):
+    [gameId, start (UTC), home, away, status 1 upcoming / 2 live / 3 final, home score, away score, arena, TV]"""
+    games = []
+    for day in ls.get("gameDates", []):
+        for g in day.get("games", []):
+            gid = str(g.get("gameId", ""))
+            if gid[:3] not in ("002", "004", "005", "006"):
+                continue
+            h, a = g.get("homeTeam") or {}, g.get("awayTeam") or {}
+            tv = [b.get("broadcasterAbbreviation") or b.get("broadcasterDisplay")
+                  for b in ((g.get("broadcasters") or {}).get("nationalBroadcasters") or [])]
+            games.append([gid, g.get("gameDateTimeUTC") or g.get("gameDateUTC") or "", h.get("teamTricode"),
+                          a.get("teamTricode"), int(g.get("gameStatus") or 1), int(h.get("score") or 0),
+                          int(a.get("score") or 0), g.get("arenaName") or "", ", ".join(x for x in tv if x)])
+    if games:
+        save(SCHEDULE_PATH, {"season": ls.get("seasonYear"), "games": games})
+        print(f"Schedule: {len(games)} games")
 
 
 def update(now, current_year):
