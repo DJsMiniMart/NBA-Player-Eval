@@ -405,8 +405,22 @@ function drawPicks(){
   if(!p || !p.rows || !p.rows.length){ $('picksBody').innerHTML = `<div class="empty">Draft pick details are saved during the morning update.</div>`; return; }
   const heads = p.headers && p.headers.length === p.rows[0].length ? p.headers : ["Year"].concat(p.rows[0].slice(1).map((_, i) => i ? "" : "Picks"));
   $('picksBody').innerHTML = `<table><thead><tr>${heads.map((h, i) => `<th class="l">${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${p.rows.map(r => `<tr>${r.map((c, i) => i === 0 ? `<td class="l"><b>${esc(c)}</b></td>` : `<td class="pk">${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <tbody>${p.rows.map(r => `<tr>${r.map((c, i) => i === 0 ? `<td class="l"><b>${esc(c)}</b></td>` : `<td class="pk ${pickClass(c)}">${pickHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <div class="note pad" style="margin:0;border-top:1px solid var(--line)"><span class="pkkey own">Own</span> keeps its pick · <span class="pkkey gone">To …</span> traded away · <span class="pkkey cond">Swap / protected</span> depends on where picks land · <span class="pkkey frz">Frozen / forfeited</span> can't be traded or was taken away. Team codes are RealGM's (GOS = Warriors, SAN = Spurs, UTH = Jazz, PHL = 76ers).</div>
     ${TEAM.picksAt ? `<div class="note pad" style="margin:0">As of ${new Date(TEAM.picksAt).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"})}. "Own" means the team keeps its own pick; "To XXX" means it was traded away.</div>` : ""}`;
+}
+
+function pickClass(c){
+  const t = String(c).trim();
+  if(/^(Frozen|Forfeited)/i.test(t)) return "frz";
+  if(/^To [A-Z]{3}$/.test(t) || /^To [A-Z]{3}( \(via [^)]*\))?$/.test(t)) return "gone";
+  if(/^Own$/i.test(t) || /^Own( \(via [^)]*\))?$/.test(t)) return "own";
+  if(/^Own; /.test(t) && !/favorable|swap|if /i.test(t)) return "own";
+  return "cond";
+}
+/* put each pick on its own line and make team codes easy to spot */
+function pickHtml(c){
+  return String(c).split(/;\s+(?![^()]*\))/).map(part => esc(part).replace(/\b(Own)\b/g, "<b>$1</b>")).join("<br>");
 }
 
 /* ---------- page ---------- */

@@ -50,7 +50,9 @@ Bobcats -> Hornets, and so on), and every row is shown under today's team (hover
   stats, schedule, injury report, cap sheet, draft picks, head coach, executive and owner.
   Built each morning by `build_teams.py` from this season's games (`espn_games.py` saves each game's team box
   score and every five-man lineup's minutes, points and possessions) and `teams_extra.py` (coach/executive from
-  Basketball-Reference, future draft picks from RealGM, injuries from ESPN). Owners are typed into
+  Basketball-Reference, future draft picks from RealGM, injuries from ESPN). RealGM sometimes turns away
+  GitHub's servers, so `data/picks.json` keeps a saved copy of every team's picks that the team pages use instead
+  (it says the date it was saved; ask for a fresh copy after big trades). Owners are typed into
   `data/owners.json` -- edit it when a team is sold. League salary numbers live in `cap.js`.
 
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.

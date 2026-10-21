@@ -130,7 +130,11 @@
   .st.out{background:var(--bad-soft);color:var(--bad);} .st.dtd{background:var(--warn-soft);color:var(--warn);} .st.oth{background:var(--row);color:var(--dim);}
   .inj .why{grid-column:1/-1;color:var(--dim);font-size:12.5px;}
   /* picks */
-  td.pk{white-space:normal;text-align:left;min-width:220px;line-height:1.35;}
+  td.pk{white-space:normal;text-align:left;min-width:220px;line-height:1.4;border-left:4px solid transparent;}
+  td.pk.own{border-left-color:var(--good);} td.pk.gone{border-left-color:var(--bad);color:var(--dim);}
+  td.pk.cond{border-left-color:var(--warn);} td.pk.frz{border-left-color:var(--dim);color:var(--dim);}
+  .pkkey{display:inline-block;padding:0 6px;border-left:4px solid;margin-right:2px;}
+  .pkkey.own{border-color:var(--good);} .pkkey.gone{border-color:var(--bad);} .pkkey.cond{border-color:var(--warn);} .pkkey.frz{border-color:var(--dim);}
   footer{color:var(--dim);font-size:12px;margin:30px 0 40px;}
   @media (max-width:900px){
     .filters{grid-template-columns:repeat(4,1fr);}
@@ -188,7 +192,7 @@
   </section>
   <section id="picks">
     <h2>Draft picks</h2>
-    <p class="note">Who owns this team's picks, and any picks it holds from other teams, for the next seven drafts. From RealGM, refreshed every morning.</p>
+    <p class="note">Who owns this team's picks, and any picks it holds from other teams, for the next seven drafts. From RealGM: refreshed each morning when RealGM can be reached, otherwise the latest saved copy (date below the table).</p>
     <div class="card"><div class="tw" id="picksBody"></div></div>
   </section>
   <footer>

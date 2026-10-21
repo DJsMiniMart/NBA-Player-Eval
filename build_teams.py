@@ -63,6 +63,7 @@ def build(now=None, current_year=None):
                  lg[16], lg[17], lg[18], lg[20]])
 
     fo = extra.get("frontOffice", {})
+    snap = load_json(os.path.join(DATA_DIR, "picks.json"), {}) or {}   # fallback when RealGM can't be reached
     for code in CODES:
         st = []
         names = {}
@@ -75,7 +76,8 @@ def build(now=None, current_year=None):
             "code": code, "season": season, "at": now.isoformat(timespec="seconds"),
             "coach": fo.get(code, {}).get("coach"), "executive": fo.get(code, {}).get("executive"),
             "arena": fo.get(code, {}).get("arena"), "owner": owners.get(code),
-            "picks": extra.get("picks", {}).get(code), "picksAt": extra.get("at", {}).get("picks"),
+            "picks": extra.get("picks", {}).get(code) or (snap.get("teams") or {}).get(code),
+            "picksAt": extra.get("at", {}).get("picks") if extra.get("picks", {}).get(code) else snap.get("asOf"),
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
             "names": names, "stints": st, "players": plogs[code]})
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")

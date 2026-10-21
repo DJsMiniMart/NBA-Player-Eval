@@ -2,7 +2,9 @@
 
   coach, executive, arena   each team's Basketball-Reference season page (30 pages, one every 5 seconds)
   future draft picks        RealGM's "future draft picks by team" page: who owns each team's 1st and
-                            2nd-round picks for the next seven drafts, with protections and swaps
+                            2nd-round picks for the next seven drafts, with protections and swaps.
+                            If RealGM turns the update away, the team pages use data/picks.json, a
+                            snapshot of the same page (re-save it by hand after big trades).
   injury report             ESPN's public injury feed (the team page also checks it live when it opens)
 
 Owners don't change often, so they're typed into data/owners.json by hand.
@@ -41,13 +43,15 @@ TEAMS = {
 }
 NICK = {code: name.split()[-1].lower() for code, (_, name) in TEAMS.items()}
 NICK["POR"] = "blazers"
+NICK["PHI"] = "(76ers|sixers)"
 
 
 def code_for(text):
-    """'Oklahoma City Thunder' / 'Portland Trail Blazers' / 'LA Clippers' -> NBA code."""
+    """'Oklahoma City Thunder' / 'Portland Trail Blazers' / 'Philadelphia Sixers' -> NBA code.
+    Matches whole words, so "Hornets" isn't mistaken for "Nets"."""
     low = (text or "").lower()
     for code, nick in NICK.items():
-        if nick in low:
+        if re.search(rf"\b{nick}\b", low):
             return code
     return None
 
@@ -96,9 +100,26 @@ def front_office(current_year):
 
 
 # ---------- future draft picks ----------
+def cell_text(td):
+    """A RealGM cell's text, without the pick-count badge ("1", "1 + 1") at the end."""
+    for span in td.find_all("span"):
+        if re.fullmatch(r"\s*\d+(\s*\+\s*\d+)*\s*", span.get_text()):
+            span.decompose()
+    for br in td.find_all("br"):
+        br.replace_with("\n")
+    for p in td.find_all("p"):
+        p.append("\n")
+    parts = [" ".join(x.split()) for x in td.get_text().split("\n")]
+    txt = " ".join(x for x in parts if x).replace(" ;", ";")
+    return re.sub(r"\s*\+\s*$", "", txt).strip()
+
+
 def future_picks():
     """{code: {"headers": [...], "rows": [[cell, ...], ...]}} -- one row per draft year."""
     html = get_browser(PICKS_URL)
+    if "<table" not in html:
+        print(f"Team extras: RealGM sent back a page with no tables ({len(html)} bytes; probably blocked)")
+        return {}
     soup = BeautifulSoup(html, "html.parser")
     out = {}
     for table in soup.find_all("table"):
@@ -121,7 +142,7 @@ def future_picks():
             continue
         body = []
         for tr in (table.find("tbody") or table).find_all("tr"):
-            cells = [" ".join(td.get_text(" ", strip=True).split()) for td in tr.find_all(["td", "th"])]
+            cells = [cell_text(td) for td in tr.find_all(["td", "th"])]
             if cells and re.match(r"^\d{4}$", cells[0]):
                 body.append(cells)
         if body:
