@@ -124,9 +124,14 @@ function drawHero(){
   document.title = `${T.n} · Play Eval`;
   const cr = confRank(CODE);
   const fact = (k, v) => `<div><span>${k}</span><b>${v ? esc(v) : "—"}</b></div>`;
+  const H = TEAM && TEAM.history;
+  const titles = (H && H.titles) || [];
+  const trophies = titles.length
+    ? `<div class="trophies" title="${titles.length} championship${titles.length === 1 ? "" : "s"}">${titles.map(([y, name, lg]) => `<span class="trophy" title="${esc(name)}, ${y - 1}-${String(y).slice(2)}${lg === "BAA" ? " (BAA)" : ""}">${TROPHY}${y}${name !== T.n ? `<small>${esc(nameThen(name))}</small>` : ""}</span>`).join("")}</div>`
+    : (H ? `<div class="titles-none">No championships yet</div>` : "");
   $('hero').innerHTML = `
     <div class="logo"><img src="${logo(CODE)}" alt="" onerror="this.style.visibility='hidden'"></div>
-    <div><h1>${esc(T.n)}</h1>
+    <div>${trophies}<h1>${esc(T.n)}</h1>
       <div class="sub">${CONF_OF[CODE]}ern Conference · ${DIV_OF[CODE]} Division${TEAM && TEAM.arena ? " · " + esc(TEAM.arena) : ""}</div>
       <div class="record">${r ? `${r.w}-${r.l}` : "0-0"}<small>${cr ? `${ord(cr)} in the ${CONF_OF[CODE]}` : (LEAGUE ? "season hasn't started" : "")}</small></div></div>
     <div class="facts">
@@ -423,6 +428,75 @@ function pickHtml(c){
   return String(c).split(/;\s+(?![^()]*\))/).map(part => esc(part).replace(/\b(Own)\b/g, "<b>$1</b>")).join("<br>");
 }
 
+/* ---------- franchise history ---------- */
+const TROPHY = `<svg viewBox="0 0 16 18" aria-hidden="true"><path fill="#f5c542" d="M4 1h8v5.2c0 2.3-1.6 4.2-3.3 4.6V13h2.3l.8 2H4.2l.8-2h2.3v-2.2C5.6 10.4 4 8.5 4 6.2z"/><path fill="none" stroke="#f5c542" stroke-width="1.2" d="M4 2.5H1.8v1.6c0 1.6 1 2.8 2.4 3M12 2.5h2.2v1.6c0 1.6-1 2.8-2.4 3"/><rect x="3.2" y="15.6" width="9.6" height="1.6" rx=".4" fill="#d9a72e"/></svg>`;
+const nameThen = n => n.replace(/^(Minneapolis|Seattle|Philadelphia|Syracuse|Rochester|St\. Louis|Baltimore|Washington|New Jersey|Fort Wayne|Cincinnati|Kansas City|Vancouver|Buffalo|San Diego|New Orleans|Charlotte|Capital|San Francisco)\b.*$/, m => m);
+const playerLink = (id, name) => id ? `<a href="index.html#/player/${encodeURIComponent(id)}">${esc(name)}</a>` : esc(name);
+const REC = [["pts","Points"],["trb","Rebounds"],["ast","Assists"],["stl","Steals"],["blk","Blocks"],["g","Games played"],["fg3","3-pointers made"]];
+const recOpen = {};
+function drawRecords(){
+  const H = TEAM && TEAM.history;
+  if(!H || !H.leaders || !Object.keys(H.leaders).length){ $('recBody').innerHTML = `<div class="card empty">Franchise records are added during the morning update (they take a run or two to collect the first time).</div>`; return; }
+  const list = (rows, fmt, key) => {
+    const n = recOpen[key] ? 25 : 10;
+    return `<ol>${rows.slice(0, n).map((r, i) => `<li><span class="n">${i + 1}</span><span>${playerLink(r[0], r[1])}</span><span class="v">${fmt(r)}</span></li>`).join("")}</ol>${rows.length > 10 ? `<button class="more" data-more="${key}">${recOpen[key] ? "Show top 10" : `Show top ${Math.min(25, rows.length)}`}</button>` : ""}`;
+  };
+  const cards = REC.filter(([k]) => (H.leaders[k] || []).length).map(([k, label]) =>
+    `<div class="card rec"><h3><span>${label}</span></h3>${list(H.leaders[k], r => r[2].toLocaleString(), k)}</div>`);
+  const co = (H.coaches || []).filter(c => c[5] > 0);
+  if(co.length){
+    const rows = co.map(c => [null, `${c[1]} (${c[2] === c[3] ? c[2] - 1 + "-" + String(c[2]).slice(2) : `${c[2] - 1}-${String(c[3]).slice(2)}`})`, c[5], c]);
+    cards.unshift(`<div class="card rec"><h3><span>Coach wins</span><span style="font-family:Inter;font-weight:500;text-transform:none;letter-spacing:0;font-size:11.5px">W-L · playoffs · titles</span></h3>${list(rows, r => `${r[3][5]}-${r[3][6]}<span class="then">${r[3][7] || r[3][8] ? ` ${r[3][7]}-${r[3][8]}` : ""}${r[3][9] ? ` · ${r[3][9]}🏆` : ""}</span>`, "coach")}</div>`);
+  }
+  $('recBody').innerHTML = `<div class="recs">${cards.join("")}</div>`;
+  $('recBody').querySelectorAll('[data-more]').forEach(b => b.onclick = () => { recOpen[b.dataset.more] = !recOpen[b.dataset.more]; drawRecords(); });
+}
+const AW_ORDER = ["mvp","fmvp","dpoy","roy","smoy","mip","clutch_poy","coy","all_nba","all_defense","all_rookie"];
+let awPick = "all";
+function drawAwards(){
+  const H = TEAM && TEAM.history, list = (H && H.awards) || [];
+  if(!H){ $('awBody').innerHTML = `<div class="card empty">Awards are added during the morning update (they take a run or two to collect the first time).</div>`; return; }
+  if(!list.length){ $('awBody').innerHTML = `<div class="card empty">No season awards on record for this franchise yet.</div>`; return; }
+  const label = a => a[2] === "all_nba" || a[2] === "all_defense" || a[2] === "all_rookie" ? `${a[3]} ${a[6] ? a[6] + " Team" : ""}` : a[3];
+  const counts = {};
+  list.forEach(a => counts[a[2]] = (counts[a[2]] || 0) + 1);
+  const keys = AW_ORDER.filter(k => counts[k]);
+  if(awPick !== "all" && !counts[awPick]) awPick = "all";
+  const nameOf = k => (list.find(a => a[2] === k) || [])[3] || k;
+  const rows = list.filter(a => awPick === "all" || a[2] === awPick);
+  const T = TEAMS[CODE];
+  $('awBody').innerHTML = `<div class="counts"><button class="count ${awPick === "all" ? "on" : ""}" data-aw="all">All<b>${list.length}</b></button>${keys.map(k => `<button class="count ${awPick === k ? "on" : ""}" data-aw="${k}">${esc(nameOf(k))}<b>${counts[k]}</b></button>`).join("")}</div>
+    <div class="card"><div class="tw" style="max-height:560px;overflow:auto"><table><thead><tr><th class="l">Season</th><th class="l">Award</th><th class="l">Winner</th></tr></thead>
+    <tbody>${rows.map(a => `<tr><td class="l">${esc(a[1])}</td><td class="l">${esc(label(a))}</td><td class="l nm">${a[2] === "coy" ? esc(a[5]) : playerLink(a[4], a[5])}${a[7] && a[7] !== (NBA_TO_BBR[CODE] || CODE) ? `<span class="then">${esc(a[7])}</span>` : ""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  $('awBody').querySelectorAll('[data-aw]').forEach(b => b.onclick = () => { awPick = b.dataset.aw; drawAwards(); });
+}
+const DH = {round:"all", decade:"all", q:""};
+function drawDraftHistory(){
+  const H = TEAM && TEAM.history, list = (H && H.draft) || [];
+  if(!H || !list.length){ $('dhBody').innerHTML = `<div class="card empty">Draft history is added during the morning update (it takes a run or two to collect the first time).</div>`; return; }
+  const decades = [...new Set(list.map(d => Math.floor(d[0] / 10) * 10))].sort((a,b) => b - a);
+  const q = fold(DH.q);
+  const rows = list.filter(d => (DH.round === "all" || (DH.round === "3" ? d[1] >= 3 : d[1] === +DH.round)) &&
+    (DH.decade === "all" || Math.floor(d[0] / 10) * 10 === +DH.decade) && (!q || fold(d[4]).includes(q) || fold(d[5]).includes(q)));
+  const top = list.filter(d => d[2] && d[2] <= 3).length, firsts = list.filter(d => d[1] === 1).length;
+  if(!$('dhCtl')){
+    $('dhBody').innerHTML = `<div class="ctl" id="dhCtl">
+      <select id="dhRound"><option value="all">All rounds</option><option value="1">1st round</option><option value="2">2nd round</option><option value="3">3rd round or later</option></select>
+      <select id="dhDecade"><option value="all">All years</option>${decades.map(d => `<option value="${d}">${d}s</option>`).join("")}</select>
+      <input id="dhQ" type="search" placeholder="Search player or school"><span class="note" id="dhSum" style="margin:0"></span></div>
+      <div class="card"><div class="tw" style="max-height:620px;overflow:auto" id="dhTable"></div></div>`;
+    $('dhRound').onchange = e => { DH.round = e.target.value; drawDraftHistory(); };
+    $('dhDecade').onchange = e => { DH.decade = e.target.value; drawDraftHistory(); };
+    $('dhQ').oninput = e => { DH.q = e.target.value; drawDraftHistory(); };
+  }
+  $('dhSum').textContent = `${rows.length} of ${list.length} picks · ${firsts} first-rounders · ${top} top-3 picks`;
+  $('dhTable').innerHTML = `<table><thead><tr><th class="l">Year</th><th>Round</th><th>Pick</th><th class="l">Player</th><th class="l">Drafted from</th><th>NBA games</th><th>NBA points</th></tr></thead>
+    <tbody>${rows.map(d => `<tr><td class="l">${d[0]}</td><td>${d[1] || "—"}</td><td>${d[2] ? "#" + d[2] : "—"}</td>
+      <td class="l nm">${playerLink(d[3], d[4])}${d[8] && d[8].length ? `<span class="then" title="Draft rights traded on draft night">→ ${esc(d[8].join(" → "))}</span>` : ""}</td>
+      <td class="l">${esc(d[5] || "—")}</td><td>${d[6] ? d[6].toLocaleString() : "—"}</td><td>${d[7] ? d[7].toLocaleString() : "—"}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">No picks match.</td></tr>`}</tbody></table>`;
+}
+function drawHistory(){ $('dhBody').innerHTML = ""; drawRecords(); drawAwards(); drawDraftHistory(); }
+
 /* ---------- page ---------- */
 function drawData(){ drawStats(); drawLineups(); drawRoster(); }
 async function show(code){
@@ -434,7 +508,7 @@ async function show(code){
   if(CODE !== code) return;
   TEAM = t;
   pick = [];
-  drawHero(); drawFilters(); drawData(); drawSchedule(); drawInjuries(); drawCap(); drawPicks();
+  drawHero(); drawFilters(); drawData(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
   $('asof').textContent = TEAM && TEAM.at ? `Team data updated ${new Date(TEAM.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.` : "";
 }
 function codeFromHash(){

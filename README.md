@@ -55,6 +55,14 @@ Bobcats -> Hornets, and so on), and every row is shown under today's team (hover
   (it says the date it was saved; ask for a fresh copy after big trades). Owners are typed into
   `data/owners.json` -- edit it when a team is sold. League salary numbers live in `cap.js`.
 
+  Each team page also has franchise history from `franchise_history.py` (Basketball-Reference, saved to
+  `data/franchise.json`): a trophy with the year for every championship next to the logo, franchise career
+  leaders (points, rebounds, assists, steals, blocks, games, 3-pointers) and every coach's wins, every season award
+  won while on the team (MVP, Finals MVP, Defensive Player, Rookie, Sixth Man, Most Improved, Clutch Player, Coach of
+  the Year, All-NBA, All-Defensive and All-Rookie teams), and every draft pick the franchise has made (year, round,
+  overall pick, school). Old seasons are read once; the rest refreshes weekly. Teams that moved count toward today's
+  franchise.
+
 To add a page to the menu, add a line to `PAGES` at the top of `nav.js`.
 
 ## Player pages

@@ -329,6 +329,7 @@ def main():
     run_step("games (box scores + play-by-play, from ESPN)", lambda: __import__("espn_games").update(now, year))
     run_step("player pages", lambda: __import__("build_players").build(now, year))
     run_step("team extras (coach, picks, injuries)", lambda: __import__("teams_extra").update(now, year))
+    run_step("franchise history (records, titles, awards, draft picks)", lambda: __import__("franchise_history").update(now, year))
     run_step("team pages", lambda: __import__("build_teams").build(now, year))
     return 0
 

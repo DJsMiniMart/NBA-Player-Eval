@@ -63,7 +63,9 @@ def build(now=None, current_year=None):
                  lg[16], lg[17], lg[18], lg[20]])
 
     fo = extra.get("frontOffice", {})
-    snap = load_json(os.path.join(DATA_DIR, "picks.json"), {}) or {}   # fallback when RealGM can't be reached
+    snap = (load_json(os.path.join(DATA_DIR, "picks.json"), {})            # fallback when RealGM can't be reached:
+            or load_json(os.path.join(DATA_DIR, "..", "picks.json"), {}) or {})   # data/picks.json or the main folder
+    history = (load_json(os.path.join(DATA_DIR, "franchise.json"), {}) or {}).get("teams", {})   # franchise_history.py
     for code in CODES:
         st = []
         names = {}
@@ -79,7 +81,7 @@ def build(now=None, current_year=None):
             "picks": extra.get("picks", {}).get(code) or (snap.get("teams") or {}).get(code),
             "picksAt": extra.get("at", {}).get("picks") if extra.get("picks", {}).get(code) else snap.get("asOf"),
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
-            "names": names, "stints": st, "players": plogs[code]})
+            "names": names, "stints": st, "players": plogs[code], "history": history.get(code)})
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")
 
 
