@@ -122,12 +122,10 @@ def scoreboard(end_year, today):
         events = (data or {}).get("events") or []
         lo, hi = f"{start - dt.timedelta(days=1):%Y-%m-%d}", f"{end + dt.timedelta(days=2):%Y-%m-%d}"
         in_month = events and all(lo <= str(e.get("date", ""))[:10] <= hi for e in events)
-        if not in_month and start <= today + dt.timedelta(days=45):
-            # the month request didn't work: ask one day at a time (past games and the next few weeks)
+        if not in_month:
+            # the month request didn't work: ask one day at a time (the whole season, for the schedule)
             events = []
             for d in (start + dt.timedelta(days=i) for i in range((end - start).days + 1)):
-                if d > today + dt.timedelta(days=45):
-                    break
                 day = get_json(f"{SITE}/scoreboard?dates={d:%Y%m%d}")
                 events += (day or {}).get("events") or []
         for e in events:
