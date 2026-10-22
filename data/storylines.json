@@ -1,0 +1,6 @@
+{
+ "_how": "Add your own storylines for upcoming games. Key = AWAY-HOME team codes (e.g. \"BOS-NYK\", both orders work) or an ESPN game id; value = a list of sentences.",
+ "_example": [
+  "\"PHI-BOS\": [\"Joel Embiid and the Celtics' bench have traded words all week.\"]"
+ ]
+}

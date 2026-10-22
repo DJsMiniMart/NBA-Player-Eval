@@ -63,6 +63,25 @@ def recaps(old, now):
     return {k: out[k] for k in keep}
 
 
+def previews(old, now):
+    """ESPN's preview story for games in the next week, when it has one (usually posted the day of the game)."""
+    sched = (load(SCHEDULE_PATH, {}) or {}).get("games") or []
+    soon = (now + dt.timedelta(days=7)).isoformat()[:16]
+    start = (now - dt.timedelta(hours=6)).isoformat()[:16]
+    out = {k: v for k, v in old.items() if any(g[0] == k and g[4] != 3 for g in sched)}
+    n = 0
+    for g in sched:
+        if g[4] == 3 or not (start <= g[1] <= soon):
+            continue
+        s = get_json(f"{SITE}/summary?event={g[0]}")
+        a = article_of(s, None) if s else None
+        if a and a.get("h"):
+            out[g[0]] = a
+            n += 1
+    print(f"Morning: previews for {n} upcoming games")
+    return out
+
+
 def news():
     d = get_json(f"{SITE}/news?limit=40")
     if not d:
@@ -121,6 +140,11 @@ def update(now, current_year):
     except Exception as e:  # noqa: BLE001
         print(f"Morning: recaps failed ({e})")
         out["recaps"] = old.get("recaps") or {}
+    try:
+        out["previews"] = previews(old.get("previews") or {}, now)
+    except Exception as e:  # noqa: BLE001
+        print(f"Morning: previews failed ({e})")
+        out["previews"] = old.get("previews") or {}
     out["news"] = news() or old.get("news") or []
     out["newsAt"] = out["at"] if out["news"] is not old.get("news") else old.get("newsAt")
     tx = transactions()
