@@ -15,6 +15,10 @@ RECAP_DAYS = 3        # look for a recap of games from the last few days
 KEEP_RECAPS = 400
 
 
+def clean(text):
+    return re.sub(r"^\s*[—–-]+\s*", "", text or "")
+
+
 def web_link(obj):
     links = (obj or {}).get("links") or {}
     web = links.get("web") or {}
@@ -25,16 +29,16 @@ def article_of(summary, scoreboard_event):
     """ESPN puts the recap in different places depending on the endpoint and the day."""
     a = summary.get("article") if summary else None
     if isinstance(a, dict) and a.get("headline"):
-        return {"h": a.get("headline"), "d": a.get("description") or "", "u": web_link(a), "k": a.get("type") or ""}
+        return {"h": a.get("headline"), "d": clean(a.get("description")), "u": web_link(a), "k": a.get("type") or ""}
     comp = ((scoreboard_event or {}).get("competitions") or [{}])[0]
     hs = comp.get("headlines") or ((((summary or {}).get("header") or {}).get("competitions") or [{}])[0].get("headlines") or [])
     for h in hs:
         if h.get("description") or h.get("shortLinkText"):
-            return {"h": h.get("shortLinkText") or h.get("description"), "d": h.get("description") or "",
+            return {"h": h.get("shortLinkText") or h.get("description"), "d": clean(h.get("description")),
                     "u": web_link(h), "k": h.get("type") or ""}
     for n in ((summary or {}).get("news") or {}).get("articles") or []:
         if (n.get("type") or "").lower() == "recap" and n.get("headline"):
-            return {"h": n.get("headline"), "d": n.get("description") or "", "u": web_link(n), "k": "Recap"}
+            return {"h": n.get("headline"), "d": clean(n.get("description")), "u": web_link(n), "k": "Recap"}
     return None
 
 
@@ -75,8 +79,8 @@ def news():
     return rows
 
 
-KINDS = [("trade", r"\btrad|\bacquired\b"), ("sign", r"\bsigned\b|\bre-signed\b|\bagreed\b"),
-         ("extend", r"\bextension\b|\bexercised\b|\bdeclined\b.*option|\boption\b"),
+KINDS = [("trade", r"\btrad|\bacquired\b"), ("extend", r"\bextension\b|\bexercised\b|\bdeclined\b.*option|\boption\b"),
+         ("sign", r"\bsigned\b|\bre-signed\b|\bagreed\b"),
          ("waive", r"\bwaived\b|\breleased\b|\bclaimed\b"), ("gleague", r"\bassigned\b|\brecalled\b|g league"),
          ("staff", r"\bhired\b|\bfired\b|\bnamed\b|\bpromoted\b|\bcoach|\bmanager\b|\bpresident\b"),
          ("suspend", r"\bsuspend|\bfined\b|\breinstat")]
