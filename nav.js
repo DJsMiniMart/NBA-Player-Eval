@@ -21,10 +21,18 @@ const TEAM_LIST = [["ATL",1610612737,"Hawks"],["BOS",1610612738,"Celtics"],["BKN
   ["UTA",1610612762,"Jazz"],["WAS",1610612764,"Wizards"]];
 
 const css = `
-.sitenav{position:sticky;top:0;z-index:50;background:#0e2350;color:#fff;border-bottom:1px solid rgba(255,255,255,.12);font:14px/1.4 Inter,system-ui,sans-serif;}
-.sitenav-in{max-width:1100px;margin:0 auto;padding:0 16px;height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.sitenav-brand{font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fff;text-decoration:none;white-space:nowrap;}
-.sitenav-brand .red{background:#C8102E;padding:0 6px;border-radius:3px;margin-left:3px;}
+.sitenav{position:sticky;top:0;z-index:50;background:#0b0b0d;color:#fff;font:14px/1.4 Inter,system-ui,sans-serif;box-shadow:0 2px 0 0 transparent;}
+.sitenav::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:3px;background:linear-gradient(90deg,#1D428A 0 50%,#C8102E 50% 100%);}
+.sitenav-in{max-width:1100px;margin:0 auto;padding:0 16px;height:54px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.sitenav-brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;white-space:nowrap;}
+.sitenav-brand img{height:40px;width:auto;display:block;}
+.sitenav-word{display:flex;flex-direction:column;line-height:1;text-transform:uppercase;font-family:"Barlow Condensed",sans-serif;}
+.sitenav-word b{font-weight:700;font-size:21px;letter-spacing:.6px;}
+.sitenav-word i{font-style:normal;font-weight:600;font-size:11.5px;letter-spacing:4.2px;margin-top:2px;opacity:.92;}
+/* page banners: black with the logo's blue/red split underneath */
+.nba-band,header.hero{background:radial-gradient(120% 140% at 0% 0%,rgba(29,66,138,.55) 0%,rgba(29,66,138,0) 55%),radial-gradient(120% 140% at 100% 0%,rgba(200,16,46,.45) 0%,rgba(200,16,46,0) 55%),#0b0b0d !important;border-bottom:0 !important;position:relative;}
+.nba-band::after,header.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,#1D428A 0 50%,#C8102E 50% 100%);}
+.nba-band .logo-strip{background:rgba(255,255,255,.04) !important;}
 .sitenav-cur{color:rgba(255,255,255,.65);font-size:12.5px;margin-left:10px;font-family:Inter,system-ui,sans-serif;text-transform:none;letter-spacing:0;font-weight:500;}
 .sitenav-menu{position:relative;}
 .sitenav-btn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:7px 12px;font:600 13px Inter,system-ui,sans-serif;cursor:pointer;}
@@ -52,17 +60,21 @@ const css = `
 .sitenav-grid img{width:30px;height:30px;object-fit:contain;}
 .sitenav-grid a.on{background:#fbe7ea;box-shadow:inset 0 0 0 2px #C8102E;}
 @media (prefers-color-scheme: dark){ .sitenav-teams{border-top-color:#22304a;} .sitenav-grid a{background:rgba(255,255,255,.92);} }
-@media (max-width:520px){ .sitenav-cur{display:none;} .sitenav-list{min-width:280px;} }
+@media (max-width:520px){ .sitenav-cur{display:none;} .sitenav-list{min-width:280px;} .sitenav-brand img{height:34px;} .sitenav-word b{font-size:18px;} .sitenav-word i{font-size:10px;letter-spacing:3.4px;} }
 `;
 
 function where(){ return {path: location.pathname, hash: location.hash || ""}; }
 
 function build(){
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
+  if(!document.querySelector('link[rel="icon"]')){
+    [["icon", "img/icon-64.png"], ["apple-touch-icon", "img/icon-256.png"]].forEach(([rel, href]) => {
+      const l = document.createElement("link"); l.rel = rel; l.href = href; l.type = "image/png"; document.head.appendChild(l); });
+  }
   const nav = document.createElement("nav");
   nav.className = "sitenav"; nav.setAttribute("aria-label", "Site");
   nav.innerHTML = `<div class="sitenav-in">
-    <a class="sitenav-brand" href="index.html">Play <span class="red">Eval</span><span class="sitenav-cur" id="sitenavCur"></span></a>
+    <a class="sitenav-brand" href="index.html" aria-label="Full Court Geek Press home"><img src="img/emblem-sm.png" alt=""><span class="sitenav-word"><b>Full Court</b><i>Geek Press</i></span><span class="sitenav-cur" id="sitenavCur"></span></a>
     <div class="sitenav-menu">
       <button class="sitenav-btn" id="sitenavBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitenavList">
         Team Pages <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>

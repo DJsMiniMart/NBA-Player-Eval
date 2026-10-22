@@ -123,7 +123,7 @@ function drawHero(){
   const T = TEAMS[CODE], r = RECORDS[CODE];
   document.documentElement.style.setProperty("--c1", T.c1);
   document.documentElement.style.setProperty("--c2", T.c2);
-  document.title = `${T.n} · Play Eval`;
+  document.title = `${T.n} · Full Court Geek Press`;
   const cr = confRank(CODE);
   const fact = (k, v) => `<div><span>${k}</span><b>${v ? esc(v) : "—"}</b></div>`;
   const H = TEAM && TEAM.history;

@@ -681,7 +681,7 @@ function render(){
     ${seasonHtml}
     ${careerHtml}
   </div>`;
-  document.title = `${REC.name} · Play Eval`;
+  document.title = `${REC.name} · Full Court Geek Press`;
   EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
