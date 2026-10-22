@@ -198,6 +198,65 @@ def earnings(seasons, sal):
     return {"total": sum(r[2] for r in rows), "seasons": rows, "missing": missing}
 
 
+
+# ---------- estimated hot zones for seasons whose exact zones haven't been rebuilt yet ----------
+# Old saved data has exact two/three/corner counts (z) and each shot's 2-ft court cell (b). The cells place the
+# twos and the above-the-break threes into the new zones; the exact counts set the totals. Cell settings were
+# tuned against 2026-27, where both exist (most zones land within ~2 points of the exact split).
+EST_Y_OFF, EST_RA, EST_TAN = 5.5, 6.0, 0.40
+TWO_Z = ["ra", "paint", "mlb", "mlw", "mtop", "mrw", "mrb"]
+ATB_Z = ["w3l", "t3", "w3r"]
+
+
+def _cell_zone(key):
+    bx, by = map(int, key.split(","))
+    x, y = bx * 2 + 1, by * 2 + 1 + EST_Y_OFF
+    d = math.hypot(x - 25, y - 5.25)
+    side = "l" if x < 25 else "r"
+    if d <= EST_RA:
+        return "ra", d
+    if 17 <= x <= 33 and y < 19:
+        return "paint", d
+    three = (y < 14.2 and (x < 3 or x > 47)) or (y >= 14.2 and d > 23.75)
+    if y < 14.2:
+        return (("c3" + side) if three else ("mlb" if side == "l" else "mrb")), d
+    top = abs(x - 25) <= EST_TAN * (y - 5.25)
+    if three:
+        return ("t3" if top else "w3" + side), d
+    return ("mtop" if top else ("mlw" if side == "l" else "mrw")), d
+
+
+def estimate_hz(z, cells):
+    g = lambda k: z.get(k) or [0, 0]  # noqa: E731
+    two = [sum(g(k)[i] for k in ("Restricted Area", "In The Paint (Non-RA)", "Mid-Range")) for i in (0, 1)]
+    share = {k: [0, 0] for k in TWO_Z + ATB_Z}
+    for key, (att, made) in (cells or {}).items():
+        zone, d = _cell_zone(key)
+        if (zone in TWO_Z and d < 22.5) or (zone in ATB_Z and d > 25):
+            share[zone][0] += att
+            share[zone][1] += made
+    out = {}
+
+    def spread(keys, tot, fallback):
+        if not tot[0]:
+            return
+        A = sum(share[k][0] for k in keys)
+        if not A:
+            out[fallback] = list(tot)
+            return
+        M = sum(share[k][1] for k in keys)
+        for k in keys:
+            a = tot[0] * share[k][0] / A
+            if a >= 0.5:
+                out[k] = [round(a), min(round(tot[1] * share[k][1] / M) if M else 0, round(a))]
+    spread(TWO_Z, two, "paint")
+    spread(ATB_Z, g("Above the Break 3"), "t3")
+    for old, new in (("Left Corner 3", "c3l"), ("Right Corner 3", "c3r"), ("Backcourt", "deep")):
+        if g(old)[0]:
+            out[new] = list(g(old))
+    return out
+
+
 def build(now=None, current_year=None):
     os.makedirs(PLAYERS_DIR, exist_ok=True)
     seasons = load_bbr_seasons()
@@ -243,6 +302,7 @@ def build(now=None, current_year=None):
     idmap = {}
     league = {}
     league_hz = {}   # 2K-style hot zones, league totals per season
+    hz_est = set()   # seasons whose zones are estimated (exact ones not rebuilt yet)
     accs = {}
     for path in sorted(glob.glob(os.path.join(PBP_DIR, "*.json"))):
         acc = load_json(path, {})
@@ -266,8 +326,20 @@ def build(now=None, current_year=None):
                 t[0] += att
                 t[1] += made
         # only once every saved game of the season has them (older seasons get them over a few runs)
-        if hz and set(acc.get("done", [])) <= set(acc.get("hzDone", [])):
+        done_ids = set(acc.get("done", []))
+        if hz and len(done_ids & set(acc.get("hzDone", []))) >= 0.98 * len(done_ids):   # a few games ESPN can't serve don't matter
             league_hz[acc["season"]] = hz
+        else:   # not rebuilt yet: estimate every player's zones from the old data
+            est = {}
+            for pl in acc["players"].values():
+                pl["_hzEst"] = estimate_hz(pl.get("z", {}), pl.get("b", {}))
+                for z, (att, made) in pl["_hzEst"].items():
+                    t = est.setdefault(z, [0, 0])
+                    t[0] += att
+                    t[1] += made
+            if est:
+                league_hz[acc["season"]] = est
+                hz_est.add(acc["season"])
         acc["_map"] = m
 
     names_all = {}
@@ -295,7 +367,7 @@ def build(now=None, current_year=None):
                 "teams": pl.get("t", []),
                 "logs": logs,
                 "zones": pl.get("z", {}),
-                "hz": pl.get("hz", {}) if label in league_hz else {},
+                "hz": (pl.get("_hzEst", {}) if label in hz_est else pl.get("hz", {})) if label in league_hz else {},
                 "cells": pl.get("b", {}),
                 "assists": [[idmap.get(k) or f"nba-{k}", names_all.get(k, k), n] for k, n in top_at],
                 "assistedBy": [[idmap.get(k) or f"nba-{k}", names_all.get(k, k), n] for k, n in top_af],
@@ -327,6 +399,7 @@ def build(now=None, current_year=None):
         rec["logCols"] = LOG_COLS + ["eval"]
         rec["league"] = {s: league[s] for s in rec["games"] if s in league}
         rec["leagueHz"] = {s: league_hz[s] for s in rec["games"] if s in league_hz}
+        rec["hzEst"] = sorted(s for s in rec["games"] if s in hz_est)
         if not rec["bio"] and last:
             rec["bio"] = {"pos": last.get("pos")}
         with open(os.path.join(PLAYERS_DIR, f"{pid}.json"), "w", encoding="utf-8") as f:
