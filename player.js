@@ -686,8 +686,8 @@ function clutchCard(){
   const v = k => r[C[k]] || 0;
   const mins = v("min"), cmin = v("c_sec") / 60;
   const base = mins ? (v("pts") + 2*v("ast") + 2*(v("dreb") + v("oreb")) + 4*v("stl") + v("blk") - 4*v("tov")) / mins : null;
-  const extra = .5 * (v("c_pts") + 2*v("c_ast") + 2*v("c_reb") + 4*v("c_stl") + v("c_blk") - 4*v("c_tov"));
-  const cpe = base != null ? base + extra / mins : null;
+  /* Clutch PE: the PE formula on crunch-time stats only, per crunch-time minute (0 with no crunch-time minutes) */
+  const cpe = cmin ? (v("c_pts") + 2*v("c_ast") + 2*v("c_reb") + 4*v("c_stl") + v("c_blk") - 4*v("c_tov")) / cmin : 0;
   const moments = (SEASONP.moments[r[C.id]] || []).slice().reverse();
   const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const per = (n, d) => d ? `${n}-${d}` : "—";
@@ -695,7 +695,7 @@ function clutchCard(){
   return box + `<h3>Crunch time <small>last 5 minutes of the 4th or overtime with the score within 5 · this season</small></h3>
     ${cmin ? `<div class="pp-cgrid">
       <div class="pp-cpe"><div><span>PE</span><b>${f3(base)}</b></div><div class="hot"><span>Clutch PE</span><b>${f3(cpe)}</b></div>
-        <div class="pp-note" style="margin:6px 0 0">Clutch PE counts every crunch-time point, assist, rebound, steal, block and turnover 1.5×. ${cpe > base ? "Their crunch-time play raises it." : cpe < base ? "Crunch-time turnovers pull it down." : ""}</div></div>
+        <div class="pp-note" style="margin:6px 0 0">PE covers all his minutes; Clutch PE uses only his crunch-time stats and minutes. ${cpe > base ? "He's been better in crunch time." : cpe < base ? "He's been less productive in crunch time." : ""}</div></div>
       <div class="pp-cstats">${stat(cmin.toFixed(1), "Minutes")}${stat(v("c_pts"), "Points")}${stat(per(v("c_fgm"), v("c_fga")), "FG")}${stat(per(v("c_fg3m"), v("c_fg3a")), "3P")}${stat(per(v("c_ftm"), v("c_fta")), "FT")}
         ${stat(v("c_ast"), "Assists")}${stat(v("c_reb"), "Rebounds")}${stat(v("c_stl"), "Steals")}${stat(v("c_blk"), "Blocks")}${stat(v("c_tov"), "Turnovers")}${stat((v("c_pm") > 0 ? "+" : "") + v("c_pm"), "+/-")}</div>
     </div>

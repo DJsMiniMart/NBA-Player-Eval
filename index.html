@@ -253,7 +253,7 @@ const img = (c, cls = "") => logo(c) ? `<img class="${cls}" src="${logo(c)}" alt
 const short = c => (TEAMS[c] && TEAMS[c].n.split(" ").slice(-1)[0]) || c;
 const nick = c => { const n = (TEAMS[c] && TEAMS[c].n) || c; return /Trail Blazers$/.test(n) ? "Trail Blazers" : n.split(" ").slice(-1)[0]; };
 const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
-const clutchExtra = c => c ? .5 * (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) : 0;
+const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) / (c[0] / 60) : 0;   // crunch-time stats only, per crunch-time minute
 const lastName = n => { const p = String(n).split(" "); return p.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv)$/i.test(p[p.length-1]) ? p[p.length-2] : p[p.length-1]; };
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 const store = {get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(_){} }};
@@ -322,7 +322,7 @@ function allLines(games){
         if(!min) return;
         const reb = dreb + oreb, pe = peOf(pts, ast, reb, stl, blk, tov, min);
         out.push({id, name, team:t, opp, home: t === b.home, gid:g[0], min, pts, ast, reb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl,
-          pe, cpe: pe + clutchExtra(cl) / min, won: b.teams[t].line[0] > b.teams[opp].line[0]});
+          pe, cpe: clutchPE(cl), cmin: cl && cl[0] ? cl[0] / 60 : 0, won: b.teams[t].line[0] > b.teams[opp].line[0]});
       }); });
   });
   return out;
@@ -379,7 +379,7 @@ const CATS = [
   {k:"pts", t:"Points"}, {k:"reb", t:"Rebounds"}, {k:"ast", t:"Assists"}, {k:"stl", t:"Steals"}, {k:"blk", t:"Blocks"},
   {k:"tpm", t:"3-pointers", f:p => `${p.tpm}-${p.tpa}`},
   {k:"pe", t:"Play Eval", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
-  {k:"cpe", t:"Clutch PE", min:20, f:p => p.cpe.toFixed(3), note:"20+ min, crunch-time plays ×1.5", only:p => p.cl && p.cl[0]},
+  {k:"cpe", t:"Clutch PE", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
   {k:"pm", t:"Plus / minus", f:p => (p.pm > 0 ? "+" : "") + p.pm},
   {k:"fgm", t:"Field goals", f:p => `${p.fgm}-${p.fga}`},
 ];

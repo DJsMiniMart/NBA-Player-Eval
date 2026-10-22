@@ -125,7 +125,7 @@
     <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
     <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
     <div id="metricBox"><label for="metric">Rank by</label><select id="metric">
-      <option value="pe">Play Eval</option><option value="cpe">Clutch PE</option><option value="crunch">Crunch-time PE only</option></select></div>
+      <option value="pe">Play Eval</option><option value="cpe">Clutch PE</option></select></div>
   </div>
 
   <div class="card">
@@ -204,7 +204,7 @@ const COLS = [
   {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
-const METRIC_LABEL = {pe: STAT_NAME, cpe: "Clutch PE", crunch: "Crunch PE"};
+const METRIC_LABEL = {pe: STAT_NAME, cpe: "Clutch PE"};
 const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || (BASE && metric() === "pe")))
   .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
   .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
@@ -307,13 +307,12 @@ function enrich(p, season){
 function qualified(){
   const minG = +$('minG').value || 0, minM = +$('minM').value || 0;
   const m = metric();
-  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM && p.value != null && (m !== "crunch" || (p.cmin || 0) >= CRUNCH_MIN_MINUTES));
+  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM && p.value != null && (m !== "cpe" || (p.cmin || 0) >= CRUNCH_MIN_MINUTES));
 }
 
-/* ---------- Rank by: Play Eval, Clutch PE, or crunch-time PE only (this season) ----------
+/* ---------- Rank by: Play Eval or Clutch PE (this season) ----------
    Crunch time = the last 5 minutes of the 4th quarter or overtime with the score within 5 (the NBA's "clutch").
-   Clutch PE   = Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5x.
-   Crunch PE   = Play Eval worked out from crunch-time minutes only. */
+   Clutch PE   = the Play Eval formula using only crunch-time stats, divided by crunch-time minutes (0 with none). */
 const CRUNCH_MIN_MINUTES = 3;
 let METRIC = "pe", CLUTCH = null;
 const metric = () => VIEW === "current" ? METRIC : "pe";
@@ -334,22 +333,19 @@ function attachClutch(players){
     const base = c ? c.pts + 2*c.ast + 2*c.reb + 4*c.stl + c.blk - 4*c.tov : 0;
     p.clutch = c || null;
     p.cmin = c ? c.sec / 60 : 0;
-    p.cpe = p.pe0 != null && p.mp ? p.pe0 + .5 * base / p.mp : p.pe0;
-    p.crunchPE = p.cmin ? base / p.cmin : null;
+    p.cpe = p.cmin ? base / p.cmin : 0;
   });
 }
 function applyMetric(){
   const m = metric();
-  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : m === "crunch" ? p.crunchPE : p.pe0; });
+  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : p.pe0; });
   $('metricBox').hidden = VIEW !== "current";
   document.querySelector('.controls').classList.toggle("nometric", VIEW !== "current");
   let note = $('metricNote');
   if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
   const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
   note.hidden = m === "pe";
-  note.innerHTML = m === "cpe"
-    ? `<b>Clutch PE</b> is Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5×. Crunch time is the last 5 minutes of the 4th quarter or overtime with the score within 5.${any ? "" : " No game has had crunch time yet this season, so it matches Play Eval for now."}`
-    : `<b>Crunch-time PE</b> is Play Eval worked out only from crunch-time minutes (the last 5 minutes of the 4th or overtime with the score within 5), so it shows who plays best when games are close. Players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
+  note.innerHTML = `<b>Clutch PE</b> is the Play Eval formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch PE of 0 but still has his regular PE. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
 }
 
 function drawHead(){

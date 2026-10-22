@@ -12,8 +12,9 @@ const $ = id => document.getElementById(id);
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 
 const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
-/* Clutch PE: crunch-time plays (last 5 min of the 4th/OT, score within 5) count 1.5x. c = [sec, pts, ast, reb, stl, blk, tov, ...] */
-const clutchExtra = c => c ? .5 * (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) : 0;
+/* Clutch PE: the PE formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute.
+   0 for a player with no crunch-time minutes. c = [sec, pts, ast, reb, stl, blk, tov, ...] */
+const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) / (c[0] / 60) : 0;
 
 const css = `
 .bx-modal{position:fixed;inset:0;z-index:100;background:rgba(5,10,25,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto;}
@@ -92,19 +93,19 @@ async function open(gid){
       const [id, name, st, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl] = r;
       const pe = peOf(pts, ast, dreb + oreb, stl, blk, tov, min);
       if(pe != null) peSum += pe;
-      const cpe = pe != null ? pe + clutchExtra(cl) / min : null;
-      if(cpe != null) cpeSum += cpe;
+      const cpe = clutchPE(cl);
+      cpeSum += cpe;
       const clTip = cl && cl[0] ? `Crunch time: ${Math.round(cl[0] / 60 * 10) / 10} min, ${cl[1]} pts, ${cl[7]}-${cl[8]} FG, ${cl[2]} ast, ${cl[3]} reb, ${cl[4]} stl, ${cl[5]} blk, ${cl[6]} tov, ${cl[13] > 0 ? "+" : ""}${cl[13]}` : "No crunch-time minutes";
       const bid = ids.get(fold(name));
       const sep = i > 0 && rows[i-1][2] && !st ? ` class="bench"` : "";
       return `<tr${sep}><td class="l nm">${bid ? `<a href="pe.html#/player/${encodeURIComponent(bid)}">${esc(name)}</a>` : esc(name)}${st ? `<span class="tag">S</span>` : ""}</td>
         <td>${min}</td><td><b>${pts}</b></td><td>${dreb + oreb}</td><td>${ast}</td><td>${stl}</td><td>${blk}</td><td>${tov}</td>
         <td>${fgm}-${fga}</td><td>${tpm}-${tpa}</td><td>${ftm}-${fta}</td><td class="${pm >= 0 ? "pos" : "neg"}">${pm > 0 ? "+" : ""}${pm}</td>
-        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td><td class="pe cpe${cl && cl[0] ? " hot" : ""}" title="${esc(clTip)}">${cpe != null ? cpe.toFixed(3) : "—"}</td></tr>`;
+        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td><td class="pe cpe${cl && cl[0] ? " hot" : ""}" title="${esc(clTip)}">${cpe.toFixed(3)}</td></tr>`;
     }).join("");
     const mins = rows.reduce((a, r) => a + r[3], 0);
     return `<h3 class="bx-team"><img src="${logo(t)}" alt="" onerror="this.remove()">${esc(T.n)} <span>${score(t)}</span></h3>
-      <div class="bx-tw"><table class="bx"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="Play Eval for this game">PE</th><th title="Clutch PE: like PE, but plays in crunch time (last 5 minutes of the 4th or OT, score within 5) count 1.5×. Hover a number for the player's crunch-time line.">Clutch PE</th></tr></thead>
+      <div class="bx-tw"><table class="bx"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="Play Eval for this game">PE</th><th title="Clutch PE: the PE formula using only stats from crunch time (last 5 minutes of the 4th or OT, score within 5), divided by crunch-time minutes. 0 if he didn't play in crunch time. Hover a number for the player's crunch-time line.">Clutch PE</th></tr></thead>
       <tbody>${body}<tr class="tot"><td class="l">Totals</td><td>${mins}</td><td>${L[I.pts]}</td><td>${L[I.oreb] + L[I.dreb]}</td><td>${L[I.ast]}</td><td>${L[I.stl]}</td><td>${L[I.blk]}</td><td>${L[I.tov]}</td>
         <td>${L[I.fgm]}-${L[I.fga]}</td><td>${L[I.fg3m]}-${L[I.fg3a]}</td><td>${L[I.ftm]}-${L[I.fta]}</td><td></td><td class="pe" title="All the players' PE added up">${peSum.toFixed(3)}</td><td class="pe cpe" title="All the players' Clutch PE added up">${cpeSum.toFixed(3)}</td></tr></tbody></table></div>`;
   };
@@ -114,7 +115,7 @@ async function open(gid){
     <div class="bx-note" style="text-align:center">Final${ot} · ${when}</div>
     ${r ? `<div class="bx-recap"><b>${r.u ? `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.h)}</a>` : esc(r.h)}</b>${r.d && r.d !== r.h ? `<p>${esc(r.d)}</p>` : ""}</div>` : ""}</div>
     ${sides.map(table).join("")}
-    <p class="bx-note" style="margin-top:10px">PE = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Clutch PE is the same, but plays in crunch time (last 5 minutes of the 4th or overtime with the score within 5) count 1.5×; a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
+    <p class="bx-note" style="margin-top:10px">PE = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Clutch PE is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
 }
-window.BoxScore = {open, close, peOf, clutchExtra};
+window.BoxScore = {open, close, peOf, clutchPE};
 })();

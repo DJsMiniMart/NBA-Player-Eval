@@ -114,8 +114,9 @@ function players(){
       stocks: r[PC.stl] + r[PC.blk],
       cmin: (r[PC.c_sec] || 0) / 60, cpts: r[PC.c_pts] || 0, cfgm: r[PC.c_fgm] || 0, cfga: r[PC.c_fga] || 0, cpm: r[PC.c_pm] || 0,
       cfgp: r[PC.c_fga] ? r[PC.c_fgm] / r[PC.c_fga] : null};
-    /* Clutch PE: PE with crunch-time plays (last 5 min of the 4th/OT, score within 5) counted 1.5x */
-    o.cpe = mins ? o.pe + .5 * ((r[PC.c_pts]||0) + 2*(r[PC.c_ast]||0) + 2*(r[PC.c_reb]||0) + 4*(r[PC.c_stl]||0) + (r[PC.c_blk]||0) - 4*(r[PC.c_tov]||0)) / mins : null;
+    /* Clutch PE: the PE formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute; 0 if none */
+    o.cpe = o.cmin ? ((r[PC.c_pts]||0) + 2*(r[PC.c_ast]||0) + 2*(r[PC.c_reb]||0) + 4*(r[PC.c_stl]||0) + (r[PC.c_blk]||0) - 4*(r[PC.c_tov]||0)) / o.cmin : 0;
+    o.qcl = o.cmin >= CLUTCH_MIN;
     o.qual = g >= minG && mins / g >= 10;
     o.qfg = r[PC.fgm] >= Math.max(2, Math.ceil(300 * frac));
     o.q3 = r[PC.fg3m] >= Math.max(1, Math.ceil(82 * frac));
@@ -124,13 +125,14 @@ function players(){
   });
   return {list, minG, most, frac};
 }
+const CLUTCH_MIN = 3;   // crunch-time minutes needed for the Clutch PE leaders
 const NOPG = ["pe","cpe","fgp","fg3p","ftp","cfgp","dd","td","high","g"];
 const per = (p, k, mode) => mode === "pg" && !NOPG.includes(k) ? p[k] / p.g : p[k];
 /* key, title, format per game, format total, needs (qualifier), note */
 const LEADS = [
   ["pts","Points",n1,n0],["reb","Rebounds",n1,n0],["ast","Assists",n1,n0],["stl","Steals",n1,n0],["blk","Blocks",n1,n0],
   ["pm","Plus / minus",sg,v => (v > 0 ? "+" : "") + Math.round(v)],["pe","Play Eval (PE)",n3,n3,"qual","per minute"],
-  ["cpe","Clutch PE",n3,n3,"qual","crunch time counts 1.5×"],["cpts","Crunch-time points",n1,n0],["cpm","Crunch-time +/-",sg,v => (v > 0 ? "+" : "") + Math.round(v)],
+  ["cpe","Clutch PE",n3,n3,"qcl","crunch-time stats only"],["cpts","Crunch-time points",n1,n0],["cpm","Crunch-time +/-",sg,v => (v > 0 ? "+" : "") + Math.round(v)],
   ["fg3m","3-pointers made",n1,n0],["stocks","Steals + blocks",n1,n0],["oreb","Offensive rebounds",n1,n0],["min","Minutes",n1,n0],
   ["fgp","Field goal %",pc,pc,"qfg"],["fg3p","3-point %",pc,pc,"q3"],["ftp","Free throw %",pc,pc,"qft"],
   ["dd","Double-doubles",n0,n0],["td","Triple-doubles",n0,n0],["high","Most points in a game",n0,n0],["tov","Turnovers",n1,n0,null,"most"],
