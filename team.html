@@ -203,7 +203,7 @@
 <div class="picker"><div class="picker-in" id="picker"></div></div>
 <div class="hero"><div class="wrap hero-in" id="hero"><div class="empty" style="color:#fff">Loading…</div></div></div>
 <nav class="tabs"><div class="tabs-in" id="tabs">
-  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
+  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
   <a href="#injuries">Injuries</a><a href="#cap">Cap sheet</a><a href="#picks">Draft picks</a>
   <a href="#records">Franchise records</a><a href="#awards">Awards</a><a href="#drafthist">Draft history</a>
 </div></nav>
@@ -221,6 +221,11 @@
     <h2>Lineups: who plays well together</h2>
     <p class="note">Pick 2 to 5 players to see how the team scores and defends per 100 possessions when they're all on the floor, and when they aren't. Uses the filters above.</p>
     <div id="lineBody"></div>
+  </section>
+  <section id="shooting">
+    <h2>Shot zones</h2>
+    <p class="note">Every shot this season, by area of the floor: red zones are above the league average for that zone, blue below. The corner three runs from the baseline up to the break in the three-point line. Hover a zone for the numbers. Whole season (the filters above don't apply here).</p>
+    <div class="card pad" id="shotBody"></div>
   </section>
   <section id="roster">
     <h2>Roster</h2>
@@ -268,6 +273,7 @@
 <script src="player.js"></script>
 <script src="cap.js"></script>
 <script src="box.js"></script>
+<script src="zones.js"></script>
 <script src="team.js"></script>
 </body>
 </html>

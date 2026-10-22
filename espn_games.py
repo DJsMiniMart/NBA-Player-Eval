@@ -254,6 +254,109 @@ def shot_zone(p, text, pts):
     return zone, cell
 
 
+# ---------- 2K-style hot zones ----------
+# Court in feet from the baseline, basket at (25, 5.25). The corner three runs from the baseline to the "break",
+# where the straight line meets the arc (14.2 ft up). Wing vs. top: lines out from the basket 24 degrees either
+# side of straight ahead (the page draws the same lines). Left/right = as drawn, basket at the top.
+HZ_BREAK = 5.25 + (23.75 ** 2 - 22 ** 2) ** 0.5      # 14.2
+HZ_TAN = 0.4452                                      # tan(24 deg)
+HZ_ZONES = ["ra", "paint", "mlb", "mlw", "mtop", "mrw", "mrb", "c3l", "w3l", "t3", "w3r", "c3r", "deep"]
+
+
+def hot_zone(p, text, pts):
+    """Zone for a shot (see HZ_ZONES); 'x2'/'x3' when ESPN gave no location."""
+    c = p.get("coordinate") or {}
+    x, y = c.get("x"), c.get("y")
+    ok = isinstance(x, (int, float)) and isinstance(y, (int, float)) and -5 <= x <= 55 and -5 <= y <= 95
+    if ok and y > 47:
+        x, y = 50 - x, 94 - y
+    m = re.search(r"(\d+)-foot", text)
+    dist = int(m.group(1)) if m else (((x - 25) ** 2 + (y - 5.25) ** 2) ** 0.5 if ok else None)
+    three = pts == 3 or "three point" in text.lower()
+    if three:
+        if dist is not None and dist >= 40:
+            return "deep"
+        if not ok:
+            return "x3"
+    else:
+        if dist is not None and dist <= 4 or (not ok and re.search(r"layup|dunk|tip|alley|putback", text, re.I)):
+            return "ra"
+        if not ok:
+            return "paint" if dist is not None and dist <= 9 else "x2"
+        if 17 <= x <= 33 and y < 19:
+            return "paint"
+    side = "l" if x < 25 else "r"
+    if y < HZ_BREAK:
+        return ("c3" + side) if three else ("mlb" if side == "l" else "mrb")
+    dx, dy = x - 25, max(y - 5.25, 0.01)
+    if abs(dx) <= HZ_TAN * dy:
+        return "t3" if three else "mtop"
+    return ("w3" + side) if three else ("mlw" if side == "l" else "mrw")
+
+
+def bump(d, key, made):
+    t = d.setdefault(key, [0, 0])
+    t[0] += 1
+    t[1] += made
+
+
+def record_hz(acc, shooter_rec, team, opp, zone, made):
+    bump(shooter_rec.setdefault("hz", {}), zone, made)
+    if team:
+        bump(acc.setdefault("tz", {}).setdefault(team, {}), zone, made)
+    if opp:
+        bump(acc.setdefault("oz", {}).setdefault(opp, {}), zone, made)
+
+
+def hz_only(acc, g, summary, plays):
+    """Add hot zones for a game that was saved before they existed (shots only; nothing else is counted again)."""
+    box = box_score(summary)
+    tri_of_team = {tid: v["tri"] for tid, v in box.items()}
+    tri_of = {pl["id"]: v["tri"] for v in box.values() for pl in v["players"]}
+    other = {g["home"]: g["away"], g["away"]: g["home"]}
+    if not plays or g["home"] not in other or not tri_of:
+        return False
+    for p in plays:
+        kind = str((p.get("type") or {}).get("text", "")).lower()
+        if not p.get("shootingPlay") or "free throw" in kind:
+            continue
+        ppl = [ref_id(x.get("athlete"), "athletes") for x in sorted(p.get("participants") or [], key=lambda x: to_int(x.get("order")))]
+        ppl = [x for x in ppl if x]
+        if not ppl:
+            continue
+        text = str(p.get("text") or "")
+        team = tri_of_team.get(ref_id(p.get("team"), "teams")) or tri_of.get(ppl[0])
+        if team not in other:
+            continue
+        pts = to_int(p.get("pointsAttempted")) or (3 if "three point" in text.lower() else 2)
+        rec = acc["players"].setdefault(ppl[0], blank_player(acc.get("names", {}).get(ppl[0], ppl[0])))
+        record_hz(acc, rec, team, other[team], hot_zone(p, text, pts), bool(p.get("scoringPlay")))
+    acc.setdefault("hzDone", []).append(g["id"])
+    return True
+
+
+def upgrade_hz(acc, games, out_of_time, label):
+    """Hot zones for games saved before they were tracked. Returns True when every saved game has them."""
+    have = set(acc.setdefault("hzDone", []))
+    todo = [g for g in games if g["id"] in set(acc["done"]) and g["id"] not in have]
+    n = 0
+    for g in todo:
+        if out_of_time():
+            break
+        summary = get_json(f"{SITE}/summary?event={g['id']}")
+        plays = plays_for(g["id"]) if summary else None
+        if summary and plays and hz_only(acc, g, summary, plays):
+            n += 1
+        else:   # can't get it now; don't hold the season up forever
+            acc.setdefault("hzFail", {})[g["id"]] = acc.get("hzFail", {}).get(g["id"], 0) + 1
+            if acc["hzFail"][g["id"]] >= 3:
+                acc["hzDone"].append(g["id"])
+    if todo:
+        print(f"ESPN hot zones {label}: added {n} of {len(todo)} older games")
+    have = set(acc["hzDone"])
+    return all(gid in have for gid in acc["done"])
+
+
 def add_game(acc, g, summary, plays):
     """Fold one finished game into the season file."""
     gid, date = g["id"], g["date"][:10]
@@ -329,6 +432,7 @@ def add_game(acc, g, summary, plays):
                 sum(to_int(pl["s"].get("points")) for pl in v["players"] if not pl["starter"])]
     acc["tgames"][gid] = [date, g["home"], g["away"], line(g["home"]), line(g["away"]), game_min]
     acc["done"].append(gid)
+    acc.setdefault("hzDone", []).append(gid)
     acc["teams"].update({tid: v["tri"] for tid, v in box.items()})
     return True
 
@@ -521,6 +625,7 @@ def shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other):
                 shooter = ppl[0][0]
                 zone, cell = shot_zone(p, text, pts)
                 sp = P(shooter)
+                record_hz(acc, sp, team, other.get(team), hot_zone(p, text, pts), made)
                 z = sp["z"].setdefault(zone, [0, 0]); z[0] += 1; z[1] += made
                 if cell:
                     b = sp["b"].setdefault(cell, [0, 0]); b[0] += 1; b[1] += made
@@ -587,7 +692,8 @@ def sub_in_out(p, ppl, nickname):
 # ---------- the season ----------
 def new_acc(label):
     return {"season": label, "source": "espn", "schema": SCHEMA, "done": [], "missing": [], "players": {}, "names": {},
-            "teams": {}, "tgames": {}, "stints": {}, "clutch": {}, "moments": {}, "complete": False}
+            "teams": {}, "tgames": {}, "stints": {}, "clutch": {}, "moments": {}, "complete": False,
+            "tz": {}, "oz": {}, "hzDone": []}
 
 
 def update(now, current_year):
@@ -619,6 +725,7 @@ def update(now, current_year):
             print(f"ESPN: skipped game {g['id']} ({e})")
         if added % 25 == 0:
             save(path, acc)
+    upgrade_hz(acc, [g for g in games if g["state"] == 3], lambda: time.time() - started > TIME_BUDGET_SEC, label)
     save(path, acc)
     print(f"ESPN: added {added} games ({len(acc['done'])} so far this season) in {int(time.time() - started)}s")
     if not os.environ.get("NO_BACKFILL"):   # the workflow runs the backfill as its own step, after saving today's games
@@ -643,7 +750,7 @@ def backfill(now, current_year, started):
             break
         if status.get("noPlays") and year <= status["noPlays"]:
             break
-        if year in status["complete"]:
+        if year in status["complete"] and year in status.get("hzComplete", []):
             continue
         label = season_label(year)
         path = os.path.join(PBP_DIR, f"{label}.json")
@@ -685,12 +792,15 @@ def backfill(now, current_year, started):
                 print(f"ESPN has no play-by-play for {label}; the backfill stops here")
                 status["noPlays"] = year
                 break
+        hz_ok = upgrade_hz(acc, games, out_of_time, label)
         acc["stints"] = {}   # lineups are only used for this season's team pages; leaving them out keeps the file small
         left = [g for g in games if g["id"] not in set(acc["done"]) and tries.get(g["id"], 0) < 3]
         finished = not out_of_time() and not left and len(games) > 0
         if finished:
             acc["complete"] = True
             status["complete"] = sorted(set(status["complete"]) | {year})
+        if finished and hz_ok:
+            status["hzComplete"] = sorted(set(status.get("hzComplete", [])) | {year})
         save(path, acc)
         save(STATUS_PATH, status)
         print(f"ESPN backfill {label}: {len(acc['done'])} games saved{' (complete)' if finished else ''}")

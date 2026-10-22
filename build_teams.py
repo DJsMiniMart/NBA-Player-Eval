@@ -63,6 +63,15 @@ def build(now=None, current_year=None):
                 [gid, lg[4], lg[5], lg[6], lg[7], lg[8], lg[9], lg[10], lg[11], lg[12], lg[13], lg[14], lg[15],
                  lg[16], lg[17], lg[18], lg[20]])
 
+    # 2K-style hot zones (espn_games.hot_zone), once every saved game has them
+    hz_ok = set(acc.get("done", [])) <= set(acc.get("hzDone", []))
+    tz, oz = (acc.get("tz") or {}, acc.get("oz") or {}) if hz_ok else ({}, {})
+    league_z = {}
+    for zones in tz.values():
+        for z, (att, made) in zones.items():
+            t = league_z.setdefault(z, [0, 0])
+            t[0] += att
+            t[1] += made
     fo = extra.get("frontOffice", {})
     snap = (load_json(os.path.join(DATA_DIR, "picks.json"), {})            # fallback when RealGM can't be reached:
             or load_json(os.path.join(DATA_DIR, "..", "picks.json"), {}) or {})   # data/picks.json or the main folder
@@ -82,10 +91,30 @@ def build(now=None, current_year=None):
             "picks": extra.get("picks", {}).get(code) or (snap.get("teams") or {}).get(code),
             "picksAt": extra.get("at", {}).get("picks") if extra.get("picks", {}).get(code) else snap.get("asOf"),
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
-            "names": names, "stints": st, "players": plogs[code], "history": history.get(code)})
+            "names": names, "stints": st, "players": plogs[code], "history": history.get(code),
+            "zones": tz.get(code, {}), "oppZones": oz.get(code, {}), "leagueZones": league_z,
+            "zoneRanks": zone_ranks(tz, oz, code)})
     write_box_scores(acc, tgames)
     write_player_totals(acc, tgames, season, now)
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")
+
+
+def zone_ranks(tz, oz, code):
+    """Rank (1 = best of 30) in FG% and in attempts per zone, for the team's shots and its opponents' (1 = lowest %)."""
+    out = {}
+    for key, src, best_high in (("off", tz, True), ("def", oz, False)):
+        r = {}
+        zones = {z for t in src.values() for z in t}
+        for z in zones:
+            pcts = sorted(((t[z][1] / t[z][0]) if t.get(z) and t[z][0] else 0, c) for c, t in src.items())
+            if best_high:
+                pcts.reverse()
+            order = [c for _, c in pcts]
+            vols = [c for _, c in sorted(((t.get(z, [0])[0], c) for c, t in src.items()), reverse=True)]
+            if code in order:
+                r[z] = [order.index(code) + 1, vols.index(code) + 1]
+        out[key] = r
+    return out
 
 
 def write_player_totals(acc, tgames, season, now):

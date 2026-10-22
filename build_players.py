@@ -242,6 +242,7 @@ def build(now=None, current_year=None):
     # game-by-game seasons
     idmap = {}
     league = {}
+    league_hz = {}   # 2K-style hot zones, league totals per season
     accs = {}
     for path in sorted(glob.glob(os.path.join(PBP_DIR, "*.json"))):
         acc = load_json(path, {})
@@ -258,6 +259,15 @@ def build(now=None, current_year=None):
                 t[0] += a
                 t[1] += made
         league[acc["season"]] = zones
+        hz = {}
+        for pl in acc["players"].values():
+            for z, (att, made) in pl.get("hz", {}).items():
+                t = hz.setdefault(z, [0, 0])
+                t[0] += att
+                t[1] += made
+        # only once every saved game of the season has them (older seasons get them over a few runs)
+        if hz and set(acc.get("done", [])) <= set(acc.get("hzDone", [])):
+            league_hz[acc["season"]] = hz
         acc["_map"] = m
 
     names_all = {}
@@ -285,6 +295,7 @@ def build(now=None, current_year=None):
                 "teams": pl.get("t", []),
                 "logs": logs,
                 "zones": pl.get("z", {}),
+                "hz": pl.get("hz", {}) if label in league_hz else {},
                 "cells": pl.get("b", {}),
                 "assists": [[idmap.get(k) or f"nba-{k}", names_all.get(k, k), n] for k, n in top_at],
                 "assistedBy": [[idmap.get(k) or f"nba-{k}", names_all.get(k, k), n] for k, n in top_af],
@@ -315,6 +326,7 @@ def build(now=None, current_year=None):
         rec["earnings"] = earnings(rec["seasons"], salaries.get(pid, {}))
         rec["logCols"] = LOG_COLS + ["eval"]
         rec["league"] = {s: league[s] for s in rec["games"] if s in league}
+        rec["leagueHz"] = {s: league_hz[s] for s in rec["games"] if s in league_hz}
         if not rec["bio"] and last:
             rec["bio"] = {"pos": last.get("pos")}
         with open(os.path.join(PLAYERS_DIR, f"{pid}.json"), "w", encoding="utf-8") as f:

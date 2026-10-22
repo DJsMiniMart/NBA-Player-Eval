@@ -508,6 +508,25 @@ function drawDraftHistory(){
 }
 function drawHistory(){ $('dhBody').innerHTML = ""; drawRecords(); drawAwards(); drawDraftHistory(); }
 
+/* ---------- shot zones (zones.js) ---------- */
+let shotSide = "off";
+function drawShooting(){
+  const el = $('shotBody');
+  if(!el) return;
+  const Z = TEAM && TEAM.zones, O = TEAM && TEAM.oppZones, L = TEAM && TEAM.leagueZones;
+  if(!window.ZoneChart || !ZoneChart.has(Z) || !ZoneChart.has(L)){
+    el.innerHTML = `<div class="empty">Shot zones show up after the next morning update (they're built from each game's play-by-play).</div>`; return;
+  }
+  const T = TEAMS[CODE] || {n: CODE};
+  const off = shotSide === "off";
+  const ranks = TEAM.zoneRanks && TEAM.zoneRanks[off ? "off" : "def"];
+  el.innerHTML = `<div class="chips" style="justify-content:center;margin-bottom:10px">
+      <button class="chip ${off ? "on" : ""}" data-side="off">${esc(T.n)} shots</button><button class="chip ${off ? "" : "on"}" data-side="def">Opponents' shots</button></div>
+    ${ZoneChart.html(off ? Z : O, L, {label: off ? `${T.n} shot zones` : `Opponents' shot zones against ${T.n}`, who: off ? "the team's" : "opponents'", ranks, defense: !off})}
+    <p class="note" style="margin:10px 0 0">${off ? "How well this team shoots from each zone." : `How well opponents shoot against ${esc(T.n)} from each zone. Red here means opponents are shooting well (bad for the defense); blue means the defense holds them under the league average.`} Rank = FG% rank / attempts rank among the 30 teams.</p>`;
+  el.querySelectorAll("[data-side]").forEach(b => b.onclick = () => { shotSide = b.dataset.side; drawShooting(); });
+}
+
 /* ---------- page ---------- */
 function drawData(){ drawStats(); drawLineups(); drawRoster(); }
 async function show(code){
@@ -519,7 +538,7 @@ async function show(code){
   if(CODE !== code) return;
   TEAM = t;
   pick = [];
-  drawHero(); drawFilters(); drawData(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
+  drawHero(); drawFilters(); drawData(); drawShooting(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
   $('asof').textContent = TEAM && TEAM.at ? `Team data updated ${new Date(TEAM.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.` : "";
 }
 function codeFromHash(){

@@ -122,12 +122,13 @@ async function getJSON(path){
 function gamesFor(sel){
   const g = REC.games || {};
   if(sel !== "career") return g[sel] || null;
-  const out = {logs:[], zones:{}, cells:{}, assists:[], assistedBy:[], assisted:{}, steals:{on:0,off:0,oth:0}, blocks:{rim:0,paint:0,mid:0,three:0}};
+  const out = {logs:[], zones:{}, cells:{}, hz:{}, hzSeasons:0, assists:[], assistedBy:[], assisted:{}, steals:{on:0,off:0,oth:0}, blocks:{rim:0,paint:0,mid:0,three:0}};
   const at = new Map(), af = new Map();
   for(const s of Object.keys(g).sort()){
     const x = g[s];
     x.logs.forEach(l => out.logs.push(l));
     for(const [z,[a,m]] of Object.entries(x.zones||{})){ const t = out.zones[z] || (out.zones[z] = [0,0]); t[0]+=a; t[1]+=m; }
+    if((REC.leagueHz||{})[s] && x.hz && Object.keys(x.hz).length){ out.hzSeasons++; for(const [z,[a,m]] of Object.entries(x.hz)){ const t = out.hz[z] || (out.hz[z] = [0,0]); t[0]+=a; t[1]+=m; } }
     for(const [c,[a,m]] of Object.entries(x.cells||{})){ const t = out.cells[c] || (out.cells[c] = [0,0]); t[0]+=a; t[1]+=m; }
     (x.assists||[]).forEach(([id,name,n]) => { const t = at.get(id) || {id,name,n:0}; t.n += n; t.name = name; at.set(id, t); });
     (x.assistedBy||[]).forEach(([id,name,n]) => { const t = af.get(id) || {id,name,n:0}; t.n += n; t.name = name; af.set(id, t); });
@@ -144,6 +145,18 @@ function leagueFor(sel){
   if(sel !== "career") return L[sel] || {};
   const out = {};
   for(const s of Object.values(L)) for(const [z,[a,m]] of Object.entries(s)){ const t = out[z] || (out[z]=[0,0]); t[0]+=a; t[1]+=m; }
+  return out;
+}
+/* league hot-zone totals for the same seasons the player's zones cover */
+function leagueHzFor(sel){
+  const L = REC.leagueHz || {};
+  if(sel !== "career") return L[sel] || {};
+  const out = {};
+  for(const [s, zones] of Object.entries(L)){
+    const x = (REC.games || {})[s];
+    if(!x || !x.hz || !Object.keys(x.hz).length) continue;
+    for(const [z,[a,m]] of Object.entries(zones)){ const t = out[z] || (out[z]=[0,0]); t[0]+=a; t[1]+=m; }
+  }
   return out;
 }
 function logObjs(logs){
@@ -315,7 +328,16 @@ function courtSvg(cells, L){
   </svg>`;
 }
 
-function shootingCard(G, L){
+function shootingCard(G, L, sel){
+  const LZ = leagueHzFor(sel);
+  if(G && window.ZoneChart && ZoneChart.has(G.hz) && ZoneChart.has(LZ)){
+    const n = Object.values(G.hz).reduce((t,[a])=>t+a, 0);
+    const seasons = Object.keys(REC.games || {}).length;
+    const partial = sel === "career" && G.hzSeasons < seasons;
+    return `<div class="pp-card c7"><h3>Shot zones <small>${n.toLocaleString()} shots · hot = above league average, cold = below</small></h3>
+      ${ZoneChart.html(G.hz, LZ, {label: "Shot zones for " + (REC.name || "this player"), who: "his"})}
+      <div class="pp-note">The corner three runs from the baseline up to the break in the three-point line. League averages are for the same season${sel === "career" ? "s" : ""}.${partial ? ` Covers ${G.hzSeasons} of ${seasons} seasons so far; older seasons are added over the next few updates.` : ""}</div></div>`;
+  }
   if(!G || !Object.keys(G.zones||{}).length) return `<div class="pp-card c7"><h3>Shooting chart</h3><div class="pp-empty">No shot data for this selection.</div></div>`;
   const total = Object.values(G.zones).reduce((t,[a])=>t+a, 0);
   const zones = ZONE_ORDER.filter(z => G.zones[z]).concat(Object.keys(G.zones).filter(z => !ZONE_ORDER.includes(z)));
@@ -590,9 +612,9 @@ function playoffsBlock(){
 }
 
 /* ---------- page ---------- */
-function gameBoxes(G, L, team, key, withOnOff){
+function gameBoxes(G, L, team, key, withOnOff, sel){
   const c = withOnOff ? "c6" : "c4";
-  return `<div class="pp-grid">${shootingCard(G, L)}<div class="c5 pp-col">${passList((G&&G.assists)||[], "Assists to", "made shots they set up", "No assists recorded for this selection.")}${passList((G&&G.assistedBy)||[], "Assisted by", "who sets them up", "No assisted makes recorded for this selection.")}</div>
+  return `<div class="pp-grid">${shootingCard(G, L, sel)}<div class="c5 pp-col">${passList((G&&G.assists)||[], "Assists to", "made shots they set up", "No assists recorded for this selection.")}${passList((G&&G.assistedBy)||[], "Assisted by", "who sets them up", "No assisted makes recorded for this selection.")}</div>
     <div class="c6 pp-col">${assistedCard(G)}</div><div class="c6 pp-col">${top5Card(G)}</div>
     ${highsCard(G, key === "season" ? "Season highs" : "Career highs", key === "season" ? "single game, this season" : "single game, since " + ((Object.keys(REC.games||{}).sort()[0]) || ""), c)}${withOnOff ? onOffCard(G) : ""}
     ${stealsCard(G, team, c)}${blocksCard(G, team, c)}
@@ -629,7 +651,7 @@ function render(){
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Play Eval", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
       + (curPO ? `<div class="pp-grid">${statLineCard(curPO, `${label} playoffs`, "per game, this postseason")}</div><div class="pp-gap"></div>` : "")
-      + (G ? gameBoxes(G, leagueFor(label), team, "season", false) : `<div class="final-note">No games yet this season. The shooting chart, passing, steals, blocks, splits, highs and game log fill in once ${esc(REC.name.split(" ")[0])} plays.</div>`);
+      + (G ? gameBoxes(G, leagueFor(label), team, "season", false, label) : `<div class="final-note">No games yet this season. The shooting chart, passing, steals, blocks, splits, highs and game log fill in once ${esc(REC.name.split(" ")[0])} plays.</div>`);
   }
 
   // ---- career
@@ -644,7 +666,7 @@ function render(){
     const pick = `<div class="pp-seasonpick"><label class="sub" for="ppSeason" style="font-weight:600">Show:</label>
       <select id="ppSeason"><option value="career"${SEL==="career"?" selected":""}>Whole career${gs.length > 1 ? ` (${esc(oldest)} on)` : ""}</option>${gs.map(s=>`<option value="${esc(s)}"${s===SEL?" selected":""}>${esc(s)} only</option>`).join("")}</select>
       <span class="sub">${(REC.seasons||[]).length && REC.seasons[0].season < oldest ? `Game-by-game records start in ${esc(oldest)}, the NBA feed's oldest season for this player.` : ""}</span></div>`;
-    gameCareer = pick + gameBoxes(G, L, team, "career", true);
+    gameCareer = pick + gameBoxes(G, L, team, "career", true, SEL);
   } else {
     gameCareer = `<div class="final-note">Shot-by-shot and game-by-game data isn't available for this player's seasons, so there's no shooting chart, passing, splits, highs, on/off or game log. The NBA's public game feed only goes back so far.</div>`;
   }
