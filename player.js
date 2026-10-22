@@ -222,8 +222,8 @@ function earningsCard(){
     const rows = e.seasons.slice().reverse();
     body = `<div class="pp-earn">${money(e.total)}</div>
       <div class="sub" style="margin:0 0 10px">NBA salary over ${e.seasons.length} season${e.seasons.length===1?"":"s"} on record</div>
-      <div class="tablewrap" style="max-height:260px;overflow-y:auto"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>Salary</th></tr></thead><tbody>
-      ${rows.map(([s,t,a])=>`<tr><td class="l">${esc(s)}</td><td class="l">${esc(t)}</td><td>${money(a)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="tablewrap" style="max-height:260px;overflow-y:auto"><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>Salary</th></tr></thead><tbody>
+      ${rows.map(([s,t,a])=>`<tr><td class="l">${esc(s)}</td><td class="l">${esc(t)}</td><td>${money(a)}</td></tr>`).join("")}</tbody></table></div></div>
       ${e.missing && e.missing.length ? `<div class="pp-note">No salary on record for ${e.missing.length} season${e.missing.length===1?"":"s"} (${esc(e.missing.slice(0,6).join(", "))}${e.missing.length>6?", …":""}), so the real total is higher.</div>` : ""}`;
   }
   return `<div class="pp-card c6"><h3>Total career earnings <small>playing salary, not adjusted for inflation</small></h3>${body}</div>`;
@@ -235,9 +235,9 @@ function contractCard(){
   if(!c || !c.years || !c.years.length){
     body = `<div class="pp-empty">${isRetired() ? `Not on an NBA contract — last played in ${esc(lastSeason().season)}.` : "No contract listed right now (free agent, two-way, or not yet posted)."}</div>`;
   } else {
-    body = `<table class="pp-tbl"><thead><tr><th class="l">Season</th><th>Salary</th><th class="l">Note</th></tr></thead><tbody>
+    body = `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th>Salary</th><th class="l">Note</th></tr></thead><tbody>
       ${c.years.map(([s,amt,opt],i)=>`<tr${i===0?' class="cur"':""}><td class="l">${esc(s)}</td><td>${esc(amt)}</td><td class="l">${esc(opt ? opt[0].toUpperCase()+opt.slice(1) : "")}</td></tr>`).join("")}
-      </tbody></table>
+      </tbody></table></div>
       ${c.guaranteed ? `<div class="pp-note">Guaranteed money remaining: <b>${esc(c.guaranteed)}</b>${c.team ? " · " + esc(c.team) : ""}</div>` : ""}`;
   }
   const e = REC.earnings;
@@ -449,11 +449,11 @@ function driversCard(tot, lg, title, sub){
   const best = rows.slice().sort((a,b)=>b.d-a.d)[0], worst = rows.slice().sort((a,b)=>a.d-b.d)[0];
   return `<div class="pp-card c6"><h3>${esc(title)} <small>${esc(sub)}</small></h3>
     <div class="sub" style="margin:0 0 10px">Biggest edge: <b>${esc(best.label.replace(/ ×\d| \(.*\)/,""))}</b> (${sgn3(best.d)} vs. average)${worst.d < 0 ? ` · Weakest: <b>${esc(worst.label.replace(/ ×\d| \(.*\)/,""))}</b> (${sgn3(worst.d)})` : ""}</div>
-    <table class="pp-tbl pp-drv"><thead><tr><th class="l">Piece</th><th class="l"></th><th>Them</th><th>Avg</th><th>+/−</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="pp-tbl pp-drv"><thead><tr><th class="l">Piece</th><th class="l"></th><th>Them</th><th>Avg</th><th>+/−</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td class="l">${esc(r.label)}</td><td class="l" style="width:38%"><div class="pp-dbar"><div class="me" style="width:${(100*Math.abs(r.me)/max).toFixed(1)}%"></div><div class="avg" style="left:${(100*Math.abs(r.avg)/max).toFixed(1)}%"></div></div></td>
       <td>${r.me.toFixed(3)}</td><td>${r.avg.toFixed(3)}</td><td class="${+r.d.toFixed(3) > 0 ? "w" : +r.d.toFixed(3) < 0 ? "lo" : ""}">${sgn3(r.d)}</td></tr>`).join("")}
     <tr class="career"><td class="l">MVR</td><td></td><td>${meTotal.toFixed(3)}</td><td>${lgTotal.toFixed(3)}</td><td class="${meTotal>=lgTotal?"w":"lo"}">${sgn3(meTotal-lgTotal)}</td></tr>
-    </tbody></table>
+    </tbody></table></div>
     <div class="pp-note">Each piece of the formula per minute played, next to the league-wide average (the dark tick). They add up to MVR.</div></div>`;
 }
 /* MVR every season of the career, as bars; best season in gold, dashed line = career MVR */
@@ -541,8 +541,8 @@ function splitsCard(G, key){
   const opts = [["place","Home / away"],["result","Wins / losses"],["role","Starter / bench"],["month","By month"],["opp","By opponent"]];
   return `<div class="pp-card c12"><h3>Splits <small>per game</small></h3>
     <div class="pp-tabs">${opts.map(([v,t])=>`<button data-split="${key}" data-v="${v}" class="${v===type?"on":""}">${t}</button>`).join("")}</div>
-    <div class="tablewrap"${type==="opp"?' style="max-height:380px;overflow-y:auto"':""}><table class="pp-tbl"><thead><tr><th class="l">Split</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>MVR</th></tr></thead>
-    <tbody>${keys.map(row).join("")}</tbody></table></div></div>`;
+    <div class="tablewrap"${type==="opp"?' style="max-height:380px;overflow-y:auto"':""}><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Split</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>MVR</th></tr></thead>
+    <tbody>${keys.map(row).join("")}</tbody></table></div></div></div>`;
 }
 
 function highsCard(G, title, sub, cls){
@@ -555,9 +555,9 @@ function highsCard(G, title, sub, cls){
   const ev = logs.filter(g => g.min >= MIN_TOP_GAME_MINUTES && g.eval != null).sort((a,b)=>b.eval-a.eval)[0];
   const when = g => `${esc(shortDate(g.date))} ${g.home ? "vs" : "@"} ${esc(g.opp)}`;
   return `<div class="pp-card ${cls||"c6"}"><h3>${esc(title)} <small>${esc(sub)}</small></h3>
-    <table class="pp-tbl"><tbody>${items.map(([k,f]) => { const g = best(f); return `<tr><td class="l">${k}</td><td><b>${f(g)}</b></td><td class="l" style="color:var(--dim)">${when(g)}</td></tr>`; }).join("")}
+    <div class="tablewrap"><table class="pp-tbl"><tbody>${items.map(([k,f]) => { const g = best(f); return `<tr><td class="l">${k}</td><td><b>${f(g)}</b></td><td class="l" style="color:var(--dim)">${when(g)}</td></tr>`; }).join("")}
     ${ev ? `<tr><td class="l">MVR (${MIN_TOP_GAME_MINUTES}+ min)</td><td class="ev">${f3(ev.eval)}</td><td class="l" style="color:var(--dim)">${when(ev)}</td></tr>` : ""}
-    <tr class="career"><td class="l">Double-doubles / triple-doubles</td><td>${dd} / ${td}</td><td></td></tr></tbody></table></div>`;
+    <tr class="career"><td class="l">Double-doubles / triple-doubles</td><td>${dd} / ${td}</td><td></td></tr></tbody></table></div></div>`;
 }
 
 function assistedCard(G){
@@ -570,11 +570,11 @@ function assistedCard(G){
   const three = zones.filter(z => /3$/.test(z) || z === "Backcourt").reduce((t,z)=>[t[0]+ua[z][0], t[1]+ua[z][1]], [0,0]);
   return `<div class="pp-card"><h3>Assisted vs. unassisted <small>${made} made shots</small></h3>
     <div class="pp-split"><div style="flex:${tot[0]};background:var(--tc1)">${tot[0]/made>=.15?`${Math.round(100*tot[0]/made)}% assisted`:""}</div><div style="flex:${tot[1]};background:var(--tc2);color:#111">${tot[1]/made>=.15?`${Math.round(100*tot[1]/made)}% on their own`:""}</div></div>
-    <table class="pp-tbl"><thead><tr><th class="l">Makes</th><th>Assisted</th><th>Own</th><th>% assisted</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Makes</th><th>Assisted</th><th>Own</th><th>% assisted</th></tr></thead><tbody>
       <tr><td class="l">2-pointers</td><td>${two[0]}</td><td>${two[1]}</td><td>${pct(two[0], two[0]+two[1])}</td></tr>
       <tr><td class="l">3-pointers</td><td>${three[0]}</td><td>${three[1]}</td><td>${pct(three[0], three[0]+three[1])}</td></tr>
       ${zones.map(z => `<tr><td class="l" style="color:var(--dim)">· ${esc(ZONE_SHORT[z]||z)}</td><td>${ua[z][0]}</td><td>${ua[z][1]}</td><td>${pct(ua[z][0], ua[z][0]+ua[z][1])}</td></tr>`).join("")}
-    </tbody></table></div>`;
+    </tbody></table></div></div>`;
 }
 function passList(list, title, sub, empty){
   const max = Math.max(1, ...list.map(x=>x[2])), total = list.reduce((t,x)=>t+x[2],0);

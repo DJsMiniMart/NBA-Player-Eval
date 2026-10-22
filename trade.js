@@ -58,7 +58,7 @@ async function load(){
   /* who owns which picks: RealGM via the morning update, or the saved copy */
   const ex = await getJSON("data/team_extra.json");
   let pk = ex && ex.picks && Object.keys(ex.picks).length >= 30 ? {teams: ex.picks, asOf: (ex.at || {}).picks} : null;
-  if(!pk) pk = await getJSON("data/picks.json") || await getJSON("picks.json");
+  if(!pk) pk = await getJSON("picks.json") || await getJSON("data/picks.json");
   if(pk && pk.teams && window.PickRights){ RIGHTS = PickRights.parseAll(pk.teams); RIGHTS_AT = pk.asOf || ""; }
   Object.entries((ct && ct.players) || {}).forEach(([id, c]) => {
     const team = BBR_TO_NBA[c.team] || c.team;

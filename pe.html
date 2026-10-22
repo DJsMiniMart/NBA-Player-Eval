@@ -395,7 +395,7 @@ function applyMetric(){
 }
 
 function drawHead(){
-  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${c.k === "value" ? `<span class="long">${esc(c.t)}</span><span class="short">Eval</span>` : esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
+  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${c.k === "value" ? `<span class="long">${esc(c.t)}</span><span class="short">MVR</span>` : esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
   $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k; if(k==="page") return;
     if(k==="rank"){ sortKey="value"; sortDir=-1; }
