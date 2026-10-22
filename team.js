@@ -188,59 +188,8 @@ function wireGames(el){
   el.querySelectorAll('[data-gid]').forEach(tr => tr.onclick = () => openBox(tr.dataset.gid));
 }
 
-/* ---------- box score pop-up ---------- */
-const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
-/* Clutch PE: crunch-time plays (last 5 min of the 4th/OT, score within 5) count 1.5x. c = [sec, pts, ast, reb, stl, blk, tov, ...] */
-const clutchExtra = c => c ? .5 * (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) : 0;
-async function openBox(gid){
-  let box = $('boxModal');
-  if(!box){
-    box = document.createElement("div");
-    box.id = "boxModal"; box.className = "modal"; box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true");
-    box.innerHTML = `<div class="modal-card"><button class="modal-x" aria-label="Close">✕</button><div id="boxBody"></div></div>`;
-    document.body.appendChild(box);
-    box.onclick = e => { if(e.target === box || e.target.classList.contains("modal-x")) closeBox(); };
-    document.addEventListener("keydown", e => { if(e.key === "Escape") closeBox(); });
-  }
-  box.classList.add("open"); document.body.style.overflow = "hidden";
-  $('boxBody').innerHTML = `<div class="empty">Loading box score…</div>`;
-  const g = await getJSON(`data/games/${encodeURIComponent(gid)}.json`);
-  if(!g){ $('boxBody').innerHTML = `<div class="empty">This box score isn't available yet. Box scores are added during the update after each game.</div>`; return; }
-  const ids = new Map(((STATS && STATS.players) || []).map(p => [fold(p.name), p.id]));
-  const sides = [g.away, g.home];
-  const score = t => g.teams[t].line[0];
-  const when = new Date(g.date + "T12:00:00Z").toLocaleDateString("en-US", {weekday:"long", month:"long", day:"numeric", year:"numeric"});
-  const ot = g.min > 48 ? ` · ${g.min === 53 ? "OT" : (g.min - 48) / 5 + "OT"}` : "";
-  const table = t => {
-    const T = TEAMS[t] || {n:t}, L = g.teams[t].line, rows = g.teams[t].players;
-    let peSum = 0, cpeSum = 0;
-    const body = rows.map((r, i) => {
-      const [id, name, st, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl] = r;
-      const pe = peOf(pts, ast, dreb + oreb, stl, blk, tov, min);
-      if(pe != null) peSum += pe;
-      const cpe = pe != null ? pe + clutchExtra(cl) / min : null;
-      if(cpe != null) cpeSum += cpe;
-      const clTip = cl && cl[0] ? `Crunch time: ${Math.round(cl[0] / 60 * 10) / 10} min, ${cl[1]} pts, ${cl[7]}-${cl[8]} FG, ${cl[2]} ast, ${cl[3]} reb, ${cl[4]} stl, ${cl[5]} blk, ${cl[6]} tov, ${cl[13] > 0 ? "+" : ""}${cl[13]}` : "No crunch-time minutes";
-      const bid = ids.get(fold(name));
-      const sep = i > 0 && rows[i-1][2] && !st ? ` class="bench"` : "";
-      return `<tr${sep}><td class="l nm">${bid ? `<a href="index.html#/player/${encodeURIComponent(bid)}">${esc(name)}</a>` : esc(name)}${st ? `<span class="tag">S</span>` : ""}</td>
-        <td>${min}</td><td><b>${pts}</b></td><td>${dreb + oreb}</td><td>${ast}</td><td>${stl}</td><td>${blk}</td><td>${tov}</td>
-        <td>${fgm}-${fga}</td><td>${tpm}-${tpa}</td><td>${ftm}-${fta}</td><td class="${pm >= 0 ? "pos" : "neg"}">${pm > 0 ? "+" : ""}${pm}</td>
-        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td><td class="pe cpe${cl && cl[0] ? " hot" : ""}" title="${esc(clTip)}">${cpe != null ? cpe.toFixed(3) : "—"}</td></tr>`;
-    }).join("");
-    const mins = rows.reduce((a, r) => a + r[3], 0);
-    return `<h3 class="box-team"><img src="${logo(t)}" alt="" onerror="this.remove()">${esc(T.n)} <span>${score(t)}</span></h3>
-      <div class="tw"><table class="box"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="Play Eval for this game">PE</th><th title="Clutch PE: like PE, but plays in crunch time (last 5 minutes of the 4th or OT, score within 5) count 1.5×. Hover a number for the player's crunch-time line.">Clutch PE</th></tr></thead>
-      <tbody>${body}<tr class="tot"><td class="l">Totals</td><td>${mins}</td><td>${L[I.pts]}</td><td>${L[I.oreb] + L[I.dreb]}</td><td>${L[I.ast]}</td><td>${L[I.stl]}</td><td>${L[I.blk]}</td><td>${L[I.tov]}</td>
-        <td>${L[I.fgm]}-${L[I.fga]}</td><td>${L[I.fg3m]}-${L[I.fg3a]}</td><td>${L[I.ftm]}-${L[I.fta]}</td><td></td><td class="pe" title="All the players' PE added up">${peSum.toFixed(3)}</td><td class="pe cpe" title="All the players' Clutch PE added up">${cpeSum.toFixed(3)}</td></tr></tbody></table></div>`;
-  };
-  const winner = score(g.home) > score(g.away) ? g.home : g.away;
-  $('boxBody').innerHTML = `<div class="box-head"><div class="box-score">${sides.map(t => `<div class="${t === winner ? "win" : ""}"><img src="${logo(t)}" alt="" onerror="this.remove()"><b>${score(t)}</b><span>${esc(t)}</span></div>`).join(`<i>${g.home === sides[1] ? "@" : "vs"}</i>`)}</div>
-    <div class="note" style="margin:6px 0 0;text-align:center">Final${ot} · ${when}</div></div>
-    ${sides.map(table).join("")}
-    <p class="note" style="margin:10px 0 0">PE = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Clutch PE is the same, but plays in crunch time (last 5 minutes of the 4th or overtime with the score within 5) count 1.5×; a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
-}
-function closeBox(){ const b = $('boxModal'); if(b){ b.classList.remove("open"); document.body.style.overflow = ""; } }
+/* ---------- box score pop-up (box.js) ---------- */
+const openBox = gid => window.BoxScore && BoxScore.open(gid);
 
 /* ---------- lineups ---------- */
 function stintsFor(games){
@@ -355,7 +304,7 @@ function drawRoster(){
   const H = [["name","Player","l"],["pos","Pos",""],["age","Age",""],["sal","Salary",""],["gp","GP",""],["gs","GS",""],["mp","MIN",""],["pts","PTS",""],["reb","REB",""],["ast","AST",""],["stl","STL",""],["blk","BLK",""],["tov","TOV",""],["fgp","FG%",""],["fg3p","3P%",""],["ftp","FT%",""],["pm","+/-",""],["ev","Play Eval",""]];
   if(!rows.length){ $('rosterBody').innerHTML = `<div class="empty">No roster found yet.</div>`; return; }
   $('rosterBody').innerHTML = `<table><thead><tr>${H.map(([k2, t, cls]) => `<th class="s ${cls} ${k2 === k ? "on" : ""}" data-k="${k2}">${t}${k2 === k ? (d < 0 ? " ▾" : " ▴") : ""}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map(r => `<tr><td class="l nm">${r.id ? `<a href="index.html#/player/${encodeURIComponent(r.id)}">${esc(r.name)}</a>` : esc(r.name)}${r.c && r.c.opt ? `<span class="tag">${r.c.opt === "player option" ? "PO" : r.c.opt === "team option" ? "TO" : "ETO"}</span>` : ""}${!r.c ? `<span class="tag" title="No contract listed for this season: waived, traded away, two-way or 10-day">no contract</span>` : ""}</td>
+    <tbody>${rows.map(r => `<tr><td class="l nm">${r.id ? `<a href="pe.html#/player/${encodeURIComponent(r.id)}">${esc(r.name)}</a>` : esc(r.name)}${r.c && r.c.opt ? `<span class="tag">${r.c.opt === "player option" ? "PO" : r.c.opt === "team option" ? "TO" : "ETO"}</span>` : ""}${!r.c ? `<span class="tag" title="No contract listed for this season: waived, traded away, two-way or 10-day">no contract</span>` : ""}</td>
       <td>${esc(r.pos)}</td><td>${r.age}</td><td>${r.sal ? M(r.sal) : "—"}</td><td>${r.gp}</td><td>${r.gs}</td><td>${f1(r.mp)}</td><td>${f1(r.pts)}</td><td>${f1(r.reb)}</td><td>${f1(r.ast)}</td>
       <td>${f1(r.stl)}</td><td>${f1(r.blk)}</td><td>${f1(r.tov)}</td><td>${pct(r.fgp)}</td><td>${pct(r.fg3p)}</td><td>${pct(r.ftp)}</td>
       <td class="${r.pm >= 0 ? "pos" : "neg"}">${r.gp ? sgn(r.pm) : "—"}</td><td><b style="color:var(--accent)">${r.ev != null ? r.ev.toFixed(3) : "—"}</b></td></tr>`).join("")}</tbody></table>`;
@@ -460,7 +409,7 @@ function drawCap(){
     </div>
     <div class="card" style="margin-top:12px"><div class="tw"><table>
       <thead><tr><th class="l">Player</th>${seasons.map(s => `<th>${s}</th>`).join("")}</tr></thead>
-      <tbody>${cts.map(c => `<tr><td class="l nm"><a href="index.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></td>${seasons.map(s => cell(c, s)).join("")}</tr>`).join("")}
+      <tbody>${cts.map(c => `<tr><td class="l nm"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></td>${seasons.map(s => cell(c, s)).join("")}</tr>`).join("")}
       <tr class="tot"><td class="l">Total</td>${totals.map(t => `<td>${t ? M(t) : ""}</td>`).join("")}</tr></tbody></table></div>
       <div class="note pad" style="margin:0">PO = player option, TO = team option, ETO = early termination option (shaded). Future years count only signed contracts, so they'll grow as the team re-signs or adds players.</div></div>`;
 }
@@ -492,7 +441,7 @@ function pickHtml(c){
 /* ---------- franchise history ---------- */
 const TROPHY = `<svg viewBox="0 0 16 18" aria-hidden="true"><path fill="#f5c542" d="M4 1h8v5.2c0 2.3-1.6 4.2-3.3 4.6V13h2.3l.8 2H4.2l.8-2h2.3v-2.2C5.6 10.4 4 8.5 4 6.2z"/><path fill="none" stroke="#f5c542" stroke-width="1.2" d="M4 2.5H1.8v1.6c0 1.6 1 2.8 2.4 3M12 2.5h2.2v1.6c0 1.6-1 2.8-2.4 3"/><rect x="3.2" y="15.6" width="9.6" height="1.6" rx=".4" fill="#d9a72e"/></svg>`;
 const nameThen = n => n.replace(/^(Minneapolis|Seattle|Philadelphia|Syracuse|Rochester|St\. Louis|Baltimore|Washington|New Jersey|Fort Wayne|Cincinnati|Kansas City|Vancouver|Buffalo|San Diego|New Orleans|Charlotte|Capital|San Francisco)\b.*$/, m => m);
-const playerLink = (id, name) => id ? `<a href="index.html#/player/${encodeURIComponent(id)}">${esc(name)}</a>` : esc(name);
+const playerLink = (id, name) => id ? `<a href="pe.html#/player/${encodeURIComponent(id)}">${esc(name)}</a>` : esc(name);
 const REC = [["pts","Points"],["trb","Rebounds"],["ast","Assists"],["stl","Steals"],["blk","Blocks"],["g","Games played"],["fg3","3-pointers made"]];
 const recOpen = {};
 function drawRecords(){

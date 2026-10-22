@@ -136,7 +136,7 @@ const LEADS = [
   ["dd","Double-doubles",n0,n0],["td","Triple-doubles",n0,n0],["high","Most points in a game",n0,n0],["tov","Turnovers",n1,n0,null,"most"],
 ];
 function nameCell(p){
-  const nm = p.id ? `<a href="index.html#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>` : esc(p.name);
+  const nm = p.id ? `<a href="pe.html#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>` : esc(p.name);
   return `${nm}<small>${esc(TEAMS[p.team] ? TEAMS[p.team].n : p.team)} · ${p.g} G</small>`;
 }
 function drawLeaders(){
@@ -168,7 +168,7 @@ function drawPlayers(){
   const fmtTot = (k, f) => P.mode === "tot" && f === n1 && !["min"].includes(k) ? n0 : f;
   $('playerTable').innerHTML = rows.length ? `<table><thead><tr><th class="l">#</th><th class="l stick" data-k="name">Player</th><th class="l" data-k="team">Team</th>
     ${PCOLS.map(([k, h]) => `<th data-k="${k}" class="${k === P.sort ? "on" : ""}">${h}${k === P.sort ? (P.dir < 0 ? " ▾" : " ▴") : ""}</th>`).join("")}</tr></thead>
-    <tbody>${rows.slice(0, 600).map((p, i) => `<tr><td class="l rk">${i + 1}</td><td class="l stick">${p.id ? `<a href="index.html#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>` : esc(p.name)}</td><td class="l"><a href="team.html#${p.team}">${esc(p.team)}</a></td>
+    <tbody>${rows.slice(0, 600).map((p, i) => `<tr><td class="l rk">${i + 1}</td><td class="l stick">${p.id ? `<a href="pe.html#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>` : esc(p.name)}</td><td class="l"><a href="team.html#${p.team}">${esc(p.team)}</a></td>
       ${PCOLS.map(([k, , f]) => { const v = per(p, k, P.mode); return `<td class="${k === P.sort ? "on " : ""}${k === "pm" ? (v >= 0 ? "pos" : "neg") : ""}">${fmtTot(k, f)(v)}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`
     : `<div class="empty">No players match.${P.qual ? " Try turning off “Only qualified players”." : ""}</div>`;
   $('playerTable').querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {

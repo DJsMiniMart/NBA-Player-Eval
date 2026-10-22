@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play Eval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* NBA colors: blue #1D428A, red #C8102E, white */
+  :root{
+    --bg:#f2f4f8; --panel:#ffffff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea;
+    --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A; --nba-blue:#1D428A; --nba-red:#C8102E;
+    --gold:#c99a2e; --silver:#8d939c; --bronze:#a8673a; --row:#f6f8fb;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a;
+      --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff; --row:#16213a; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  .wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+  h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
+  h1 span{color:#fff;background:var(--nba-red);padding:0 8px;border-radius:4px;margin-left:4px;}
+  .meta{color:rgba(255,255,255,.8);font-size:12.5px;margin-top:8px;}
+  .formula{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:10px 14px;font-size:12.5px;color:rgba(255,255,255,.85);max-width:420px;}
+  .formula b{color:#fff;font-weight:600;}
+  .nba-band{background:linear-gradient(180deg,#17366f 0%,var(--nba-blue) 100%);color:#fff;border-bottom:5px solid var(--nba-red);margin-bottom:6px;}
+  .band-in{padding-top:18px;padding-bottom:22px;}
+  .band-in header{margin-bottom:0;}
+  .logo-strip{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:rgba(0,0,0,.18);scrollbar-width:thin;justify-content:safe center;}
+  .logo-strip button{flex:0 0 auto;width:38px;height:38px;padding:4px;border-radius:50%;background:#fff;border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:transform .12s;}
+  .logo-strip button:hover{transform:translateY(-2px);}
+  .logo-strip button.on{border-color:var(--nba-red);box-shadow:0 0 0 3px rgba(200,16,46,.45);}
+  .logo-strip img{width:100%;height:100%;object-fit:contain;}
+  .logo-strip .lbl{font:700 10px Inter;color:#1D428A;}
+  .pagebtn{padding:5px 10px;font-size:12px;font-weight:600;background:var(--nba-blue);color:#fff;border-color:var(--nba-blue);border-radius:6px;white-space:nowrap;}
+  .pagebtn:hover{background:var(--nba-red);border-color:var(--nba-red);}
+  td.pagecell{text-align:right;width:1%;}
+  td.teamcell{white-space:normal;max-width:120px;line-height:1.25;}
+  td.yrs .short,.pagebtn .short,th .short{display:none;}
+  @media (max-width:720px){ td.yrs .long,.pagebtn .long{display:none;} td.yrs .short,.pagebtn .short,th .short{display:inline;} th .long{display:none;} td.teamcell .more{display:none;} .pagebtn{padding:4px 8px;} td.name{white-space:normal;} }
+  td.teamcell .more{display:inline-block;font-size:11px;font-weight:700;color:var(--dim);background:var(--row);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:2px;}
+  .podium{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0;}
+  .pod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;}
+  .pod::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c);}
+  .pod .rk{font:700 13px "Barlow Condensed";color:var(--c);letter-spacing:1px;text-transform:uppercase;}
+  .pod .nm{font-weight:700;font-size:16px;margin:2px 0;}
+  .pod .tm{color:var(--dim);font-size:12px;}
+  .pod .val{font:700 34px/1 "Barlow Condensed";margin-top:8px;}
+  .controls{display:grid;grid-template-columns:1.3fr 1.8fr 1fr .8fr .9fr 1.2fr;gap:10px;margin-bottom:12px;}
+  .controls.nometric{grid-template-columns:1.4fr 2fr 1fr 1fr 1fr;}
+  .metric-note{background:#fff4e6;border:1px solid #ffd8a8;color:#7a4100;border-radius:10px;padding:9px 14px;font-size:13px;margin:-2px 0 12px;}
+  @media (prefers-color-scheme: dark){ .metric-note{background:#3a2c10;border-color:#5c4314;color:#ffd8a8;} }
+  .controls label{display:block;font-size:11px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+  input,select{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .tablewrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);text-align:right;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;background:var(--panel);}
+  th.l,td.l{text-align:left;}
+  th.on{color:var(--accent);}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tbody tr.p{cursor:pointer;}
+  tbody tr.p:hover td{background:var(--row);}
+  td.rank{color:var(--dim);font-weight:600;width:44px;}
+  td.name{font-weight:600;}
+  td.score{font-weight:700;color:var(--accent);font-size:15px;}
+  td.base{color:var(--dim);}
+  .up{color:#2f9e44;font-size:11px;font-weight:600;} .down{color:#e03131;font-size:11px;font-weight:600;}
+  .final-note{background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;}
+  .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.35;vertical-align:middle;margin-right:8px;}
+  tr.detail td{background:var(--row);text-align:left;white-space:normal;padding:14px 16px;}
+  .parts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px;}
+  .part{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .part .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+  .part .v{font-weight:700;font-size:15px;}
+  .part .s{font-size:11.5px;color:var(--dim);}
+  .chartbox{position:relative;height:220px;}
+  .trend{margin-top:18px;padding:16px;}
+  .trend h2{font:700 22px "Barlow Condensed";text-transform:uppercase;margin:0 0 2px;}
+  .sub{color:var(--dim);font-size:12.5px;margin-bottom:10px;}
+  .empty{padding:40px 20px;text-align:center;color:var(--dim);}
+  .more{padding:12px;text-align:center;}
+  button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  footer{color:var(--dim);font-size:12px;margin-top:20px;}
+  footer a{color:inherit;}
+  @media (max-width:720px){
+    h1{font-size:34px;}
+    .podium{grid-template-columns:1fr;}
+    .controls{grid-template-columns:1fr 1fr;}
+    .controls .search{grid-column:1/-1;}
+    .hide-sm,.bar{display:none;}
+    th,td{padding:8px 6px;}
+    .pod{padding:10px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;}
+    .pod .rk{grid-row:1/3;}
+    .pod .val{grid-row:1/3;grid-column:3;margin:0;font-size:28px;}
+    .podium{gap:8px;}
+  }
+</style>
+<link rel="stylesheet" href="player.css">
+</head>
+<body>
+<div id="boardView">
+<div class="nba-band">
+  <div class="logo-strip" id="logoStrip" aria-label="NBA teams"></div>
+  <div class="wrap band-in">
+  <header>
+    <div>
+      <h1 id="title">Play <span>Eval</span></h1>
+      <div class="meta" id="meta">Loading…</div>
+    </div>
+  </header>
+  </div>
+</div>
+<div class="wrap" style="padding-top:12px">
+  <div class="podium" id="podium"></div>
+
+  <div class="controls">
+    <div><label for="season">Season</label><select id="season"></select></div>
+    <div class="search"><label for="q">Search player</label><input id="q" type="search" placeholder="e.g. Jokic"></div>
+    <div><label for="team">Team</label><select id="team"><option value="">All teams</option></select></div>
+    <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
+    <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
+    <div id="metricBox"><label for="metric">Rank by</label><select id="metric">
+      <option value="pe">Play Eval</option><option value="cpe">Clutch PE</option><option value="crunch">Crunch-time PE only</option></select></div>
+  </div>
+
+  <div class="card">
+    <div class="tablewrap"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="more" id="more"></div>
+  </div>
+
+  <div class="final-note" id="finalNote" hidden></div>
+  <div class="card trend" id="trendCard">
+    <h2>Top 5 over the season</h2>
+    <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
+    <div class="chartbox"><canvas id="topChart"></canvas></div>
+  </div>
+
+  <footer>
+    Stats from <a href="https://www.basketball-reference.com/" target="_blank" rel="noopener">Basketball-Reference</a>, refreshed every morning.
+    Player pages also use the NBA's public game feed. Use the Player page button on any row to open one.
+    <span id="checked"></span>
+  </footer>
+</div>
+</div>
+<div id="playerView" hidden></div>
+<div id="playersView" hidden></div>
+<script src="nav.js"></script>
+<script src="player.js"></script>
+<script src="players.js"></script>
+
+<script>
+/* ===== Settings you can change ===== */
+const STAT_NAME = "Play Eval";   // what your stat is called -- shows in the title and table
+const DEFAULT_MIN_GAMES = 5;       // qualifying minimums for the season in progress (people can change them on the page)
+const DEFAULT_MIN_MPG = 15;
+const PAST_MIN_GAMES = 40;         // ...for a finished season
+const PAST_MIN_MPG = 15;
+const ALLTIME_MIN_GAMES = 40;      // ...for the all-time best seasons list
+const ALLTIME_MIN_MPG = 20;
+const CAREER_MIN_GAMES = 400;      // ...for the all-time best careers list (about five full seasons)
+const CAREER_MIN_MPG = 20;
+/* =================================== */
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(_){ } }
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f1 = n => (Math.round(n*10)/10).toFixed(1);
+const f3 = n => n.toFixed(3);
+const fold = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+let DATA = {players:[]}, HIST = {days:{}, names:{}}, SEASONS = [], CUR = null, BASE = null, BASEMAP = new Map();
+let VIEW = "current";             // "current" | "past" | "alltime"
+let ALLTIME = null, CAREER = null; // all finished player-seasons; player id -> [seasons]
+let sortKey = "value", sortDir = -1, openKey = null, showAll = false;
+const charts = {};
+const fileCache = {};
+
+const COLS = [
+  {k:"rank", t:"#", l:true},
+  {k:"name", t:"Player", l:true},
+  {k:"season", t:"Season", l:true, only:["alltime","careers"]},
+  {k:"team", t:"Team", l:true},
+  {k:"g", t:"G"},
+  {k:"mpg", t:"MPG", sm:true},
+  {k:"ppg", t:"PTS", sm:true},
+  {k:"apg", t:"AST", sm:true},
+  {k:"dpg", t:"DRB", sm:true},
+  {k:"opg", t:"ORB", sm:true},
+  {k:"spg", t:"STL", sm:true},
+  {k:"bpg", t:"BLK", sm:true},
+  {k:"value", t:STAT_NAME === "Leaderboard" ? "Score" : STAT_NAME},
+  {k:"base", t:"", only:"current", base:true, sm:true},
+  {k:"page", t:"", nosort:true},
+];
+const isPast = () => VIEW !== "current";
+const METRIC_LABEL = {pe: STAT_NAME, cpe: "Clutch PE", crunch: "Crunch PE"};
+const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || (BASE && metric() === "pe")))
+  .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
+  .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
+  .map(c => c.k === "team" && (VIEW === "alltime" || VIEW === "careers") ? Object.assign({}, c, {sm:true}) : c);
+/* Play Eval from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
+const playEval = t => t.mp ? (t.pts + 2*t.ast + 2*((t.drb||0) + (t.orb||0)) + 4*t.stl + t.blk - 4*(t.tov||0)) / t.mp : null;
+const CAREERS = {};
+/* A player-season counting only what he did for `team` (null if he never played for them that season).
+   Players who changed teams mid-season carry per-team splits; older data without them falls back to full totals. */
+const SPLIT_KEYS = ["g","mp","pts","ast","drb","orb","stl","blk","tov"];
+/* Teams that moved or were renamed count as one of today's 30 franchises (Basketball-Reference codes).
+   Rows keep the name the team had at the time: Shawn Kemp shows as SEA, but he's on the Thunder's list. */
+const FRANCHISE = {SEA:"OKC", NJN:"BRK", NYN:"BRK", CHA:"CHO", CHH:"CHO", NOH:"NOP", NOK:"NOP", VAN:"MEM",
+  WSB:"WAS", CAP:"WAS", KCK:"SAC", KCO:"SAC", SDC:"LAC", BUF:"LAC", NOJ:"UTA", SDR:"HOU"};
+const fr = c => FRANCHISE[c] || c;
+const teamsOf = p => (p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ")).filter(Boolean);
+/* Show every row under today's franchise (SEA -> OKC, NJN -> BRK...). The old name stays in p.was for the tooltip. */
+function normRow(p){
+  if(!p || p._n) return p;
+  p._n = true;
+  const orig = teamsOf(p);
+  const mapped = orig.map(fr).filter((t,i,a) => i === 0 || t !== a[i-1]);
+  if(orig.some(t => fr(t) !== t)) p.was = orig.join(" → ");
+  if(p.teams){ if(mapped.length > 1) p.teams = mapped; else delete p.teams; p.team = mapped[mapped.length-1] || ""; }
+  else p.team = mapped.join(" → ");
+  (p.splits || []).forEach(x => { if(fr(x.team) !== x.team){ x.was = x.team; x.team = fr(x.team); } });
+  return p;
+}
+function normSeason(d){ if(d && d.players) d.players.forEach(normRow); return d; }
+function franchiseOptions(){
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  return Object.keys(T).map(n => [NBA_TO_BBR[n] || n, T[n].n]).sort((a,b) => a[1].localeCompare(b[1]));
+}
+function onTeam(r, team){
+  if(!team) return r;
+  const teams = String(r.team || "").split(" → ").filter(Boolean);
+  const mine = teams.filter(t => fr(t) === team);
+  const whole = mine.length === teams.length;          // every stop that season was this franchise
+  if(r.splits && r.splits.length && !whole){
+    const parts = r.splits.filter(x => fr(x.team) === team);
+    if(!parts.length) return null;
+    const o = {id:r.id, name:r.name, season:r.season, team:[...new Set(parts.map(x => x.team))].join(" → "), pos:r.pos, partOf:r.team};
+    if(parts.some(x => x.was)) o.was = [...new Set(parts.map(x => x.was || x.team))].join(" → ");
+    SPLIT_KEYS.forEach(k => o[k] = parts.reduce((t,x) => t + (x[k] || 0), 0));
+    o.value = playEval(o);
+    return o.value == null ? null : o;
+  }
+  if(!mine.length) return null;
+  return whole ? r : Object.assign({}, r, {team: mine.join(" → "), partOf:r.team, noSplit:true});
+}
+function buildCareers(team){
+  team = team || "";
+  if(CAREERS[team]) return CAREERS[team];
+  const by = new Map();
+  const rows = (ALLTIME ? ALLTIME.players : []).concat((CUR.players || []).map(p => Object.assign({}, p, {season: CUR.season, team: p.teams ? p.teams.join(" → ") : p.team})))
+    .map(r => onTeam(r, team)).filter(Boolean);
+  rows.forEach(r => {
+    const c = by.get(r.id) || {id:r.id, name:r.name, g:0, mp:0, pts:0, ast:0, drb:0, orb:0, stl:0, blk:0, tov:0, seasons:[], teams:[], noTov:false};
+    ["g","mp","pts","ast","drb","orb","stl","blk","tov"].forEach(k => c[k] += r[k] || 0);
+    c.seasons.push(r.season);
+    String(r.team || "").split(" → ").filter(Boolean).forEach(t => { if(!c.teams.includes(t)) c.teams.push(t); });
+    if(r.season < "1977-78") c.noTov = true;
+    if(!c.last || r.season > c.last){ c.last = r.season; c.lastTeam = String(r.team || "").split(" → ").pop(); }
+    c.name = r.name;
+    by.set(r.id, c);
+  });
+  return CAREERS[team] = {season:"All-time careers", final:true, team, players:[...by.values()].map(c => {
+    c.seasons.sort();
+    return Object.assign(c, {value: playEval(c), nSeasons: c.seasons.length, season: `${c.seasons[0]} to ${c.seasons[c.seasons.length-1]}`, team: c.lastTeam || ""});
+  }).filter(c => c.value != null), note: team ? "No careers with this team yet." : "Careers appear once past seasons have been downloaded."};
+}
+const ALLTEAM = {};
+function alltimeFor(team){
+  if(!team) return ALLTIME;
+  return ALLTEAM[team] || (ALLTEAM[team] = {season:"All-time", final:true, team,
+    players: ALLTIME.players.map(r => onTeam(r, team)).filter(Boolean), note:"No seasons with this team yet."});
+}
+/* All-time views: picking a team rebuilds the list from only the games each player played for that team */
+function applyTeam(){
+  if(VIEW === "alltime" || VIEW === "careers"){
+    const team = $('team').value;
+    DATA = VIEW === "alltime" ? alltimeFor(team) : buildCareers(team);
+    DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
+    openKey = null; showAll = false;
+    setMeta();
+  }
+  draw(); topChart();
+}
+
+function enrich(p, season){
+  const g = p.g || 1;
+  const b = VIEW==="current" ? BASEMAP.get(p.id) : null;
+  p.base = b ? b.value : -1;
+  p.season = p.season || season || "";
+  p.key = VIEW==="alltime" ? p.id + "|" + p.season : p.id;
+  if(VIEW==="careers"){ p.season = season; }
+  return Object.assign(p, {mpg:p.mp/g, ppg:p.pts/g, apg:p.ast/g, dpg:p.drb/g, opg:p.orb/g, spg:p.stl/g, bpg:p.blk/g});
+}
+
+function qualified(){
+  const minG = +$('minG').value || 0, minM = +$('minM').value || 0;
+  const m = metric();
+  return DATA.players.filter(p => p.g >= minG && p.mpg >= minM && p.value != null && (m !== "crunch" || (p.cmin || 0) >= CRUNCH_MIN_MINUTES));
+}
+
+/* ---------- Rank by: Play Eval, Clutch PE, or crunch-time PE only (this season) ----------
+   Crunch time = the last 5 minutes of the 4th quarter or overtime with the score within 5 (the NBA's "clutch").
+   Clutch PE   = Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5x.
+   Crunch PE   = Play Eval worked out from crunch-time minutes only. */
+const CRUNCH_MIN_MINUTES = 3;
+let METRIC = "pe", CLUTCH = null;
+const metric = () => VIEW === "current" ? METRIC : "pe";
+async function loadClutch(){
+  const d = await getJSON("data/teams/players.json");
+  CLUTCH = new Map();
+  if(!d || !d.cols) return;
+  const C = Object.fromEntries(d.cols.map((c, i) => [c, i]));
+  if(C.c_sec == null) return;
+  d.players.forEach(r => CLUTCH.set(fold(r[C.name]), {
+    sec: r[C.c_sec] || 0, pts: r[C.c_pts] || 0, ast: r[C.c_ast] || 0, reb: r[C.c_reb] || 0, stl: r[C.c_stl] || 0,
+    blk: r[C.c_blk] || 0, tov: r[C.c_tov] || 0, fgm: r[C.c_fgm] || 0, fga: r[C.c_fga] || 0, pm: r[C.c_pm] || 0}));
+}
+function attachClutch(players){
+  players.forEach(p => {
+    if(p.pe0 == null) p.pe0 = p.value;
+    const c = CLUTCH && CLUTCH.get(fold(p.name));
+    const base = c ? c.pts + 2*c.ast + 2*c.reb + 4*c.stl + c.blk - 4*c.tov : 0;
+    p.clutch = c || null;
+    p.cmin = c ? c.sec / 60 : 0;
+    p.cpe = p.pe0 != null && p.mp ? p.pe0 + .5 * base / p.mp : p.pe0;
+    p.crunchPE = p.cmin ? base / p.cmin : null;
+  });
+}
+function applyMetric(){
+  const m = metric();
+  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : m === "crunch" ? p.crunchPE : p.pe0; });
+  $('metricBox').hidden = VIEW !== "current";
+  document.querySelector('.controls').classList.toggle("nometric", VIEW !== "current");
+  let note = $('metricNote');
+  if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
+  const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
+  note.hidden = m === "pe";
+  note.innerHTML = m === "cpe"
+    ? `<b>Clutch PE</b> is Play Eval with every crunch-time point, assist, rebound, steal, block and turnover counted 1.5×. Crunch time is the last 5 minutes of the 4th quarter or overtime with the score within 5.${any ? "" : " No game has had crunch time yet this season, so it matches Play Eval for now."}`
+    : `<b>Crunch-time PE</b> is Play Eval worked out only from crunch-time minutes (the last 5 minutes of the 4th or overtime with the score within 5), so it shows who plays best when games are close. Players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
+}
+
+function drawHead(){
+  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${c.k === "value" ? `<span class="long">${esc(c.t)}</span><span class="short">Eval</span>` : esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
+  $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.k; if(k==="page") return;
+    if(k==="rank"){ sortKey="value"; sortDir=-1; }
+    else if(sortKey===k) sortDir *= -1; else { sortKey = k; sortDir = (k==="name"||k==="team"||k==="season") ? 1 : -1; }
+    draw();
+  });
+}
+
+function draw(){
+  drawHead();
+  const pool = qualified().slice().sort((a,b)=>b.value-a.value);
+  pool.forEach((p,i)=>p.rank = i+1);
+  const q = fold($('q').value.trim()), team = $('team').value;
+  let list = pool.filter(p => (!team || teamsOf(p).some(t => fr(t) === team)) && (!q || fold(p.name).includes(q)));
+  list.sort((a,b)=>{
+    const x=a[sortKey], y=b[sortKey];
+    return (typeof x==="string" ? x.localeCompare(y) : x-y) * sortDir;
+  });
+  const top = pool[0] ? pool[0].value : 1, low = pool.length ? pool[pool.length-1].value : 0;
+  const filtered = q || team;
+  const limit = VIEW==="alltime" || VIEW==="careers" ? 100 : 50;
+  const shown = (showAll || (filtered && list.length <= 500)) ? list : list.slice(0, limit);
+  const nc = cols().length;
+
+  $('podium').innerHTML = pool.slice(0,3).map((p,i)=>`
+    <div class="pod" style="--c:var(--${["gold","silver","bronze"][i]})" data-key="${esc(p.key)}">
+      <div class="rk">${["1st","2nd","3rd"][i]}</div>
+      <div class="nm">${esc(p.name)}</div>
+      <div class="tm">${VIEW==="alltime" || VIEW==="careers" ? esc(p.season)+" · " : ""}${esc(p.team)} · ${p.g.toLocaleString()} games · ${f1(p.mpg)} min</div>
+      <div class="val">${f3(p.value)}</div>
+    </div>`).join("");
+  $('podium').querySelectorAll('.pod').forEach(el => el.onclick = () => { openKey = el.dataset.key; $('q').value = ""; $('team').value = ""; showAll = true; draw(); setTimeout(()=>{ const r = document.querySelector(`tr.detail`); if(r) r.scrollIntoView({block:"center", behavior:"smooth"}); }, 50); });
+
+  if(!DATA.players.length){
+    $('tbody').innerHTML = `<tr><td colspan="${nc}" class="empty">${esc(DATA.note || "No stats yet.")}</td></tr>`;
+    $('more').innerHTML = ""; return;
+  }
+  if(!list.length){
+    $('tbody').innerHTML = `<tr><td colspan="${nc}" class="empty">No players match. Try lowering the minimums.</td></tr>`;
+    $('more').innerHTML = ""; return;
+  }
+  $('tbody').innerHTML = shown.map(p => {
+    const row = `<tr class="p" data-key="${esc(p.key)}">
+      <td class="l rank">${p.rank}</td>
+      <td class="l name">${esc(p.name)}</td>
+      ${VIEW==="alltime" ? `<td class="l">${esc(p.season)}</td>` : VIEW==="careers" ? `<td class="l yrs"><span class="long">${esc(p.season)}</span><span class="short">${esc(shortYears(p))}</span>${p.noTov ? "*" : ""}</td>` : ""}
+      ${teamCell(p)}
+      <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
+      <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
+      <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
+      <td class="score"${p.clutch && metric() !== "pe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. Play Eval ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
+    return row + (openKey===p.key ? detailRow(p) : "");
+  }).join("");
+  const word = VIEW==="alltime" ? "seasons" : VIEW==="careers" ? "careers" : "players";
+  $('more').innerHTML = (shown.length < list.length || showAll) && list.length > limit ? `<button id="moreBtn">${showAll ? `Show top ${limit}` : `Show all ${list.length.toLocaleString()} ${word}`}</button>` : "";
+  const mb = $('moreBtn'); if(mb) mb.onclick = () => { showAll = !showAll; draw(); };
+  $('tbody').querySelectorAll('tr.p').forEach(tr => {
+    tr.onclick = () => { openKey = openKey===tr.dataset.key ? null : tr.dataset.key; draw(); };
+  });
+  $('tbody').querySelectorAll('[data-open]').forEach(b => b.onclick = e => { e.stopPropagation(); openPlayer(b.dataset.open); });
+  if(openKey){
+    const p = DATA.players.find(x=>x.key===openKey);
+    if(p){ if(VIEW==="current") playerChart(p.id); else careerChart(p); }
+  }
+}
+
+/* "2003-04 to 2026-27" -> "2004–27" (the years the seasons ended) for narrow screens */
+function shortYears(p){
+  const f = p.seasons && p.seasons[0], l = p.seasons && p.seasons[p.seasons.length-1];
+  if(!f) return p.season;
+  const a = +f.slice(0,4) + 1, b = +l.slice(0,4) + 1;
+  return a === b ? String(a) : `${a}–${String(b).slice(2)}`;
+}
+/* Team cell: careers show their last team plus how many others (full list on hover and in the breakdown) */
+function teamCell(p){
+  const was = p.was ? ` (then: ${p.was})` : "";
+  if(p.partOf && VIEW === "alltime")
+    return `<td class="l teamcell hide-sm" title="${esc(p.noSplit ? "Full season (" + p.partOf + "): team-by-team numbers arrive with the next update" : "Only games with " + p.team + ". Whole season: " + p.partOf) + was}">${esc(p.team)} <span class="more">${p.noSplit ? "all" : "part"}</span></td>`;
+  const all = p.teams && p.teams.length ? p.teams : String(p.team || "").split(" → ").filter(Boolean);
+  if(VIEW === "careers" && all.length > 1)
+    return `<td class="l teamcell${VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(", ") + was)}">${esc(p.team || all[all.length-1])} <span class="more">+${all.length-1}</span></td>`;
+  return `<td class="l teamcell${VIEW === "alltime" || VIEW === "careers" ? " hide-sm" : ""}" title="${esc(all.join(" → ") + was)}">${esc(all.join(" → "))}</td>`;
+}
+function detailRow(p){
+  const parts = [
+    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Rebounds ×2", p.trb != null ? p.trb : (p.drb||0) + (p.orb||0), 2],
+    ["Steals ×4", p.stl, 4], ["Blocks", p.blk, 1], ["Turnovers ×4", p.tov || 0, -4]
+  ];
+  const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
+  return `<tr class="detail"><td colspan="${cols().length}">
+    <div class="parts">
+      ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${m < 0 ? (p.season && p.season < "1977-78" ? "not tracked yet" : "subtracted") : (total ? Math.round(100*v*m/total) + "% of total" : "")}</div></div>`).join("")}
+      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.pe0 != null ? p.pe0 : p.value)}${p.pe0 != null && metric() !== "pe" ? ` Play Eval · ${METRIC_LABEL[metric()]} ${f3(p.value)}` : ""}</div></div>
+    </div>
+    ${compareHtml(p)}
+    <div class="chartbox"><canvas id="pChart"></canvas></div>
+  </td></tr>`;
+}
+
+function compareHtml(p){
+  if(VIEW==="current"){
+    const b = BASEMAP.get(p.id);
+    return b ? `<div class="sub" style="margin:0 0 8px;">${esc(BASE.season)} final: <b>${f3(b.value)}</b> in ${b.g} games (${f1(b.mp/(b.g||1))} min) — ${p.value>=b.value?"up":"down"} ${Math.abs(p.value-b.value).toFixed(3)} so far this season.</div>` : "";
+  }
+  const now = CUR && CUR.players.find(x=>x.id===p.id);
+  const career = (CAREER && CAREER.get(p.id)) || [];
+  const best = career.slice().sort((a,b)=>b.value-a.value)[0];
+  if(VIEW==="careers") return `<div class="sub" style="margin:0 0 8px;">${p.nSeasons} season${p.nSeasons===1?"":"s"} (${esc(p.season)}), ${esc(p.teams.join(", "))}.${best ? ` Best season: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b>.` : ""} Line below: Play Eval each season of their career.</div>`;
+  return `<div class="sub" style="margin:0 0 8px;">${esc(p.season)} final numbers.${best && career.length>1 ? ` Career best: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b> in ${now.g} games.` : ""} Line below: Play Eval each season of their career.</div>`;
+}
+
+function seriesFor(id){
+  const days = Object.keys(HIST.days||{}).sort();
+  return {days, vals: days.map(d => HIST.days[d][id] ?? null)};
+}
+
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function lineChart(canvas, labels, datasets, opts){
+  if(charts[canvas.id]) charts[canvas.id].destroy();
+  charts[canvas.id] = new Chart(canvas, {
+    type:"line", data:{labels, datasets},
+    options:{responsive:true, maintainAspectRatio:false, spanGaps:true, interaction:{mode:"index", intersect:false},
+      plugins:{legend:{labels:{color:css('--ink'), boxWidth:12}}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y==null?"—":c.parsed.y.toFixed(3)}`}}},
+      scales:{x:{ticks:{color:css('--dim'), maxTicksLimit:10}, grid:{display:false}}, y:{ticks:{color:css('--dim')}, grid:{color:css('--line')}}}, ...(opts||{})}
+  });
+}
+
+function playerChart(id){
+  const c = $('pChart'); if(!c || typeof Chart==="undefined") return;
+  const {days, vals} = seriesFor(id);
+  if(days.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">The season trend line appears after a couple of daily updates.</div>`; return; }
+  const p = DATA.players.find(x=>x.id===id);
+  lineChart(c, days.map(d=>d.slice(5)), [{label:p?p.name:id, data:vals, borderColor:css('--accent'), backgroundColor:css('--accent'), tension:.25, pointRadius:0, borderWidth:2.5}]);
+}
+
+function careerChart(p){
+  const c = $('pChart'); if(!c || typeof Chart==="undefined") return;
+  const career = ((CAREER && CAREER.get(p.id)) || []).slice().sort((a,b)=>a.season.localeCompare(b.season));
+  const now = CUR && CUR.players.find(x=>x.id===p.id);
+  const pts = career.map(r=>({s:r.season, v:r.value}));
+  if(now && !pts.some(x=>x.s===CUR.season)) pts.push({s:CUR.season + " (so far)", v:now.value});
+  if(pts.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">Only one season on record for this player.</div>`; return; }
+  lineChart(c, pts.map(x=>x.s), [{label:p.name, data:pts.map(x=>x.v), borderColor:css('--accent'), backgroundColor:css('--accent'), tension:.2, pointRadius:pts.map(x=>x.s===p.season?6:3), borderWidth:2.5}]);
+}
+
+function topChart(){
+  $('trendCard').hidden = VIEW !== "current" || metric() !== "pe";
+  if(VIEW !== "current" || metric() !== "pe") return;
+  const box = $('trendCard').querySelector('.chartbox');
+  if(!$('topChart')) box.innerHTML = `<canvas id="topChart"></canvas>`;
+  const c = $('topChart'); if(typeof Chart==="undefined") return;
+  const days = Object.keys(HIST.days||{}).sort();
+  if(days.length < 2){ c.parentElement.innerHTML = `<div class="sub" style="margin:0;">This chart fills in after a couple of daily updates.</div>`; return; }
+  const top = qualified().slice().sort((a,b)=>b.value-a.value).slice(0,5);
+  const colors = [css('--accent'), css('--court'), css('--gold'), "#2f9e44", "#9c36b5"];
+  lineChart(c, days.map(d=>d.slice(5)), top.map((p,i)=>({label:p.name, data:days.map(d=>HIST.days[d][p.id] ?? null), borderColor:colors[i], backgroundColor:colors[i], tension:.25, pointRadius:0, borderWidth:2})));
+}
+
+async function getJSON(path){
+  try{ const r = await fetch(path + "?t=" + Date.now()); if(!r.ok) return null; return await r.json(); }catch(_){ return null; }
+}
+async function loadAlltime(){
+  if(ALLTIME) return ALLTIME;
+  const raw = await getJSON("data/alltime.json");
+  const cols = raw && raw.cols || [];
+  ALLTIME = {season:"All-time", final:true, players:(raw && raw.rows || []).map(r => {
+      const o = Object.fromEntries(cols.map((c,i)=>[c, r[i]]));
+      o.splits = Array.isArray(o.splits) ? o.splits.map(x => Object.fromEntries(["team", ...SPLIT_KEYS].map((k,i) => [k, x[i]]))) : null;
+      return normRow(o);
+    }),
+    note:"All-time seasons haven't been downloaded yet. They're added on the next daily update."};
+  CAREER = new Map();
+  ALLTIME.players.forEach(p => { if(!CAREER.has(p.id)) CAREER.set(p.id, []); CAREER.get(p.id).push(p); });
+  return ALLTIME;
+}
+function fmtWhen(iso){ return new Date(iso).toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}); }
+function mkey(k){ return k + ":" + VIEW; }
+
+function pastRange(){
+  const past = SEASONS.filter(x => /^season-/.test(x.file));
+  return past.length ? ` from ${past[past.length-1].label} to ${past[0].label}` : "";
+}
+function setMeta(){
+  const when = DATA.updatedAt ? fmtWhen(DATA.updatedAt) : null;
+  const tm = DATA.team ? ` · only games with ${DATA.team}` : "";
+  $('meta').textContent = VIEW==="careers"
+    ? `All-time careers · ${DATA.players.length.toLocaleString()} players since 1973-74, including this season so far${tm}`
+    : VIEW==="alltime"
+    ? `All-time · ${DATA.players.length.toLocaleString()} player-seasons${pastRange()}${tm}`
+    : `${DATA.season || ""} season · ${DATA.players.length} players` + (VIEW==="past" ? " · final numbers" : (when ? " · updated " + when : ""));
+}
+async function showSeason(file){
+  const s = SEASONS.find(x=>x.file===file) || SEASONS[0];
+  $('season').value = s.file;
+  $('meta').textContent = "Loading…";
+  if(s.file !== "stats.json") await loadAlltime();   // career lines for past views
+  if(s.current){ VIEW = "current"; DATA = CUR; }
+  else if(s.file === "alltime"){ VIEW = "alltime"; DATA = ALLTIME; }
+  else if(s.file === "careers"){ VIEW = "careers"; DATA = buildCareers(""); }
+  else {
+    VIEW = "past";
+    DATA = fileCache[s.file] || (fileCache[s.file] = normSeason(await getJSON("data/" + s.file))) || {players:[], note:"Couldn't load that season."};
+    DATA.final = true;
+  }
+  DATA.players = DATA.players || [];
+  DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
+  if(VIEW === "current") attachClutch(DATA.players);
+  applyMetric();
+  openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
+  setMeta();
+  $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
+
+  $('finalNote').hidden = VIEW==="current";
+  if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Play Eval across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
+  if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Play Eval, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
+  if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Play Eval since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
+  $('team').innerHTML = `<option value="">All teams</option>` + franchiseOptions().map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("");
+  // early in the season nobody has 5 games yet: ask for half the most games anyone has played (at least 1)
+  const most = VIEW==="current" ? Math.max(0, ...DATA.players.map(p => p.g || 0)) : 0;
+  const curG = Math.min(DEFAULT_MIN_GAMES, Math.max(1, Math.ceil(most / 2)));
+  const dG = VIEW==="current" ? curG : VIEW==="past" ? PAST_MIN_GAMES : VIEW==="careers" ? CAREER_MIN_GAMES : ALLTIME_MIN_GAMES;
+  const dM = VIEW==="current" ? DEFAULT_MIN_MPG : VIEW==="past" ? PAST_MIN_MPG : VIEW==="careers" ? CAREER_MIN_MPG : ALLTIME_MIN_MPG;
+  const savedG = store.get(mkey("minG"));
+  $('minG').value = savedG != null && !(VIEW === "current" && +savedG > most) ? savedG : dG;
+  $('minM').value = store.get(mkey("minM")) ?? dM;
+  draw(); topChart();
+  if(typeof syncLogoStrip === "function") syncLogoStrip();
+}
+
+async function load(){
+  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = esc(STAT_NAME).replace(/(\S+)$/, "<span>$1</span>"); document.title = STAT_NAME; }
+  CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
+  CUR.players = CUR.players || [];
+  await loadClutch();
+  HIST = await getJSON("data/history.json") || {days:{}, names:{}};
+  const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
+  SEASONS = [{label:CUR.season || "This season", file:"stats.json", current:true}];
+  if(index.length) SEASONS.push({label:"All-time best seasons", file:"alltime"}, {label:"All-time best careers", file:"careers"});
+  SEASONS.push(...index);
+  if(index.length){
+    BASE = fileCache[index[0].file] = normSeason(await getJSON("data/" + index[0].file));
+    if(BASE && BASE.players) BASEMAP = new Map(BASE.players.map(p=>[p.id, p])); else BASE = null;
+  }
+  $('season').innerHTML = SEASONS.map(s=>`<option value="${esc(s.file)}">${esc(s.label)}${s.current ? " (now)" : ""}</option>`).join("");
+  $('season').onchange = () => { store.set("pickedSeason", $('season').value); showSeason($('season').value); };
+  $('metric').onchange = () => { METRIC = $('metric').value; applyMetric(); openKey = null; sortKey = "value"; sortDir = -1; draw(); topChart(); };
+  $('q').oninput = draw;
+  $('team').onchange = applyTeam;
+  $('minG').oninput = () => { store.set(mkey("minG"), $('minG').value); draw(); topChart(); };
+  $('minM').oninput = () => { store.set(mkey("minM"), $('minM').value); draw(); topChart(); };
+  const saved = store.get("pickedSeason");   // only a season the viewer picked themselves
+  const fallback = (!CUR.players.length && index.length) ? index[0].file : "stats.json";
+  showSeason(SEASONS.some(s=>s.file===saved) ? saved : fallback);
+}
+const NBA_TO_BBR = {BKN:"BRK", CHA:"CHO", PHX:"PHO"};
+function buildLogoStrip(){
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const codes = Object.keys(T).sort((a,b)=>T[a].n.localeCompare(T[b].n));
+  $('logoStrip').innerHTML = codes.map(c => `<button data-team="${c}" title="${esc(T[c].n)}"><img src="https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg" alt="${esc(T[c].n)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'lbl',textContent:'${c}'}))"></button>`).join("");
+  $('logoStrip').querySelectorAll('button').forEach(b => b.onclick = () => {
+    const code = NBA_TO_BBR[b.dataset.team] || b.dataset.team;
+    const opts = [...$('team').options].map(o=>o.value);
+    const pick = opts.includes(code) ? code : (opts.includes(b.dataset.team) ? b.dataset.team : null);
+    if(!pick){ return; }
+    $('team').value = $('team').value === pick ? "" : pick;
+    syncLogoStrip(); applyTeam();
+    document.querySelector('.controls').scrollIntoView({behavior:"smooth", block:"start"});
+  });
+}
+function syncLogoStrip(){
+  const v = $('team').value;
+  $('logoStrip').querySelectorAll('button').forEach(b => b.classList.toggle("on", !!v && (v === b.dataset.team || v === NBA_TO_BBR[b.dataset.team])));
+}
+function openPlayer(id){ if(id) location.hash = "#/player/" + encodeURIComponent(id); }
+let boardScroll = 0;
+function route(){
+  const m = location.hash.match(/^#\/player\/(.+)$/);
+  const c = location.hash.match(/^#\/compare\/([^/]+)(?:\/([^/]+))?$/);
+  const list = /^#\/players\/?$/.test(location.hash);
+  if(list) window.PE_BACK = "#/players"; else if(!m && !c) window.PE_BACK = "";
+  $('playersView').hidden = !list;
+  if(list){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = true;
+    window.scrollTo(0, 0);
+    PlayersPage.show($('playersView'));
+  } else if(c){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = false;
+    window.scrollTo(0, 0);
+    PlayerPage.compare(decodeURIComponent(c[1]), c[2] ? decodeURIComponent(c[2]) : null, $('playerView'));
+  } else if(m){
+    if(!$('boardView').hidden) boardScroll = window.scrollY;
+    $('boardView').hidden = true; $('playerView').hidden = false;
+    window.scrollTo(0, 0);
+    PlayerPage.show(decodeURIComponent(m[1]), $('playerView'));
+  } else {
+    $('playerView').hidden = true; $('boardView').hidden = false;
+    document.title = STAT_NAME;
+    requestAnimationFrame(() => window.scrollTo(0, boardScroll));
+  }
+}
+window.addEventListener("hashchange", route);
+buildLogoStrip();
+$('team').addEventListener("change", syncLogoStrip);
+load().then(() => { syncLogoStrip(); route(); });
+</script>
+</body>
+</html>
