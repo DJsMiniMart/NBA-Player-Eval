@@ -97,6 +97,12 @@
   .rk-tbl td.nm img{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:7px;}
   .rk-tbl td.mvr{font-weight:700;color:var(--accent);}
   .rk-tbl tr.unq td{color:var(--dim);}
+  .mvrd-tag{font:600 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--dim);margin-left:6px;}
+  .v-tabs{display:flex;gap:4px;flex-wrap:wrap;}
+  .v-tabs button{padding:5px 11px;font-size:12.5px;font-weight:600;border-radius:999px;}
+  .v-tabs button.on{background:var(--nba-blue);border-color:var(--nba-blue);color:#fff;}
+  .rk-tbl td.up{color:#2f9e44;font-weight:700;} .rk-tbl td.down{color:#d6336c;font-weight:700;}
+  @media (prefers-color-scheme: dark){ .rk-tbl td.up{color:#51cf66;} .rk-tbl td.down{color:#ff6b9a;} }
   .rk-pick{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--row);color:var(--dim);white-space:nowrap;}
   .rk-pick.lot{background:var(--accent-soft);color:var(--accent);}
   .trend h2{font:700 22px "Barlow Condensed";text-transform:uppercase;margin:0 0 2px;}
@@ -160,6 +166,15 @@
     <h2>Top 5 over the season</h2>
     <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
     <div class="chartbox"><canvas id="topChart"></canvas></div>
+  </div>
+
+  <div class="card rookies" id="valueCard" hidden>
+    <div class="rk-head"><div><h2>MVR$ <span class="mvrd-tag">value per dollar</span></h2><div class="sub" id="vSub"></div></div>
+      <div class="v-tabs" id="vTabs"><button data-v="bargain" class="on">Best value</button><button data-v="over">Most overpaid</button><button data-v="all">Everyone</button></div></div>
+    <div class="rk-tiles" id="vTiles"></div>
+    <div class="tablewrap"><table class="rk-tbl"><thead><tr id="vHead"></tr></thead><tbody id="vBody"></tbody></table></div>
+    <div class="more" id="vMore"></div>
+    <div class="sub" style="padding:8px 16px 14px" id="vNote"></div>
   </div>
 
   <div class="card rookies" id="rookieCard" hidden>
@@ -586,7 +601,7 @@ async function showSeason(file){
   DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
   if(VIEW === "current") attachClutch(DATA.players);
   applyMetric();
-  drawRookies();
+  drawRookies(); drawValue();
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
   setMeta();
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
@@ -606,6 +621,78 @@ async function showSeason(file){
   $('minM').value = store.get(mkey("minM")) ?? dM;
   draw(); topChart();
   if(typeof syncLogoStrip === "function") syncLogoStrip();
+}
+
+/* ---------- MVR$: value per dollar ----------
+   Production = the MVR formula's top line (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4), season to date.
+   Salary is counted only for the part of the season played so far (salary × team games ÷ 82).
+   MVR$        = production per $1M of salary earned so far.
+   League rate = all players' production ÷ all salary earned (what the league pays, on average, for MVR).
+   Market value = his production pace over 82 games, priced at the league rate. Surplus = market value − salary. */
+let CONTRACTS = null, TEAMG = null, vView = "bargain", vSort = null, vShown = 25;
+const salaryOf = c => { const y = c && (c.years || []).find(r => r[0] === (CUR && CUR.season)); return y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0; };
+const money = n => (n < 0 ? "−" : "") + "$" + (Math.abs(n) >= 1e6 ? (Math.abs(n) / 1e6).toFixed(1) + "M" : Math.round(Math.abs(n) / 1e3) + "K");
+function valueRows(){
+  const all = (CUR && CUR.players) || [];
+  const most = Math.max(1, ...all.map(p => p.g || 0));
+  const minG = Math.max(1, Math.ceil(most / 2)), minM = 10;
+  const rows = [];
+  all.forEach(p => {
+    const sal = salaryOf((CONTRACTS || {})[p.id]);
+    if(!sal || !p.g || !p.mp) return;
+    const tg = Math.max(p.g, (TEAMG || {})[BBR2NBA[p.team] || p.team] || 0);
+    const prod = (p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0);
+    const earned = sal * tg / 82;
+    rows.push({p, id:p.id, name:p.name, team:p.team, g:p.g, mpg:p.mp / p.g, sal, tg, prod, earned,
+      mvr: prod / p.mp, q: p.g >= minG && p.mp / p.g >= minM});
+  });
+  const totP = rows.reduce((a, r) => a + Math.max(0, r.prod), 0), totS = rows.reduce((a, r) => a + r.earned, 0);
+  const rate = totS ? totP / (totS / 1e6) : 0;                 // league MVR$: production per $1M
+  rows.forEach(r => {
+    r.vpd = r.prod / (r.earned / 1e6);                           // his MVR$
+    r.x = rate ? r.vpd / rate : null;                            // vs league (1.00 = market rate)
+    r.market = rate ? Math.max(0, r.prod) / r.tg * 82 / rate * 1e6 : 0;
+    r.surplus = r.market - r.sal;
+  });
+  return {rows, rate, minG, minM, perPoint: rate ? 1e6 / rate : 0};
+}
+function drawValue(){
+  const card = $('valueCard');
+  if(!CONTRACTS || VIEW !== "current"){ card.hidden = true; return; }
+  const {rows, rate, minG, minM, perPoint} = valueRows();
+  const q = rows.filter(r => r.q);
+  if(!q.length || !rate){ card.hidden = true; return; }
+  card.hidden = false;
+  $('vSub').textContent = `League rate: ${rate.toFixed(1)} MVR points per $1M of salary (about ${money(perPoint)} per point) · ${q.length} qualified players with a listed salary`;
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
+  const by = (k, d) => q.slice().sort((a, b) => d * (a[k] - b[k]));
+  const big = q.filter(r => r.sal >= 20e6);
+  const tiles = [
+    ["Best MVR$", by("vpd", -1)[0], r => r.vpd.toFixed(1), "per $1M"],
+    ["Biggest bargain", by("surplus", -1)[0], r => "+" + money(r.surplus), "over salary"],
+    ["Best value, $20M+ players", big.slice().sort((a, b) => b.vpd - a.vpd)[0], r => r.x.toFixed(2) + "×", "market rate"],
+    ["Most overpaid", by("surplus", 1)[0], r => money(r.surplus), "vs salary"],
+  ];
+  $('vTiles').innerHTML = tiles.map(([k, r, f, u]) => r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">${k}</div><div class="n">${esc(r.name)}</div><div class="v">${f(r)}<small>${u}</small></div></button>` : "").join("");
+  document.querySelectorAll('#vTabs button').forEach(b => b.classList.toggle("on", b.dataset.v === vView));
+  const H = [[null,"#"],["name","Player"],["sal","Salary"],["g","G"],["mpg","MIN"],["mvr","MVR"],["vpd","MVR$"],["x","vs Lg"],["market","Market value"],["surplus","Surplus"]];
+  const def = vView === "over" ? {k:"surplus", d:1} : vView === "bargain" ? {k:"surplus", d:-1} : {k:"vpd", d:-1};
+  const S = vSort || def;
+  $('vHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${S.k === k ? " on" : ""}" data-k="${k || ""}" ${k === "vpd" ? 'title="MVR points per $1M of salary earned so far"' : k === "x" ? 'title="His MVR$ ÷ the league rate. 1.00× = paid exactly market rate"' : k === "market" ? 'title="What his production pace over 82 games would cost at the league rate"' : k === "surplus" ? 'title="Market value minus salary. Positive = playing above his contract"' : ""}>${t}${S.k === k ? (S.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
+  $('vHead').querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; if(!k) return;
+    vSort = S.k === k ? {k, d: -S.d} : {k, d: k === "name" ? 1 : -1}; vShown = 25; drawValue(); });
+  let list = vView === "over" ? q.filter(r => r.surplus < 0) : vView === "bargain" ? q.filter(r => r.surplus > 0) : q;
+  list = list.slice().sort((a, b) => S.k === "name" ? S.d * a.name.localeCompare(b.name) : S.d * (a[S.k] - b[S.k]));
+  $('vBody').innerHTML = list.slice(0, vShown).map((r, i) => `<tr><td>${i + 1}</td>
+      <td class="l nm" data-id="${esc(r.id)}">${logoOf(r.team) ? `<img src="${logoOf(r.team)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${esc(r.name)} <span style="color:var(--dim);font-weight:400;font-size:12px">${esc(BBR2NBA[r.team] || r.team || "")}</span></td>
+      <td>${money(r.sal)}</td><td>${r.g}</td><td>${r.mpg.toFixed(1)}</td><td>${f3(r.mvr)}</td><td class="mvr">${r.vpd.toFixed(1)}</td>
+      <td class="${r.x >= 1 ? "up" : "down"}">${r.x.toFixed(2)}×</td><td>${money(r.market)}</td><td class="${r.surplus >= 0 ? "up" : "down"}">${r.surplus >= 0 ? "+" : ""}${money(r.surplus)}</td></tr>`).join("")
+    || `<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--dim)">No players here yet.</td></tr>`;
+  $('vMore').innerHTML = list.length > vShown ? `<button id="vMoreBtn">Show more (${list.length - vShown} more)</button>` : "";
+  if($('vMoreBtn')) $('vMoreBtn').onclick = () => { vShown += 50; drawValue(); };
+  $('vNote').textContent = `MVR$ = MVR production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far this season. The league rate is what teams pay, on average, for that production; market value prices each player's 82-game pace at that rate, and surplus is market value minus salary. Rookie-scale and minimum contracts naturally rank high. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
+  card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 
 /* ---------- Rookie report: this season's first-year players (data/rookies.json, built by update_stats.py) ---------- */
@@ -672,6 +759,12 @@ async function load(){
   CUR.players = CUR.players || [];
   await loadClutch();
   getJSON("data/rookies.json").then(r => { ROOK = r; drawRookies(); });
+  Promise.all([getJSON("data/contracts.json"), getJSON("data/teams/league.json")]).then(([c, lg]) => {
+    CONTRACTS = (c && c.players) || null;
+    TEAMG = {}; ((lg && lg.games) || []).forEach(g => { TEAMG[g[2]] = (TEAMG[g[2]] || 0) + 1; TEAMG[g[3]] = (TEAMG[g[3]] || 0) + 1; });
+    drawValue();
+  });
+  document.querySelectorAll('#vTabs button').forEach(b => b.onclick = () => { vView = b.dataset.v; vSort = null; vShown = 25; drawValue(); });
   $('rkAll').onchange = drawRookies;
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
