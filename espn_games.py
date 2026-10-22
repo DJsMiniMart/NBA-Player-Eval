@@ -260,6 +260,10 @@ def shot_zone(p, text, pts):
 # side of straight ahead (the page draws the same lines). Left/right = as drawn, basket at the top.
 HZ_BREAK = 5.25 + (23.75 ** 2 - 22 ** 2) ** 0.5      # 14.2
 HZ_TAN = 0.4452                                      # tan(24 deg)
+# ESPN's y runs from about 4 ft in front of the baseline (its basket sits near y=1.25; shots behind that are
+# squashed to 0). Checked against where the three-point ring of shots sits. Shift it so y = feet from the baseline.
+HZ_Y_OFFSET = 4.0
+HZ_VERSION = 2       # bump when the zone rules change: zones already saved are thrown out and rebuilt
 HZ_ZONES = ["ra", "paint", "mlb", "mlw", "mtop", "mrw", "mrb", "c3l", "w3l", "t3", "w3r", "c3r", "deep"]
 
 
@@ -270,6 +274,8 @@ def hot_zone(p, text, pts):
     ok = isinstance(x, (int, float)) and isinstance(y, (int, float)) and -5 <= x <= 55 and -5 <= y <= 95
     if ok and y > 47:
         x, y = 50 - x, 94 - y
+    if ok:
+        y = y + HZ_Y_OFFSET
     m = re.search(r"(\d+)-foot", text)
     dist = int(m.group(1)) if m else (((x - 25) ** 2 + (y - 5.25) ** 2) ** 0.5 if ok else None)
     three = pts == 3 or "three point" in text.lower()
@@ -335,8 +341,19 @@ def hz_only(acc, g, summary, plays):
     return True
 
 
+def reset_hz_if_old(acc):
+    """Zones saved under older rules are thrown out so they get rebuilt."""
+    if acc.get("hzV") == HZ_VERSION:
+        return False
+    for pl in acc.get("players", {}).values():
+        pl.pop("hz", None)
+    acc["tz"], acc["oz"], acc["hzDone"], acc["hzFail"], acc["hzV"] = {}, {}, [], {}, HZ_VERSION
+    return True
+
+
 def upgrade_hz(acc, games, out_of_time, label):
     """Hot zones for games saved before they were tracked. Returns True when every saved game has them."""
+    reset_hz_if_old(acc)
     have = set(acc.setdefault("hzDone", []))
     todo = [g for g in games if g["id"] in set(acc["done"]) and g["id"] not in have]
     n = 0
@@ -693,7 +710,7 @@ def sub_in_out(p, ppl, nickname):
 def new_acc(label):
     return {"season": label, "source": "espn", "schema": SCHEMA, "done": [], "missing": [], "players": {}, "names": {},
             "teams": {}, "tgames": {}, "stints": {}, "clutch": {}, "moments": {}, "complete": False,
-            "tz": {}, "oz": {}, "hzDone": []}
+            "tz": {}, "oz": {}, "hzDone": [], "hzV": HZ_VERSION}
 
 
 def update(now, current_year):
@@ -703,6 +720,7 @@ def update(now, current_year):
     acc = load(path, None)
     if not acc or acc.get("schema") != SCHEMA:
         acc = new_acc(label)   # older NBA-feed file (empty from GitHub): start over from ESPN
+    reset_hz_if_old(acc)
     today = (now - dt.timedelta(hours=5)).date()
     games = scoreboard(current_year, today)
     print(f"ESPN: {len(games)} games on the {label} schedule, {sum(g['state'] == 3 for g in games)} final")
@@ -757,6 +775,7 @@ def backfill(now, current_year, started):
         acc = load(path, None)
         if not acc or acc.get("schema") != SCHEMA or acc.get("source") != "espn":
             acc = new_acc(label)
+        reset_hz_if_old(acc)
         games = [g for g in scoreboard(year, dt.date(year, 10, 31), wide=True)
                  if g["state"] == 3 and g["reg"] and (g["sy"] == year if g.get("sy") else g["date"][:10] <= f"{year}-08-31")]
         tries = acc.setdefault("tries", {})
