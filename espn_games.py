@@ -621,7 +621,8 @@ def update(now, current_year):
             save(path, acc)
     save(path, acc)
     print(f"ESPN: added {added} games ({len(acc['done'])} so far this season) in {int(time.time() - started)}s")
-    backfill(now, current_year, started)
+    if not os.environ.get("NO_BACKFILL"):   # the workflow runs the backfill as its own step, after saving today's games
+        backfill(now, current_year, started)
 
 
 # ---------- earlier seasons, for careers ----------

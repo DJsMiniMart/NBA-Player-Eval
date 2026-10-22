@@ -2,13 +2,11 @@ name: Update NBA stats
 
 on:
   schedule:
-    # GitHub sometimes skips or delays scheduled runs, so there are backups. Extra runs are harmless:
-    # each one only adds what's new. Times are UTC (subtract 5 hours for Central, 6 in winter).
-    - cron: "23 8 * * *"    # ~3:23 AM Central, after the late West Coast games
-    - cron: "17 11 * * *"   # ~6:17 AM Central
-    - cron: "41 13 * * *"   # ~8:41 AM Central (backup)
-    - cron: "11 17 * * *"   # ~12:11 PM Central (backup)
-  workflow_dispatch: {}      # adds a "Run workflow" button on the Actions tab
+    # GitHub's timer is best-effort: it often fires hours late or skips a run entirely. So this checks every
+    # hour from about 2 AM to noon Central; a check right after a recent update stops in a few seconds.
+    # Times are UTC (subtract 5 hours for Central, 6 in winter).
+    - cron: "23 7-17 * * *"
+  workflow_dispatch: {}      # adds a "Run workflow" button on the Actions tab (always runs in full)
 
 permissions:
   contents: write
@@ -20,33 +18,45 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 330       # the first few runs backfill old seasons; normal days take a few minutes
+    timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30
+
+      - name: Already updated recently?
+        id: gate
+        run: |
+          last=$(git log -1 --author=stats-bot --grep="Daily stats update" --format=%ct || echo 0)
+          age=$(( $(date +%s) - ${last:-0} ))
+          echo "Last update was $((age / 60)) minutes ago"
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$age" -lt 9000 ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "Updated within 2.5 hours; nothing to do"
+          fi
 
       - uses: actions/setup-python@v5
+        if: steps.gate.outputs.skip != '1'
         with:
           python-version: "3.12"
 
       - name: Install
+        if: steps.gate.outputs.skip != '1'
         run: pip install beautifulsoup4 numpy
 
-      - name: Pull stats and run the formula
+      - name: Pull last night's games and stats
+        if: steps.gate.outputs.skip != '1'
+        env:
+          NO_BACKFILL: "1"
         run: python update_stats.py
 
       - name: Save the new numbers
-        run: |
-          git config user.name "stats-bot"
-          git config user.email "stats-bot@users.noreply.github.com"
-          git add data/
-          git diff --cached --quiet && { echo "Nothing new to save"; exit 0; }
-          git commit -q -m "Daily stats update"
-          # If files were uploaded while this ran, put the new numbers on top of them and try again.
-          # (-X theirs: when the same data file changed in both places, keep this run's copy.)
-          for i in 1 2 3 4 5; do
-            git pull --rebase -X theirs -q origin "${GITHUB_REF_NAME}" || { git rebase --abort 2>/dev/null; git pull --no-rebase -X ours -q --no-edit origin "${GITHUB_REF_NAME}"; }
-            git push -q origin "HEAD:${GITHUB_REF_NAME}" && { echo "Saved"; exit 0; }
-            echo "Push failed (try $i); retrying"
-            sleep $((i * 10))
-          done
-          exit 1
+        if: steps.gate.outputs.skip != '1'
+        run: .github/scripts/save.sh "Daily stats update"
+
+      - name: Fill in earlier seasons (career stats)
+        if: steps.gate.outputs.skip != '1'
+        run: python update_stats.py --backfill
+
+      - name: Save the earlier seasons
+        if: steps.gate.outputs.skip != '1'
+        run: .github/scripts/save.sh "Career backfill"

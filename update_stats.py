@@ -301,6 +301,10 @@ def write_season_index(current_year):
 def main():
     now = dt.datetime.now(dt.timezone.utc)
     year = season_end_year(now)
+    if "--backfill" in sys.argv:   # earlier seasons for career stats; slow, so it runs after today's numbers are saved
+        run_step("earlier seasons (careers, from ESPN)", lambda: __import__("espn_games").backfill(now, year, time.time()))
+        run_step("player pages", lambda: __import__("build_players").build(now, year))
+        return 0
     os.makedirs(DATA_DIR, exist_ok=True)
     try:
         save_past_seasons(now, year)
