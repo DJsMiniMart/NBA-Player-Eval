@@ -33,7 +33,7 @@ const RA = "M210,52.5 A40,40 0 1 1 290,52.5 A40,40 0 1 1 210,52.5 Z";
 const ARC = "M30,0 L30,142 A237.5,237.5 0 0 0 470,142 L470,0 Z";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const pct = (m, a) => a ? (100 * m / a).toFixed(1) + "%" : "—";
+const pct = (m, a) => a ? Math.round(100 * m / a) + "%" : "—";   // whole numbers: 36%, not 36.1%
 const rate = t => t && t[0] ? t[1] / t[0] : null;
 const MIN_SAMPLE = 5;   // fewer attempts than this: colored faintly
 
@@ -76,7 +76,7 @@ function html(zones, league, opts = {}){
     const t = zones[k] || [0, 0], lp = rate(league[k]), p = rate(t);
     return [k, {k, name, a: t[0], m: t[1], p, lp, d: p != null && lp != null ? p - lp : 0}];
   }));
-  const tip = z => `${z.name}: ${z.m}/${z.a} (${pct(z.m, z.a)})${z.lp != null ? ` · league ${(z.lp * 100).toFixed(1)}%` : ""}${z.a && z.a < MIN_SAMPLE ? " · small sample" : ""}`;
+  const tip = z => `${z.name}: ${z.m}/${z.a} (${pct(z.m, z.a)})${z.lp != null ? ` · league ${Math.round(z.lp * 100)}%` : ""}${z.a && z.a < MIN_SAMPLE ? " · small sample" : ""}`;
   const shape = (k, inner) => `<g>${inner(fill(info[k].d, info[k].a))}<title>${esc(tip(info[k]))}</title></g>`;
   const P = (k, pts) => shape(k, f => `<polygon class="zone" points="${pts}" fill="${f}"/>`);
   const label = ([k, , , pos]) => {
@@ -84,12 +84,12 @@ function html(zones, league, opts = {}){
     const z = info[k], [x, y] = pos;
     if(k === "c3l" || k === "c3r"){
       const rot = k === "c3l" ? -90 : 90;
-      return `<text class="c" x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" dy="4">${z.a ? `${pct(z.m, z.a).replace(".0%", "%")} · ${z.m}/${z.a}` : "—"}</text>`;
+      return `<text class="c" x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" dy="4">${z.a ? `${pct(z.m, z.a)} · ${z.m}/${z.a}` : "—"}</text>`;
     }
     const small = k === "ra";
     return `<text x="${x}" y="${y}"${small ? ` style="font-size:15px"` : ""}>${z.a ? pct(z.m, z.a) : "—"}</text>
       <text class="s" x="${x}" y="${y + (small ? 50 : 16)}">${z.a ? `${z.m}/${z.a}` : ""}</text>
-      ${!small && z.lp != null ? `<text class="s" x="${x}" y="${y + 30}" style="font-size:10px">Lg ${(z.lp * 100).toFixed(1)}%</text>` : ""}`;
+      ${!small && z.lp != null ? `<text class="s" x="${x}" y="${y + 30}" style="font-size:10px">Lg ${Math.round(z.lp * 100)}%</text>` : ""}`;
   };
   const svg = `<svg class="zc-svg" viewBox="-4 -4 508 478" role="img" aria-label="${esc(opts.label || "Shot zones")}">
     <defs>
@@ -125,9 +125,9 @@ function html(zones, league, opts = {}){
         const lf = league[z.k] ? league[z.k][0] / (ltot[0] || 1) : null;
         const rk = ranks && ranks[z.k];
         return `<tr><td class="l"><span class="sw" style="background:${fill(z.d, z.a)}"></span>${esc(z.name)}</td><td>${z.m}-${z.a}</td><td><b>${pct(z.m, z.a)}</b></td>
-          <td>${z.lp != null ? (z.lp * 100).toFixed(1) + "%" : "—"}</td>
-          <td class="${d == null ? "" : d >= 0 ? "hot" : "cold"}">${d == null ? "—" : (d >= 0 ? "+" : "−") + Math.abs(d * 100).toFixed(1)}</td>
-          <td>${pct(z.a, tot[0])}</td><td>${lf != null ? (lf * 100).toFixed(1) + "%" : "—"}</td>${ranks ? `<td title="FG% rank / attempts rank among the 30 teams">${rk ? `${rk[0]} / ${rk[1]}` : "—"}</td>` : ""}</tr>`;
+          <td>${z.lp != null ? Math.round(z.lp * 100) + "%" : "—"}</td>
+          <td class="${d == null ? "" : d >= 0 ? "hot" : "cold"}">${d == null ? "—" : (Math.round(d * 100) >= 0 ? "+" : "−") + Math.abs(Math.round(d * 100))}</td>
+          <td>${pct(z.a, tot[0])}</td><td>${lf != null ? Math.round(lf * 100) + "%" : "—"}</td>${ranks ? `<td title="FG% rank / attempts rank among the 30 teams">${rk ? `${rk[0]} / ${rk[1]}` : "—"}</td>` : ""}</tr>`;
       }).join("");
   }).join("");
   const table = `<div class="zc-wrap"><table class="zc-tbl"><thead><tr><th class="l">Zone</th><th>FGM-FGA</th><th>FG%</th><th>League</th><th title="Percentage points above (+) or below (−) league average">vs Lg</th><th title="Share of ${esc(opts.who || "their")} shots from this zone">Freq</th><th title="Share of all league shots from this zone">Lg freq</th>${ranks ? `<th title="FG% rank / attempts rank among the 30 teams (1 = best FG% and most attempts${opts.defense ? "; for opponents, 1 = lowest FG% allowed" : ""})">Rank</th>` : ""}</tr></thead>

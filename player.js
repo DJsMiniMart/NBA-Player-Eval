@@ -340,9 +340,7 @@ function shootingCard(G, L, sel){
     const n = Object.values(G.hz).reduce((t,[a])=>t+a, 0);
     const seasons = Object.keys(REC.games || {}).length;
     const partial = sel === "career" && G.hzSeasons < seasons;
-    const est = REC.hzEst || [];
-    const estNote = sel === "career" ? (est.length ? ` Zones for ${est.join(", ")} are estimated from each shot's spot on the floor; exact zones replace them over the next few updates.` : "")
-      : est.includes(sel) ? " This season's zones are estimated from each shot's spot on the floor (within a couple of points of exact for most zones); exact zones replace them over the next few updates." : "";
+    const estNote = "";
     return `<div class="pp-card c7"><h3>Shot zones <small>${n.toLocaleString()} shots · hot = above league average, cold = below</small></h3>
       ${ZoneChart.html(G.hz, LZ, {label: "Shot zones for " + (REC.name || "this player"), who: "his"})}
       <div class="pp-note">The corner three runs from the baseline up to the break in the three-point line. League averages are for the same season${sel === "career" ? "s" : ""}.${partial ? ` Covers ${G.hzSeasons} of ${seasons} seasons.` : ""}${estNote}</div></div>`;
