@@ -268,17 +268,23 @@ function careerTotals(list){
 }
 const money = n => "$" + Math.round(n).toLocaleString();
 
+/* MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
+function mvrPlus(s){
+  if(!s || !s.mp || s.fga == null) return null;
+  const trb = s.trb != null ? s.trb : (s.drb||0) + (s.orb||0);
+  return ((s.pts||0) + 2*(s.ast||0) + 2*trb + 4*(s.stl||0) + (s.blk||0) - 4*(s.noTov ? 0 : (s.tov||0)) - ((s.fga||0) - (s.fg||0)) - .5*((s.fta||0) - (s.ft||0))) / s.mp;
+}
 function careerCard(list, title, withRank, sub){
   const seasons = (list || []).slice().reverse();
   if(!seasons.length) return "";
   const row = (s, cls, label) => { const g = s.g || 0, trb = s.trb != null ? s.trb : (s.drb||0)+(s.orb||0); return `<tr class="${cls||""}">
     <td class="l">${esc(label || s.season)}</td><td class="l">${esc(s.team || "")}</td><td>${g}</td><td>${f1(per(s.mp,g))}</td><td>${f1(per(s.pts,g))}</td><td>${f1(per(trb,g))}</td>
     <td>${f1(per(s.ast,g))}</td><td>${f1(per(s.stl,g))}</td><td>${f1(per(s.blk,g))}</td><td>${s.tov!=null && !s.noTov?f1(per(s.tov,g)):"—"}</td>
-    <td>${s.fga!=null?pct(s.fg,s.fga):"—"}</td><td>${s.fg3a!=null?pct(s.fg3,s.fg3a):"—"}</td><td>${s.fta!=null?pct(s.ft,s.fta):"—"}</td><td class="ev">${f3(s.value)}${s.noTov?"*":""}</td>${withRank ? `<td>${s.rank ? ordinal(s.rank[0]) : "—"}</td>` : ""}</tr>`; };
+    <td>${s.fga!=null?pct(s.fg,s.fga):"—"}</td><td>${s.fg3a!=null?pct(s.fg3,s.fg3a):"—"}</td><td>${s.fta!=null?pct(s.ft,s.fta):"—"}</td><td class="ev">${f3(s.value)}${s.noTov?"*":""}</td><td>${mvrPlus(s) != null ? f3(mvrPlus(s)) : "—"}</td>${withRank ? `<td>${s.rank ? ordinal(s.rank[0]) : "—"}</td>` : ""}</tr>`; };
   const career = careerTotals(list);
   const anyNoTov = seasons.some(x => x.noTov);
   return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
-    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th><th>MVR</th>${withRank ? "<th>Rank</th>" : ""}</tr></thead>
+    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th><th>MVR</th><th title="MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw)">MVR+</th>${withRank ? "<th>Rank</th>" : ""}</tr></thead>
     <tbody>${seasons.map(s => row(s, s.current ? "cur" : "")).join("")}${row(career, "career", "Career")}</tbody></table></div>
     <div class="pp-note">MVR on the career row is worked out from career totals, not an average of seasons.${withRank ? " Rank = where they finished in MVR among qualified players that season." : ""}${anyNoTov ? " *The NBA didn't track turnovers before 1977-78, so nothing is subtracted for those seasons." : ""}</div></div>`;
 }

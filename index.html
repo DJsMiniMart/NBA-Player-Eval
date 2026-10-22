@@ -328,7 +328,7 @@ function allLines(games){
         if(!min) return;
         const reb = dreb + oreb, pe = peOf(pts, ast, reb, stl, blk, tov, min);
         out.push({id, name, team:t, opp, home: t === b.home, gid:g[0], min, pts, ast, reb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl,
-          pe, cpe: clutchPE(cl), cmin: cl && cl[0] ? cl[0] / 60 : 0, won: b.teams[t].line[0] > b.teams[opp].line[0]});
+          pe, plus: min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov - (fga - fgm) - .5*(fta - ftm)) / min : null, cpe: clutchPE(cl), cmin: cl && cl[0] ? cl[0] / 60 : 0, won: b.teams[t].line[0] > b.teams[opp].line[0]});
       }); });
   });
   return out;
@@ -385,6 +385,7 @@ const CATS = [
   {k:"pts", t:"Points"}, {k:"reb", t:"Rebounds"}, {k:"ast", t:"Assists"}, {k:"stl", t:"Steals"}, {k:"blk", t:"Blocks"},
   {k:"tpm", t:"3-pointers", f:p => `${p.tpm}-${p.tpa}`},
   {k:"pe", t:"MVR", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
+  {k:"plus", t:"MVR+", min:20, f:p => p.plus.toFixed(3), note:"20+ min, missed shots count"},
   {k:"cpe", t:"Clutch MVR", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
   {k:"pm", t:"Plus / minus", f:p => (p.pm > 0 ? "+" : "") + p.pm},
   {k:"fgm", t:"Field goals", f:p => `${p.fgm}-${p.fga}`},

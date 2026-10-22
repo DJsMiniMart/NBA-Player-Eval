@@ -100,6 +100,7 @@
   .mvrd-tag{font:600 12px Inter,sans-serif;text-transform:none;letter-spacing:0;color:var(--dim);margin-left:6px;}
   .v-tabs{display:flex;gap:4px;flex-wrap:wrap;}
   .v-tabs button{padding:5px 11px;font-size:12.5px;font-weight:600;border-radius:999px;}
+  .v-tabs select{width:auto;padding:4px 10px;font-size:12.5px;font-weight:600;border-radius:999px;}
   .v-tabs button.on{background:var(--nba-blue);border-color:var(--nba-blue);color:#fff;}
   .rk-tbl td.up{color:#2f9e44;font-weight:700;} .rk-tbl td.down{color:#d6336c;font-weight:700;}
   @media (prefers-color-scheme: dark){ .rk-tbl td.up{color:#51cf66;} .rk-tbl td.down{color:#ff6b9a;} }
@@ -150,7 +151,7 @@
     <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
     <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
     <div id="metricBox"><label for="metric">Rank by</label><select id="metric">
-      <option value="pe">MVR</option><option value="cpe">Clutch MVR</option></select></div>
+      <option value="pe">MVR</option><option value="mvrp">MVR+</option><option value="cpe">Clutch MVR</option></select></div>
   </div>
 
   <div class="card">
@@ -169,8 +170,8 @@
   </div>
 
   <div class="card rookies" id="valueCard" hidden>
-    <div class="rk-head"><div><h2>MVR$ <span class="mvrd-tag">value per dollar</span></h2><div class="sub" id="vSub"></div></div>
-      <div class="v-tabs" id="vTabs"><button data-v="bargain" class="on">Best value</button><button data-v="over">Most overpaid</button><button data-v="all">Everyone</button></div></div>
+    <div class="rk-head"><div><h2>MVR$ <span class="mvrd-tag">value per dollar: who's outplaying his contract</span></h2><div class="sub" id="vSub"></div></div>
+      <div class="v-tabs" id="vTabs"><button data-v="out" class="on">Outplaying contract</button><button data-v="all">Everyone</button><select id="vTierPick" aria-label="Pay tier"></select></div></div>
     <div class="rk-tiles" id="vTiles"></div>
     <div class="tablewrap"><table class="rk-tbl"><thead><tr id="vHead"></tr></thead><tbody id="vBody"></tbody></table></div>
     <div class="more" id="vMore"></div>
@@ -247,7 +248,7 @@ const COLS = [
   {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
-const METRIC_LABEL = {pe: STAT_NAME, cpe: "Clutch MVR"};
+const METRIC_LABEL = {pe: STAT_NAME, mvrp: "MVR+", cpe: "Clutch MVR"};
 const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || (BASE && metric() === "pe")))
   .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
   .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
@@ -377,18 +378,20 @@ function attachClutch(players){
     p.clutch = c || null;
     p.cmin = c ? c.sec / 60 : 0;
     p.cpe = p.cmin ? base / p.cmin : 0;
+    /* MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
+    p.mvrp = p.mp ? ((p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0) - ((p.fga||0) - (p.fg||0)) - .5*((p.fta||0) - (p.ft||0))) / p.mp : null;
   });
 }
 function applyMetric(){
   const m = metric();
-  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : p.pe0; });
+  if(VIEW === "current") DATA.players.forEach(p => { if(p.pe0 == null) p.pe0 = p.value; p.value = m === "cpe" ? p.cpe : m === "mvrp" ? p.mvrp : p.pe0; });
   $('metricBox').hidden = VIEW !== "current";
   document.querySelector('.controls').classList.toggle("nometric", VIEW !== "current");
   let note = $('metricNote');
   if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
   const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
   note.hidden = m === "pe";
-  note.innerHTML = `<b>Clutch MVR</b> is the MVR formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch MVR of 0 but still has his regular MVR. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
+  note.innerHTML = m === "mvrp" ? `<b>MVR+</b> is MVR with missed shots charged: (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4 − missed field goals − missed free throws×0.5) ÷ minutes. A player now breaks even on twos at 33% and on threes at 25%, so a bad shooting night costs him. Tested on every 2025-26 game, it picked the winner 87.7% of the time vs. 83.8% for MVR.` : `<b>Clutch MVR</b> is the MVR formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch MVR of 0 but still has his regular MVR. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
 }
 
 function drawHead(){
@@ -443,7 +446,7 @@ function draw(){
       <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
       <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
-      <td class="score"${p.clutch && metric() !== "pe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. MVR ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
+      <td class="score"${p.clutch && metric() === "cpe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. MVR ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
     return row + (openKey===p.key ? detailRow(p) : "");
   }).join("");
   const word = VIEW==="alltime" ? "seasons" : VIEW==="careers" ? "careers" : "players";
@@ -623,15 +626,18 @@ async function showSeason(file){
   if(typeof syncLogoStrip === "function") syncLogoStrip();
 }
 
-/* ---------- MVR$: value per dollar ----------
+/* ---------- MVR$: who's outplaying his contract ----------
    Production = the MVR formula's top line (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4), season to date.
-   Salary is counted only for the part of the season played so far (salary × team games ÷ 82).
-   MVR$        = production per $1M of salary earned so far.
-   League rate = all players' production ÷ all salary earned (what the league pays, on average, for MVR).
-   Market value = his production pace over 82 games, priced at the league rate. Surplus = market value − salary. */
-let CONTRACTS = null, TEAMG = null, vView = "bargain", vSort = null, vShown = 25;
+   MVR$       = production per $1M of salary earned so far (salary × team games ÷ 82).
+   Plays like = the median salary of the 15 qualified players whose production per team game is closest to his:
+                what the league actually pays for that level of play. Outplaying by = plays like − salary.
+   Pay tiers compare players with others paid about the same, so stars are measured against stars. */
+let CONTRACTS = null, TEAMG = null, vView = "out", vTier = "all", vSort = null, vShown = 25;
+const TIERS = [["min", "Minimum & two-way", 0, 3e6], ["low", "$3–10M", 3e6, 10e6], ["mid", "$10–25M", 10e6, 25e6], ["high", "$25–40M", 25e6, 40e6], ["max", "$40M+", 40e6, 1e12]];
+const tierOf = sal => TIERS.find(t => sal >= t[2] && sal < t[3]) || TIERS[0];
 const salaryOf = c => { const y = c && (c.years || []).find(r => r[0] === (CUR && CUR.season)); return y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0; };
 const money = n => (n < 0 ? "−" : "") + "$" + (Math.abs(n) >= 1e6 ? (Math.abs(n) / 1e6).toFixed(1) + "M" : Math.round(Math.abs(n) / 1e3) + "K");
+const median = a => { if(!a.length) return 0; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
 function valueRows(){
   const all = (CUR && CUR.players) || [];
   const most = Math.max(1, ...all.map(p => p.g || 0));
@@ -642,56 +648,54 @@ function valueRows(){
     if(!sal || !p.g || !p.mp) return;
     const tg = Math.max(p.g, (TEAMG || {})[BBR2NBA[p.team] || p.team] || 0);
     const prod = (p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0);
-    const earned = sal * tg / 82;
-    rows.push({p, id:p.id, name:p.name, team:p.team, g:p.g, mpg:p.mp / p.g, sal, tg, prod, earned,
-      mvr: prod / p.mp, q: p.g >= minG && p.mp / p.g >= minM});
+    rows.push({p, id:p.id, name:p.name, team:p.team, g:p.g, mpg:p.mp / p.g, sal, tg, prod, pace: prod / tg,
+      vpd: prod / (sal * tg / 82 / 1e6), mvr: prod / p.mp, tier: tierOf(sal), q: p.g >= minG && p.mp / p.g >= minM});
   });
-  const totP = rows.reduce((a, r) => a + Math.max(0, r.prod), 0), totS = rows.reduce((a, r) => a + r.earned, 0);
-  const rate = totS ? totP / (totS / 1e6) : 0;                 // league MVR$: production per $1M
-  rows.forEach(r => {
-    r.vpd = r.prod / (r.earned / 1e6);                           // his MVR$
-    r.x = rate ? r.vpd / rate : null;                            // vs league (1.00 = market rate)
-    r.market = rate ? Math.max(0, r.prod) / r.tg * 82 / rate * 1e6 : 0;
-    r.surplus = r.market - r.sal;
+  const q = rows.filter(r => r.q);
+  const totP = rows.reduce((a, r) => a + Math.max(0, r.prod), 0), totS = rows.reduce((a, r) => a + r.sal * r.tg / 82, 0);
+  const tierPace = {};
+  TIERS.forEach(t => tierPace[t[0]] = median(q.filter(r => r.tier[0] === t[0]).map(r => r.pace)));
+  const byPace = q.slice().sort((a, b) => a.pace - b.pace);
+  q.forEach(r => {
+    const near = byPace.filter(x => x !== r).sort((a, b) => Math.abs(a.pace - r.pace) - Math.abs(b.pace - r.pace)).slice(0, 15);
+    r.like = median(near.map(x => x.sal));
+    r.over = r.like - r.sal;
+    r.vsTier = tierPace[r.tier[0]] ? r.pace / tierPace[r.tier[0]] : null;
   });
-  return {rows, rate, minG, minM, perPoint: rate ? 1e6 / rate : 0};
+  return {rows, q, rate: totS ? totP / (totS / 1e6) : 0, minG, minM};
 }
 function drawValue(){
   const card = $('valueCard');
   if(!CONTRACTS || VIEW !== "current"){ card.hidden = true; return; }
-  const {rows, rate, minG, minM, perPoint} = valueRows();
-  const q = rows.filter(r => r.q);
-  if(!q.length || !rate){ card.hidden = true; return; }
+  const {q, rate, minG, minM} = valueRows();
+  if(!q.length){ card.hidden = true; return; }
   card.hidden = false;
-  $('vSub').textContent = `League rate: ${rate.toFixed(1)} MVR points per $1M of salary (about ${money(perPoint)} per point) · ${q.length} qualified players with a listed salary`;
+  $('vSub').textContent = `Who's playing above his contract · league average ${rate.toFixed(1)} MVR points per $1M of salary · ${q.length} qualified players with a listed salary`;
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
   const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
-  const by = (k, d) => q.slice().sort((a, b) => d * (a[k] - b[k]));
-  const big = q.filter(r => r.sal >= 20e6);
-  const tiles = [
-    ["Best MVR$", by("vpd", -1)[0], r => r.vpd.toFixed(1), "per $1M"],
-    ["Biggest bargain", by("surplus", -1)[0], r => "+" + money(r.surplus), "over salary"],
-    ["Best value, $20M+ players", big.slice().sort((a, b) => b.vpd - a.vpd)[0], r => r.x.toFixed(2) + "×", "market rate"],
-    ["Most overpaid", by("surplus", 1)[0], r => money(r.surplus), "vs salary"],
-  ];
-  $('vTiles').innerHTML = tiles.map(([k, r, f, u]) => r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">${k}</div><div class="n">${esc(r.name)}</div><div class="v">${f(r)}<small>${u}</small></div></button>` : "").join("");
+  // best outperformer in each pay tier
+  $('vTiles').innerHTML = TIERS.map(t => { const r = q.filter(x => x.tier[0] === t[0] && x.over > 0).sort((a, b) => b.over - a.over)[0];
+    return r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">Best value · ${t[1]}</div><div class="n">${esc(r.name)}</div><div class="v">${money(r.sal)}<small>plays like ${money(r.like)}</small></div></button>` : ""; }).join("");
   document.querySelectorAll('#vTabs button').forEach(b => b.classList.toggle("on", b.dataset.v === vView));
-  const H = [[null,"#"],["name","Player"],["sal","Salary"],["g","G"],["mpg","MIN"],["mvr","MVR"],["vpd","MVR$"],["x","vs Lg"],["market","Market value"],["surplus","Surplus"]];
-  const def = vView === "over" ? {k:"surplus", d:1} : vView === "bargain" ? {k:"surplus", d:-1} : {k:"vpd", d:-1};
-  const S = vSort || def;
-  $('vHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${S.k === k ? " on" : ""}" data-k="${k || ""}" ${k === "vpd" ? 'title="MVR points per $1M of salary earned so far"' : k === "x" ? 'title="His MVR$ ÷ the league rate. 1.00× = paid exactly market rate"' : k === "market" ? 'title="What his production pace over 82 games would cost at the league rate"' : k === "surplus" ? 'title="Market value minus salary. Positive = playing above his contract"' : ""}>${t}${S.k === k ? (S.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
+  $('vTierPick').innerHTML = `<option value="all">All pay tiers</option>` + TIERS.map(t => `<option value="${t[0]}"${vTier === t[0] ? " selected" : ""}>${t[1]}</option>`).join("");
+  const H = [[null,"#"],["name","Player"],["sal","Salary"],["g","G"],["mpg","MIN"],["mvr","MVR"],["vpd","MVR$"],["vsTier","vs pay tier"],["like","Plays like"],["over","Outplaying by"]];
+  const S = vSort || (vView === "out" ? {k:"over", d:-1} : {k:"vpd", d:-1});
+  const tips = {vpd:"MVR production per $1M of salary earned so far", vsTier:"His production per team game ÷ the typical player in his pay tier. 1.00× = typical for what he's paid",
+    like:"What the league pays players with production like his (median salary of the 15 closest)", over:"Plays like − salary. Positive = outplaying his contract"};
+  $('vHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${S.k === k ? " on" : ""}" data-k="${k || ""}"${tips[k] ? ` title="${tips[k]}"` : ""}>${t}${S.k === k ? (S.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
   $('vHead').querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; if(!k) return;
     vSort = S.k === k ? {k, d: -S.d} : {k, d: k === "name" ? 1 : -1}; vShown = 25; drawValue(); });
-  let list = vView === "over" ? q.filter(r => r.surplus < 0) : vView === "bargain" ? q.filter(r => r.surplus > 0) : q;
-  list = list.slice().sort((a, b) => S.k === "name" ? S.d * a.name.localeCompare(b.name) : S.d * (a[S.k] - b[S.k]));
+  let list = q.filter(r => (vTier === "all" || r.tier[0] === vTier) && (vView !== "out" || r.over > 0));
+  list = list.slice().sort((a, b) => S.k === "name" ? S.d * a.name.localeCompare(b.name) : S.d * ((a[S.k] ?? -1e15) - (b[S.k] ?? -1e15)));
   $('vBody').innerHTML = list.slice(0, vShown).map((r, i) => `<tr><td>${i + 1}</td>
       <td class="l nm" data-id="${esc(r.id)}">${logoOf(r.team) ? `<img src="${logoOf(r.team)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${esc(r.name)} <span style="color:var(--dim);font-weight:400;font-size:12px">${esc(BBR2NBA[r.team] || r.team || "")}</span></td>
       <td>${money(r.sal)}</td><td>${r.g}</td><td>${r.mpg.toFixed(1)}</td><td>${f3(r.mvr)}</td><td class="mvr">${r.vpd.toFixed(1)}</td>
-      <td class="${r.x >= 1 ? "up" : "down"}">${r.x.toFixed(2)}×</td><td>${money(r.market)}</td><td class="${r.surplus >= 0 ? "up" : "down"}">${r.surplus >= 0 ? "+" : ""}${money(r.surplus)}</td></tr>`).join("")
+      <td class="${r.vsTier >= 1 ? "up" : ""}">${r.vsTier != null ? r.vsTier.toFixed(2) + "×" : "—"}</td><td>${money(r.like)}</td>
+      <td class="${r.over > 0 ? "up" : ""}">${r.over > 0 ? "+" + money(r.over) : "—"}</td></tr>`).join("")
     || `<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--dim)">No players here yet.</td></tr>`;
   $('vMore').innerHTML = list.length > vShown ? `<button id="vMoreBtn">Show more (${list.length - vShown} more)</button>` : "";
   if($('vMoreBtn')) $('vMoreBtn').onclick = () => { vShown += 50; drawValue(); };
-  $('vNote').textContent = `MVR$ = MVR production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far this season. The league rate is what teams pay, on average, for that production; market value prices each player's 82-game pace at that rate, and surplus is market value minus salary. Rookie-scale and minimum contracts naturally rank high. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
+  $('vNote').textContent = `MVR$ = MVR production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far. "Plays like" is what the league pays for production like his: the median salary of the 15 qualified players closest to him in production per team game. "Outplaying by" is how far that is above his salary. Pay tiers compare a player with others paid about the same, so a max player is judged against other max players. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
   card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 
@@ -765,6 +769,7 @@ async function load(){
     drawValue();
   });
   document.querySelectorAll('#vTabs button').forEach(b => b.onclick = () => { vView = b.dataset.v; vSort = null; vShown = 25; drawValue(); });
+  $('vTierPick').onchange = e => { vTier = e.target.value; vShown = 25; drawValue(); };
   $('rkAll').onchange = drawRookies;
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);

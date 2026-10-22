@@ -110,6 +110,7 @@ function players(){
       fgm: r[PC.fgm], fga: r[PC.fga], fg3m: r[PC.fg3m], fg3a: r[PC.fg3a], ftm: r[PC.ftm], fta: r[PC.fta], pm: r[PC.pm],
       dd: r[PC.dd], td: r[PC.td], high: r[PC.high],
       pe: mins ? (r[PC.pts] + 2*r[PC.ast] + 2*reb + 4*r[PC.stl] + r[PC.blk] - 4*r[PC.tov]) / mins : null,
+      mvrp: mins ? (r[PC.pts] + 2*r[PC.ast] + 2*reb + 4*r[PC.stl] + r[PC.blk] - 4*r[PC.tov] - (r[PC.fga] - r[PC.fgm]) - .5*(r[PC.fta] - r[PC.ftm])) / mins : null,
       fgp: r[PC.fga] ? r[PC.fgm]/r[PC.fga] : null, fg3p: r[PC.fg3a] ? r[PC.fg3m]/r[PC.fg3a] : null, ftp: r[PC.fta] ? r[PC.ftm]/r[PC.fta] : null,
       stocks: r[PC.stl] + r[PC.blk],
       cmin: (r[PC.c_sec] || 0) / 60, cpts: r[PC.c_pts] || 0, cfgm: r[PC.c_fgm] || 0, cfga: r[PC.c_fga] || 0, cpm: r[PC.c_pm] || 0,
@@ -126,12 +127,12 @@ function players(){
   return {list, minG, most, frac};
 }
 const CLUTCH_MIN = 3;   // crunch-time minutes needed for the Clutch MVR leaders
-const NOPG = ["pe","cpe","fgp","fg3p","ftp","cfgp","dd","td","high","g"];
+const NOPG = ["pe","mvrp","cpe","fgp","fg3p","ftp","cfgp","dd","td","high","g"];
 const per = (p, k, mode) => mode === "pg" && !NOPG.includes(k) ? p[k] / p.g : p[k];
 /* key, title, format per game, format total, needs (qualifier), note */
 const LEADS = [
   ["pts","Points",n1,n0],["reb","Rebounds",n1,n0],["ast","Assists",n1,n0],["stl","Steals",n1,n0],["blk","Blocks",n1,n0],
-  ["pm","Plus / minus",sg,v => (v > 0 ? "+" : "") + Math.round(v)],["pe","Minute Value Rating (MVR)",n3,n3,"qual","per minute"],
+  ["pm","Plus / minus",sg,v => (v > 0 ? "+" : "") + Math.round(v)],["pe","Minute Value Rating (MVR)",n3,n3,"qual","per minute"],["mvrp","MVR+",n3,n3,"qual","missed shots count"],
   ["cpe","Clutch MVR",n3,n3,"qcl","crunch-time stats only"],["cpts","Crunch-time points",n1,n0],["cpm","Crunch-time +/-",sg,v => (v > 0 ? "+" : "") + Math.round(v)],
   ["fg3m","3-pointers made",n1,n0],["stocks","Steals + blocks",n1,n0],["oreb","Offensive rebounds",n1,n0],["min","Minutes",n1,n0],
   ["fgp","Field goal %",pc,pc,"qfg"],["fg3p","3-point %",pc,pc,"q3"],["ftp","Free throw %",pc,pc,"qft"],
@@ -147,7 +148,7 @@ function drawLeaders(){
   $('qualNote').textContent = `Per-game leaders need at least ${minG} game${minG === 1 ? "" : "s"} (half the most anyone has played, ${most}) and 10 minutes a game. Shooting percentages need a minimum number of makes that grows through the season (field goals ${Math.max(2, Math.ceil(300 * frac))}, threes ${Math.max(1, Math.ceil(82 * frac))}, free throws ${Math.max(1, Math.ceil(125 * frac))}).`;
   const mode = L.mode;
   $('leadBody').innerHTML = LEADS.map(([k, title, fpg, ftot, need, note]) => {
-    const totalsOnly = ["dd","td","high"].includes(k), rateOnly = ["pe","cpe","fgp","fg3p","ftp"].includes(k);
+    const totalsOnly = ["dd","td","high"].includes(k), rateOnly = ["pe","mvrp","cpe","fgp","fg3p","ftp"].includes(k);
     const m = totalsOnly ? "tot" : rateOnly ? "pg" : mode;
     const pool = list.filter(p => (need ? p[need] : (m === "pg" ? p.qual : true)) && per(p, k, m) != null);
     const top = pool.sort((a,b) => per(b, k, m) - per(a, k, m) || b.g - a.g).slice(0, 10).filter(p => per(p, k, m) > 0 || k === "pm");
@@ -160,7 +161,7 @@ function drawLeaders(){
 const PCOLS = [["g","GP",n0,0],["gs","GS",n0,0],["min","MIN",n1,1],["pts","PTS",n1,1],["reb","REB",n1,1],["oreb","OREB",n1,1],["dreb","DREB",n1,1],
   ["ast","AST",n1,1],["stl","STL",n1,1],["blk","BLK",n1,1],["tov","TOV",n1,-1],["fgm","FGM",n1,1],["fga","FGA",n1,0],["fgp","FG%",pc,1],
   ["fg3m","3PM",n1,1],["fg3a","3PA",n1,0],["fg3p","3P%",pc,1],["ftm","FTM",n1,1],["fta","FTA",n1,0],["ftp","FT%",pc,1],
-  ["pm","+/-",sg,1],["dd","DD",n0,1],["td","TD",n0,1],["high","High",n0,1],["pe","MVR",n3,1],["cpe","Clutch MVR",n3,1],
+  ["pm","+/-",sg,1],["dd","DD",n0,1],["td","TD",n0,1],["high","High",n0,1],["pe","MVR",n3,1],["mvrp","MVR+",n3,1],["cpe","Clutch MVR",n3,1],
   ["cmin","Clutch MIN",n1,1],["cpts","Clutch PTS",n1,1],["cfgp","Clutch FG%",pc,1],["cpm","Clutch +/-",sg,1]];
 function drawPlayers(){
   const {list} = players();

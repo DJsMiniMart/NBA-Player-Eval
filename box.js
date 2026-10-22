@@ -12,6 +12,8 @@ const $ = id => document.getElementById(id);
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 
 const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
+/* MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
+const plusOf = (pts, ast, reb, stl, blk, tov, fgm, fga, ftm, fta, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov - (fga - fgm) - .5*(fta - ftm)) / min : null;
 /* Clutch MVR: the MVR formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute.
    0 for a player with no crunch-time minutes. c = [sec, pts, ast, reb, stl, blk, tov, ...] */
 const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) / (c[0] / 60) : 0;
@@ -45,6 +47,7 @@ table.bx .l{text-align:left;}
 table.bx td.nm a{color:inherit;text-decoration:none;} table.bx td.nm a:hover{color:var(--court,#1D428A);text-decoration:underline;}
 table.bx tr.bench td{border-top:2px solid var(--line,#dde2ea);}
 table.bx td.pe{font-weight:700;color:var(--accent,#C8102E);}
+table.bx td.plus{color:var(--court,#1D428A);}
 table.bx td.cpe{color:var(--warn,#b7791f);}
 table.bx td.cpe.hot::before{content:"🔥";font-size:10px;margin-right:3px;}
 table.bx tr.tot td{background:var(--row,#f6f8fb);font-weight:700;border-top:2px solid var(--line,#dde2ea);}
@@ -88,11 +91,13 @@ async function open(gid){
   const ot = g.min > 48 ? ` · ${g.min === 53 ? "OT" : (g.min - 48) / 5 + "OT"}` : "";
   const table = t => {
     const T = TEAMS[t] || {n:t}, L = g.teams[t].line, rows = g.teams[t].players;
-    let peSum = 0, cpeSum = 0;
+    let peSum = 0, cpeSum = 0, plusSum = 0;
     const body = rows.map((r, i) => {
       const [id, name, st, min, pts, ast, dreb, oreb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl] = r;
       const pe = peOf(pts, ast, dreb + oreb, stl, blk, tov, min);
       if(pe != null) peSum += pe;
+      const plus = plusOf(pts, ast, dreb + oreb, stl, blk, tov, fgm, fga, ftm, fta, min);
+      if(plus != null) plusSum += plus;
       const cpe = clutchPE(cl);
       cpeSum += cpe;
       const clTip = cl && cl[0] ? `Crunch time: ${Math.round(cl[0] / 60 * 10) / 10} min, ${cl[1]} pts, ${cl[7]}-${cl[8]} FG, ${cl[2]} ast, ${cl[3]} reb, ${cl[4]} stl, ${cl[5]} blk, ${cl[6]} tov, ${cl[13] > 0 ? "+" : ""}${cl[13]}` : "No crunch-time minutes";
@@ -101,13 +106,13 @@ async function open(gid){
       return `<tr${sep}><td class="l nm">${bid ? `<a href="pe.html#/player/${encodeURIComponent(bid)}">${esc(name)}</a>` : esc(name)}${st ? `<span class="tag">S</span>` : ""}</td>
         <td>${min}</td><td><b>${pts}</b></td><td>${dreb + oreb}</td><td>${ast}</td><td>${stl}</td><td>${blk}</td><td>${tov}</td>
         <td>${fgm}-${fga}</td><td>${tpm}-${tpa}</td><td>${ftm}-${fta}</td><td class="${pm >= 0 ? "pos" : "neg"}">${pm > 0 ? "+" : ""}${pm}</td>
-        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td><td class="pe cpe${cl && cl[0] ? " hot" : ""}" title="${esc(clTip)}">${cpe.toFixed(3)}</td></tr>`;
+        <td class="pe">${pe != null ? pe.toFixed(3) : "—"}</td><td class="pe plus">${plus != null ? plus.toFixed(3) : "—"}</td><td class="pe cpe${cl && cl[0] ? " hot" : ""}" title="${esc(clTip)}">${cpe.toFixed(3)}</td></tr>`;
     }).join("");
     const mins = rows.reduce((a, r) => a + r[3], 0);
     return `<h3 class="bx-team"><img src="${logo(t)}" alt="" onerror="this.remove()">${esc(T.n)} <span>${score(t)}</span></h3>
-      <div class="bx-tw"><table class="bx"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="MVR for this game">MVR</th><th title="Clutch MVR: the MVR formula using only stats from crunch time (last 5 minutes of the 4th or OT, score within 5), divided by crunch-time minutes. 0 if he didn't play in crunch time. Hover a number for the player's crunch-time line.">Clutch MVR</th></tr></thead>
+      <div class="bx-tw"><table class="bx"><thead><tr><th class="l">Player</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th title="MVR for this game">MVR</th><th title="MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw)">MVR+</th><th title="Clutch MVR: the MVR formula using only stats from crunch time (last 5 minutes of the 4th or OT, score within 5), divided by crunch-time minutes. 0 if he didn't play in crunch time. Hover a number for the player's crunch-time line.">Clutch MVR</th></tr></thead>
       <tbody>${body}<tr class="tot"><td class="l">Totals</td><td>${mins}</td><td>${L[I.pts]}</td><td>${L[I.oreb] + L[I.dreb]}</td><td>${L[I.ast]}</td><td>${L[I.stl]}</td><td>${L[I.blk]}</td><td>${L[I.tov]}</td>
-        <td>${L[I.fgm]}-${L[I.fga]}</td><td>${L[I.fg3m]}-${L[I.fg3a]}</td><td>${L[I.ftm]}-${L[I.fta]}</td><td></td><td class="pe" title="All the players' MVR added up">${peSum.toFixed(3)}</td><td class="pe cpe" title="All the players' Clutch MVR added up">${cpeSum.toFixed(3)}</td></tr></tbody></table></div>`;
+        <td>${L[I.fgm]}-${L[I.fga]}</td><td>${L[I.fg3m]}-${L[I.fg3a]}</td><td>${L[I.ftm]}-${L[I.fta]}</td><td></td><td class="pe" title="All the players' MVR added up">${peSum.toFixed(3)}</td><td class="pe plus" title="All the players' MVR+ added up">${plusSum.toFixed(3)}</td><td class="pe cpe" title="All the players' Clutch MVR added up">${cpeSum.toFixed(3)}</td></tr></tbody></table></div>`;
   };
   const winner = score(g.home) > score(g.away) ? g.home : g.away;
   const r = rc[gid];
@@ -115,7 +120,7 @@ async function open(gid){
     <div class="bx-note" style="text-align:center">Final${ot} · ${when}</div>
     ${r ? `<div class="bx-recap"><b>${r.u ? `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.h)}</a>` : esc(r.h)}</b>${r.d && r.d !== r.h ? `<p>${esc(r.d)}</p>` : ""}</div>` : ""}</div>
     ${sides.map(table).join("")}
-    <p class="bx-note" style="margin-top:10px">MVR (Minute Value Rating) = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Clutch MVR is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
+    <p class="bx-note" style="margin-top:10px">MVR (Minute Value Rating) = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. MVR+ also subtracts 1 per missed field goal and 0.5 per missed free throw. Clutch MVR is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
 }
-window.BoxScore = {open, close, peOf, clutchPE};
+window.BoxScore = {open, close, peOf, plusOf, clutchPE};
 })();
