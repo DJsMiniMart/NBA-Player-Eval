@@ -327,6 +327,7 @@ def main():
             json.dump(old, f, separators=(",", ":"))
         print(f"No player rows found (HTTP {status}) at {url}")
 
+    run_step("rookies", lambda: write_rookies(year))
     run_step("playoffs", lambda: save_playoffs(now, year))
     run_step("bios, drafts, contracts", lambda: __import__("bbr_extra").update(now, year))
     # The NBA's own feed (nba_games.py) turns away GitHub's servers, so games come from ESPN
@@ -337,6 +338,25 @@ def main():
     run_step("franchise history (records, titles, awards, draft picks)", lambda: __import__("franchise_history").update(now, year))
     run_step("team pages", lambda: __import__("build_teams").build(now, year))
     return 0
+
+
+def write_rookies(year):
+    """data/rookies.json: this season's players who never appeared in an earlier season (any minutes), with draft info."""
+    import glob
+    cur = (load_json(STATS_PATH, {}) or {}).get("players") or []
+    seen = set()
+    for fn in glob.glob(os.path.join(DATA_DIR, "season-*.json")):
+        if fn.endswith(f"season-{year}.json"):
+            continue
+        seen |= {p.get("id") for p in (load_json(fn, {}) or {}).get("players", [])}
+    if len(seen) < 1000:   # past seasons missing: don't call everyone a rookie
+        print("Rookies: past seasons not available; skipped")
+        return
+    drafts = (load_json(os.path.join(DATA_DIR, "drafts.json"), {}) or {}).get("players", {})
+    ids = sorted({p["id"] for p in cur if p.get("id") and p["id"] not in seen})
+    with open(os.path.join(DATA_DIR, "rookies.json"), "w", encoding="utf-8") as f:
+        json.dump({"season": season_label(year), "ids": ids, "draft": {i: drafts[i] for i in ids if i in drafts}}, f, separators=(",", ":"))
+    print(f"Rookies: {len(ids)}")
 
 
 def run_step(name, fn):

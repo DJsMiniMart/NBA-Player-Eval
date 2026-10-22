@@ -80,6 +80,25 @@
   .part .s{font-size:11.5px;color:var(--dim);}
   .chartbox{position:relative;height:220px;}
   .trend{margin-top:18px;padding:16px;}
+  .rookies{margin-top:18px;}
+  .rk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;padding:16px 16px 6px;}
+  .rk-head h2{margin:0;}
+  .rk-all{font-size:12.5px;color:var(--dim);display:flex;white-space:nowrap;align-items:center;gap:6px;cursor:pointer;}
+  .rk-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;padding:8px 16px 14px;}
+  .rk-tile{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--row);cursor:pointer;text-align:left;font:inherit;color:inherit;}
+  .rk-tile:hover{border-color:var(--accent);}
+  .rk-tile .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);}
+  .rk-tile .n{font-weight:700;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk-tile .v{font:700 22px/1.1 "Barlow Condensed",sans-serif;color:var(--accent);}
+  .rk-tile .v small{font:500 11.5px Inter,sans-serif;color:var(--dim);margin-left:4px;}
+  .rk-tbl th{cursor:pointer;user-select:none;}
+  .rk-tbl td.nm{cursor:pointer;font-weight:600;}
+  .rk-tbl td.nm:hover{color:var(--accent);text-decoration:underline;}
+  .rk-tbl td.nm img{width:20px;height:20px;object-fit:contain;vertical-align:-5px;margin-right:7px;}
+  .rk-tbl td.mvr{font-weight:700;color:var(--accent);}
+  .rk-tbl tr.unq td{color:var(--dim);}
+  .rk-pick{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--row);color:var(--dim);white-space:nowrap;}
+  .rk-pick.lot{background:var(--accent-soft);color:var(--accent);}
   .trend h2{font:700 22px "Barlow Condensed";text-transform:uppercase;margin:0 0 2px;}
   .sub{color:var(--dim);font-size:12.5px;margin-bottom:10px;}
   .empty{padding:40px 20px;text-align:center;color:var(--dim);}
@@ -141,6 +160,14 @@
     <h2>Top 5 over the season</h2>
     <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
     <div class="chartbox"><canvas id="topChart"></canvas></div>
+  </div>
+
+  <div class="card rookies" id="rookieCard" hidden>
+    <div class="rk-head"><div><h2>Rookie report</h2><div class="sub" id="rkSub"></div></div>
+      <label class="rk-all"><input type="checkbox" id="rkAll"> Show every rookie</label></div>
+    <div class="rk-tiles" id="rkTiles"></div>
+    <div class="tablewrap"><table class="rk-tbl"><thead><tr id="rkHead"></tr></thead><tbody id="rkBody"></tbody></table></div>
+    <div class="sub" style="padding:8px 16px 14px" id="rkNote"></div>
   </div>
 
   <footer>
@@ -559,6 +586,7 @@ async function showSeason(file){
   DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
   if(VIEW === "current") attachClutch(DATA.players);
   applyMetric();
+  drawRookies();
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
   setMeta();
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
@@ -580,11 +608,71 @@ async function showSeason(file){
   if(typeof syncLogoStrip === "function") syncLogoStrip();
 }
 
+/* ---------- Rookie report: this season's first-year players (data/rookies.json, built by update_stats.py) ---------- */
+let ROOK = null, rkSort = {k:"mvr", d:-1};
+const BBR2NBA = {BRK:"BKN", CHO:"CHA", PHO:"PHX"};
+function rookieRows(){
+  const set = new Set((ROOK && ROOK.ids) || []);
+  const all = (CUR && CUR.players) || [];
+  const most = Math.max(1, ...all.map(p => p.g || 0));
+  const minG = Math.max(1, Math.ceil(most / 2)), minM = 10;
+  const mvrOf = p => p.mp ? ((p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0)) / p.mp : null;
+  const qual = p => (p.g||0) >= minG && p.mp / Math.max(1, p.g) >= minM;
+  const ranked = all.filter(qual).map(p => [p.id, mvrOf(p)]).sort((a, b) => b[1] - a[1]);
+  const lgRank = new Map(ranked.map(([id], i) => [id, i + 1]));
+  const rows = all.filter(p => set.has(p.id)).map(p => {
+    const g = Math.max(1, p.g || 0), d = (ROOK.draft || {})[p.id];
+    return {p, id:p.id, name:p.name, team:p.team, g:p.g||0, mpg:p.mp/g, ppg:(p.pts||0)/g, rpg:(p.trb||0)/g, apg:(p.ast||0)/g,
+      spg:(p.stl||0)/g, bpg:(p.blk||0)/g, tpg:(p.tov||0)/g, fgp:p.fga ? p.fg/p.fga : null, fg3p:p.fg3a ? p.fg3/p.fg3a : null,
+      mvr:mvrOf(p), q:qual(p), lg:lgRank.get(p.id) || null, nLg:ranked.length,
+      pick: d ? (d.year === +String(CUR.season || "").slice(0, 4) ? d.pick : 100 + d.pick) : 999, draft:d};
+  });
+  return {rows, minG, minM, most};
+}
+function drawRookies(){
+  const card = $('rookieCard');
+  if(!ROOK || !ROOK.ids || !ROOK.ids.length || VIEW !== "current"){ card.hidden = true; return; }
+  const {rows, minG, minM} = rookieRows();
+  if(!rows.length){ card.hidden = true; return; }
+  card.hidden = false;
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
+  const q = rows.filter(r => r.q);
+  $('rkSub').textContent = `${rows.length} rookies have played this season · ${q.length} qualify (${minG}+ game${minG === 1 ? "" : "s"}, ${minM}+ minutes a game)`;
+  const best = (k, f) => q.slice().sort((a, b) => (b[k] ?? -1e9) - (a[k] ?? -1e9))[0];
+  const tiles = [["mvr","MVR leader",r => f3(r.mvr),""],["ppg","Points",r => r.ppg.toFixed(1),"per game"],["rpg","Rebounds",r => r.rpg.toFixed(1),"per game"],
+    ["apg","Assists",r => r.apg.toFixed(1),"per game"],["spg","Steals",r => r.spg.toFixed(1),"per game"],["bpg","Blocks",r => r.bpg.toFixed(1),"per game"]];
+  $('rkTiles').innerHTML = q.length ? tiles.map(([k, label, f, unit]) => { const r = best(k); return r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">${label}</div><div class="n">${esc(r.name)}</div><div class="v">${f(r)}<small>${unit}</small></div></button>` : ""; }).join("") : "";
+  const H = [[null,"#"],["name","Rookie"],["pick","Draft"],["g","G"],["mpg","MIN"],["ppg","PTS"],["rpg","REB"],["apg","AST"],["spg","STL"],["bpg","BLK"],["tpg","TOV"],["fgp","FG%"],["fg3p","3P%"],["mvr","MVR"],["lg","League rank"]];
+  $('rkHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${rkSort.k === k ? " on" : ""}" data-k="${k || ""}">${t}${rkSort.k === k ? (rkSort.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
+  $('rkHead').querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; if(!k) return;
+    rkSort = rkSort.k === k ? {k, d: -rkSort.d} : {k, d: ["name","pick","lg","tpg"].includes(k) ? 1 : -1}; drawRookies(); });
+  const showAll = $('rkAll').checked;
+  const list = (showAll ? rows : q).slice().sort((a, b) => {
+    const x = a[rkSort.k], y = b[rkSort.k];
+    if(rkSort.k === "name") return rkSort.d * String(x).localeCompare(String(y));
+    if(x == null) return 1; if(y == null) return -1;
+    return rkSort.d * (x - y) || (b.mvr ?? -9) - (a.mvr ?? -9);
+  });
+  const pickTxt = r => !r.draft ? `<span class="rk-pick">Undrafted</span>` : r.pick < 100 ? `<span class="rk-pick${r.draft.pick <= 14 && r.draft.round === 1 ? " lot" : ""}" title="${esc(r.draft.year)} draft${r.draft.team ? ", picked by " + esc(r.draft.team) : ""}">#${r.draft.pick}</span>` : `<span class="rk-pick" title="Drafted in ${esc(r.draft.year)}, first season now">${esc(r.draft.year)} #${r.draft.pick}</span>`;
+  const pc = v => v == null ? "—" : (v * 100).toFixed(1);
+  $('rkBody').innerHTML = list.length ? list.map((r, i) => `<tr class="${r.q ? "" : "unq"}"><td>${i + 1}</td>
+      <td class="l nm" data-id="${esc(r.id)}">${logoOf(r.team) ? `<img src="${logoOf(r.team)}" alt="" loading="lazy" onerror="this.remove()">` : ""}${esc(r.name)} <span style="color:var(--dim);font-weight:400;font-size:12px">${esc(BBR2NBA[r.team] || r.team || "")}</span></td>
+      <td>${pickTxt(r)}</td><td>${r.g}</td><td>${r.mpg.toFixed(1)}</td><td>${r.ppg.toFixed(1)}</td><td>${r.rpg.toFixed(1)}</td><td>${r.apg.toFixed(1)}</td>
+      <td>${r.spg.toFixed(1)}</td><td>${r.bpg.toFixed(1)}</td><td>${r.tpg.toFixed(1)}</td><td>${pc(r.fgp)}</td><td>${pc(r.fg3p)}</td>
+      <td class="mvr">${r.mvr != null ? f3(r.mvr) : "—"}</td><td>${r.lg ? `${r.lg} <span style="color:var(--dim);font-size:11.5px">of ${r.nLg}</span>` : "—"}</td></tr>`).join("")
+    : `<tr><td colspan="15" style="text-align:center;padding:18px;color:var(--dim)">No rookie qualifies yet. Tick "Show every rookie" to see them all.</td></tr>`;
+  $('rkNote').textContent = "Rookie = first season in the NBA (never appeared in an earlier season). League rank = where his MVR ranks among every qualified player, not just rookies. Gray rows don't meet the minimums yet. Click a name for the player page.";
+  card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
+}
+
 async function load(){
   if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = `${esc(STAT_NAME)} <span>Leaderboard</span>`; document.title = STAT_NAME + " Leaderboard · Play Eval"; }
   CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
   CUR.players = CUR.players || [];
   await loadClutch();
+  getJSON("data/rookies.json").then(r => { ROOK = r; drawRookies(); });
+  $('rkAll').onchange = drawRookies;
   HIST = await getJSON("data/history.json") || {days:{}, names:{}};
   const index = (await getJSON("data/seasons.json") || []).filter(x=>!x.current);
   SEASONS = [{label:CUR.season || "This season", file:"stats.json", current:true}];
