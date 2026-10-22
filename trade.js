@@ -67,7 +67,7 @@ async function load(){
     const now = years.find(y => y[0] === RULES.season);
     if(!now) return;                                   // no salary on the books this season
     const sc = curMap.get(id), sl = lastMap.get(id), b = B[id] || {}, d = D[id];
-    const s = sc && sc.g >= 5 ? sc : sl;               // Play Eval: this season once he's played 5 games, else last season
+    const s = sc && sc.g >= 5 ? sc : sl;               // MVR: this season once he's played 5 games, else last season
     const name = c.name || b.name || (sc && sc.name) || (sl && sl.name) || (d ? `${d.year} #${d.pick} pick` : id);
     P.set(id, {id, team, name, salary:num(now[1]), opt:now[2], years,
       left: years.length, total: years.reduce((t,y)=>t+num(y[1]),0),
@@ -305,7 +305,7 @@ function teamCard(t, r){
       ${meter(r.before, r.after)}
     </div>
     <div class="sec">
-      <h4><span>Players</span><span class="muted" style="text-transform:none;letter-spacing:0;font-family:Inter">Salary · Play Eval</span></h4>
+      <h4><span>Players</span><span class="muted" style="text-transform:none;letter-spacing:0;font-family:Inter">Salary · MVR</span></h4>
       <div class="roster">${ids.length ? ids.map(id => {
         const p = P.get(id), on = S.move[id];
         const yrs = p.left > 1 ? `${p.left} yrs, ${M(p.total)} total` : "expiring";
@@ -315,7 +315,7 @@ function teamCard(t, r){
           <span class="box">${on ? "✓" : ""}</span>
           <span class="nm">${esc(p.name)}${tag}<small>${esc(p.pos)}${p.pos ? " · " : ""}${yrs}${nextOpt ? ` · ${nextOpt[2] === "player option" ? "PO" : nextOpt[2] === "team option" ? "TO" : "ETO"} ${nextOpt[0]}` : ""}</small></span>
           <span class="sal">${M(p.salary)}</span>
-          <span class="ev" title="${p.eval != null ? "Play Eval, " + esc(p.evalSeason) : "No Play Eval yet"}">${p.eval != null ? p.eval.toFixed(3) : "—"}</span>
+          <span class="ev" title="${p.eval != null ? "MVR, " + esc(p.evalSeason) : "No MVR yet"}">${p.eval != null ? p.eval.toFixed(3) : "—"}</span>
           ${on && others.length > 1 ? `<select data-to="${id}" onclick="event.stopPropagation()">${choose(on)}</select>` : ""}
         </div>`;
       }).join("") : `<div class="empty" style="padding:16px">No contracts found for this team.</div>`}</div>
@@ -453,7 +453,7 @@ function drawResults(ev){
           <span>Payroll</span><span>${M(r.before)} → ${M(r.after)}</span>
           <span>Room under 1st apron after</span><span style="color:${r.after > RULES.apron1 ? "var(--bad)" : "inherit"}">${M(RULES.apron1 - r.after)}</span>
           <span>Room under 2nd apron after</span><span style="color:${r.after > RULES.apron2 ? "var(--bad)" : "inherit"}">${M(RULES.apron2 - r.after)}</span>
-          ${pr.in || pr.out ? `<span title="Play Eval × minutes per game, added up for the players moving">Play Eval production per game</span><span>${pr.out.toFixed(1)} out → ${pr.in.toFixed(1)} in</span>` : ""}
+          ${pr.in || pr.out ? `<span title="MVR × minutes per game, added up for the players moving">MVR production per game</span><span>${pr.out.toFixed(1)} out → ${pr.in.toFixed(1)} in</span>` : ""}
         </div>
         <ul class="checks">${r.checks.map(c => `<li class="${c.lvl}"><span>${esc(c.msg)}</span></li>`).join("")}</ul>
       </div>`;

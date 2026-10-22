@@ -4,7 +4,7 @@
 "use strict";
 const PAGES = [
   {label:"Home",          sub:"Last night in the NBA",          href:"index.html",          match:p => /index\.html$|\/$/.test(p.path)},
-  {label:"PE",            sub:"Play Eval leaderboard",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
+  {label:"MVR",            sub:"MVR leaderboard",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"Players",       sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
   {label:"Stats",         sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
   {label:"Teams",         sub:"Stats, lineups, cap, picks",     href:"team.html",           match:p => /team\.html$/.test(p.path)},

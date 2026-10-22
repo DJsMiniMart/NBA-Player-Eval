@@ -64,7 +64,7 @@ const TCOLS = [
   ["n","GP",n0,0,"Games played"],["w","W",n0,1],["l","L",n0,-1],["winp","Win%",pc,1],
   ["cw","Clutch W",n0,1,"Wins in games that were within 5 in the last 5 minutes"],["cl","Clutch L",n0,-1,"Losses in games that were within 5 in the last 5 minutes"],["cwp","Clutch Win%",pc,1,"Win % in close games (within 5 in the last 5 minutes)"],
   ["pts","PTS",n1,1,"Points"],["opp","OPP",n1,-1,"Points allowed"],["diff","+/-",sg,1,"Point margin"],
-  ["pe","Team PE",n3,1,"(PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ 48, per game"],
+  ["pe","Team MVR",n3,1,"(PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ 48, per game"],
   ["ortg","ORtg",n1,1,"Points scored per 100 possessions"],["drtg","DRtg",n1,-1,"Points allowed per 100 possessions"],["net","Net",sg,1,"Net rating"],["pace","Pace",n1,0,"Possessions per 48 minutes"],
   ["reb","REB",n1,1,"Rebounds"],["oreb","OREB",n1,1],["dreb","DREB",n1,1],["orbp","OREB%",pc,1,"Share of available offensive rebounds"],["drbp","DREB%",pc,1,"Share of available defensive rebounds"],
   ["ast","AST",n1,1],["stl","STL",n1,1],["blk","BLK",n1,1],["tov","TOV",n1,-1],["tovp","TOV%",n1,-1,"Turnovers per 100 plays"],["pf","PF",n1,-1,"Fouls"],
@@ -114,7 +114,7 @@ function players(){
       stocks: r[PC.stl] + r[PC.blk],
       cmin: (r[PC.c_sec] || 0) / 60, cpts: r[PC.c_pts] || 0, cfgm: r[PC.c_fgm] || 0, cfga: r[PC.c_fga] || 0, cpm: r[PC.c_pm] || 0,
       cfgp: r[PC.c_fga] ? r[PC.c_fgm] / r[PC.c_fga] : null};
-    /* Clutch PE: the PE formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute; 0 if none */
+    /* Clutch MVR: the MVR formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute; 0 if none */
     o.cpe = o.cmin ? ((r[PC.c_pts]||0) + 2*(r[PC.c_ast]||0) + 2*(r[PC.c_reb]||0) + 4*(r[PC.c_stl]||0) + (r[PC.c_blk]||0) - 4*(r[PC.c_tov]||0)) / o.cmin : 0;
     o.qcl = o.cmin >= CLUTCH_MIN;
     o.qual = g >= minG && mins / g >= 10;
@@ -125,14 +125,14 @@ function players(){
   });
   return {list, minG, most, frac};
 }
-const CLUTCH_MIN = 3;   // crunch-time minutes needed for the Clutch PE leaders
+const CLUTCH_MIN = 3;   // crunch-time minutes needed for the Clutch MVR leaders
 const NOPG = ["pe","cpe","fgp","fg3p","ftp","cfgp","dd","td","high","g"];
 const per = (p, k, mode) => mode === "pg" && !NOPG.includes(k) ? p[k] / p.g : p[k];
 /* key, title, format per game, format total, needs (qualifier), note */
 const LEADS = [
   ["pts","Points",n1,n0],["reb","Rebounds",n1,n0],["ast","Assists",n1,n0],["stl","Steals",n1,n0],["blk","Blocks",n1,n0],
-  ["pm","Plus / minus",sg,v => (v > 0 ? "+" : "") + Math.round(v)],["pe","Play Eval (PE)",n3,n3,"qual","per minute"],
-  ["cpe","Clutch PE",n3,n3,"qcl","crunch-time stats only"],["cpts","Crunch-time points",n1,n0],["cpm","Crunch-time +/-",sg,v => (v > 0 ? "+" : "") + Math.round(v)],
+  ["pm","Plus / minus",sg,v => (v > 0 ? "+" : "") + Math.round(v)],["pe","Minute Value Rating (MVR)",n3,n3,"qual","per minute"],
+  ["cpe","Clutch MVR",n3,n3,"qcl","crunch-time stats only"],["cpts","Crunch-time points",n1,n0],["cpm","Crunch-time +/-",sg,v => (v > 0 ? "+" : "") + Math.round(v)],
   ["fg3m","3-pointers made",n1,n0],["stocks","Steals + blocks",n1,n0],["oreb","Offensive rebounds",n1,n0],["min","Minutes",n1,n0],
   ["fgp","Field goal %",pc,pc,"qfg"],["fg3p","3-point %",pc,pc,"q3"],["ftp","Free throw %",pc,pc,"qft"],
   ["dd","Double-doubles",n0,n0],["td","Triple-doubles",n0,n0],["high","Most points in a game",n0,n0],["tov","Turnovers",n1,n0,null,"most"],
@@ -160,7 +160,7 @@ function drawLeaders(){
 const PCOLS = [["g","GP",n0,0],["gs","GS",n0,0],["min","MIN",n1,1],["pts","PTS",n1,1],["reb","REB",n1,1],["oreb","OREB",n1,1],["dreb","DREB",n1,1],
   ["ast","AST",n1,1],["stl","STL",n1,1],["blk","BLK",n1,1],["tov","TOV",n1,-1],["fgm","FGM",n1,1],["fga","FGA",n1,0],["fgp","FG%",pc,1],
   ["fg3m","3PM",n1,1],["fg3a","3PA",n1,0],["fg3p","3P%",pc,1],["ftm","FTM",n1,1],["fta","FTA",n1,0],["ftp","FT%",pc,1],
-  ["pm","+/-",sg,1],["dd","DD",n0,1],["td","TD",n0,1],["high","High",n0,1],["pe","PE",n3,1],["cpe","Clutch PE",n3,1],
+  ["pm","+/-",sg,1],["dd","DD",n0,1],["td","TD",n0,1],["high","High",n0,1],["pe","MVR",n3,1],["cpe","Clutch MVR",n3,1],
   ["cmin","Clutch MIN",n1,1],["cpts","Clutch PTS",n1,1],["cfgp","Clutch FG%",pc,1],["cpm","Clutch +/-",sg,1]];
 function drawPlayers(){
   const {list} = players();

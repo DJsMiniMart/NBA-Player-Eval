@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Last Night · Play Eval</title>
 <script>
-  /* old links to player pages (index.html#/player/...) now live on the PE page */
+  /* old links to player pages (index.html#/player/...) now live on the MVR page */
   if(/^#\/(player|players|compare)/.test(location.hash)) location.replace("pe.html" + location.hash);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -181,7 +181,7 @@
   <div class="cols">
     <div>
       <section class="sec" id="potnSec" hidden>
-        <div class="sec-h"><h2>Player of the night</h2><small>Best PE with 24+ minutes</small></div>
+        <div class="sec-h"><h2>Player of the night</h2><small>Best MVR with 24+ minutes</small></div>
         <div class="card potn" id="potn"></div>
       </section>
 
@@ -229,7 +229,7 @@
     </div>
   </section>
 
-  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. PE = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p>
+  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. MVR (Minute Value Rating) = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p>
 </main>
 
 <script src="nav.js"></script>
@@ -340,7 +340,7 @@ function renderScores(games, lines){
     const ot = min > 48 ? (min === 53 ? "OT" : (min - 48) / 5 + "OT") : "";
     const top = t => lines.filter(p => p.gid === gid && p.team === t).sort((x, y) => y.pts - x.pts || y.pe - x.pe)[0];
     const row = (t, s, win) => `<div class="tm ${win ? "win" : "lose"}">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div><div class="sc">${s}</div></div>`;
-    const tl = t => { const p = top(t); return p ? `<div><b>${esc(lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} PE</span></div>` : ""; };
+    const tl = t => { const p = top(t); return p ? `<div><b>${esc(lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} MVR</span></div>` : ""; };
     const rc = recaps[gid];
     return `<button class="card game" data-gid="${gid}" aria-label="${esc(nick(a))} ${al[0]}, ${esc(nick(h))} ${hl[0]}. Open box score">
       ${row(a, al[0], !hw)}${row(h, hl[0], hw)}
@@ -372,14 +372,14 @@ function renderPotn(lines){
     <div><div class="k">${esc(TEAMS[p.team] ? TEAMS[p.team].n : p.team)} · ${p.won ? "W" : "L"} ${p.home ? "vs" : "@"} ${esc(p.opp)}</div>
       <div class="who">${plink(p)}</div>
       <div class="line">${p.pts} pts · ${p.reb} reb · ${p.ast} ast · ${p.stl} stl · ${p.blk} blk · ${p.tov} tov · ${p.fgm}-${p.fga} FG · ${p.min} min</div></div>
-    <div class="pe"><b>${p.pe.toFixed(3)}</b><span>Play Eval</span></div>`;
+    <div class="pe"><b>${p.pe.toFixed(3)}</b><span>MVR</span></div>`;
 }
 
 const CATS = [
   {k:"pts", t:"Points"}, {k:"reb", t:"Rebounds"}, {k:"ast", t:"Assists"}, {k:"stl", t:"Steals"}, {k:"blk", t:"Blocks"},
   {k:"tpm", t:"3-pointers", f:p => `${p.tpm}-${p.tpa}`},
-  {k:"pe", t:"Play Eval", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
-  {k:"cpe", t:"Clutch PE", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
+  {k:"pe", t:"MVR", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
+  {k:"cpe", t:"Clutch MVR", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
   {k:"pm", t:"Plus / minus", f:p => (p.pm > 0 ? "+" : "") + p.pm},
   {k:"fgm", t:"Field goals", f:p => `${p.fgm}-${p.fga}`},
 ];
