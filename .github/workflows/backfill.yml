@@ -1,0 +1,61 @@
+name: Daytime career backfill
+
+# Loads earlier seasons (career stats, exact shot zones) back to back during the day, so it doesn't
+# wait for the overnight updates. Shares the "update-stats" lane, so it never runs at the same time as
+# a full update. Each run starts the next one until about 10:30 PM Central, then stops so the
+# overnight updates (12:15, 3:15, 6:15 AM) have the lane to themselves. Stops for good once every
+# season ESPN has is loaded. Started each morning by the "Update clock" workflow.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-stats
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install beautifulsoup4 numpy
+      - name: Too close to the overnight update?
+        id: window
+        run: |
+          h=$(date -u +%H%M)
+          # allowed start window: 12:45-03:30 UTC (~7:45 AM-10:30 PM Central)
+          if [ "$h" -ge 0330 ] && [ "$h" -lt 1245 ]; then echo "ok=0" >> "$GITHUB_OUTPUT"; echo "Overnight window: not starting"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Fill in earlier seasons
+        if: steps.window.outputs.ok == '1'
+        run: python update_stats.py --backfill
+      - name: Save
+        if: steps.window.outputs.ok == '1'
+        run: .github/scripts/save.sh "Career backfill"
+      - name: Start the next round (until every season is in, or it's evening)
+        if: steps.window.outputs.ok == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          left=$(python - <<'PY'
+          import json, datetime as dt
+          s = json.load(open("data/pbp/espn_status.json"))
+          n = dt.datetime.now(dt.timezone.utc); cur = n.year + (1 if n.month >= 8 else 0)
+          stop = s.get("noPlays") or 2002
+          todo = [y for y in range(cur - 1, stop, -1) if not (y in s.get("complete", []) and y in s.get("hzComplete", []))]
+          print(len(todo))
+          PY
+          )
+          echo "Seasons still to load: $left"
+          h=$(date -u +%H%M)
+          if [ "$left" -gt 0 ] && { [ "$h" -ge 1245 ] || [ "$h" -lt 0330 ]; }; then
+            curl -sf -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/backfill.yml/dispatches" -d '{"ref":"${{ github.ref_name }}"}' && echo "Next round started"
+          fi

@@ -5,7 +5,7 @@ on:
     # GitHub's timer is best-effort: it often fires hours late or skips a run entirely. So this checks every
     # hour from about 2 AM to noon Central; a check right after a recent update stops in a few seconds.
     # Times are UTC (subtract 5 hours for Central, 6 in winter).
-    - cron: "23 7-17 * * *"
+    - cron: "23 6-12 * * *"    # backup only (the "Update clock" workflow normally starts updates); overnight, so it never bumps the daytime backfill
   workflow_dispatch: {}      # adds a "Run workflow" button on the Actions tab (always runs in full)
 
 permissions:

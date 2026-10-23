@@ -40,6 +40,7 @@ jobs:
           for d in "$(date -u +%F)" "$(date -u -d tomorrow +%F)" "$(date -u -d '2 days' +%F)"; do
             for t in 05:15 08:15 11:15; do events="$events $(date -u -d "$d $t" +%s):update-stats.yml"; done
             for h in 15 16 17 18 19 20 21 22 23 00 01 02 03 04; do events="$events $(date -u -d "$d $h:05" +%s):lines.yml"; done
+            events="$events $(date -u -d "$d 13:00" +%s):backfill.yml"   # daytime career backfill (~8 AM Central)
           done
           pick=$(for e in $events; do echo "$e"; done | sort -n | awk -F: -v n=$((now + 60)) '$1 > n {print; exit}')
           next=${pick%%:*}; job=${pick##*:}
