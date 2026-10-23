@@ -168,7 +168,21 @@
   .up .lines span{display:block;font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
   .up .lines b{font-size:13px;} .up .lines small{display:block;font-size:10.5px;color:var(--dim);}
   .up .vegas{margin:0 14px 8px;font-size:12px;padding:5px 9px;border-radius:8px;background:var(--row);color:var(--dim);}
+  .up .vegas.ats{background:transparent;border:1px dashed var(--line);color:var(--ink);}
   .up .vegas.upset{background:var(--warn-soft);color:var(--warn);font-weight:600;}
+  .up .inj{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 14px 8px;}
+  .up .inj > div{font-size:11.5px;line-height:1.5;}
+  .up .inj span{display:block;font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.5px;}
+  .up .inj em{color:var(--dim);font-style:normal;}
+  .up .inj i{font-style:normal;display:inline-block;margin:0 6px 2px 0;white-space:nowrap;}
+  .up .inj i b{font-size:9.5px;padding:0 4px;border-radius:4px;margin-left:2px;}
+  .up .inj i.out b{background:var(--bad-soft);color:var(--bad);} .up .inj i.dbt b{background:#fdeadd;color:#c2410c;} .up .inj i.q b{background:var(--warn-soft);color:var(--warn);}
+  .up .live{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#0b0b0d;color:#fff;font-variant-numeric:tabular-nums;}
+  .up .live b{font:700 20px/1 "Barlow Condensed",sans-serif;letter-spacing:.3px;}
+  .up .live small{font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+  .up .live small.on{color:#ff4d63;} .up .live small.on::before{content:"●";margin-right:5px;animation:blink 1.4s infinite;}
+  .up .live em{font-style:normal;font-size:11px;opacity:.8;}
+  @keyframes blink{50%{opacity:.25;}}
   .up ul{list-style:none;margin:0;padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--row);display:grid;gap:5px;flex:1;}
   .up li{display:flex;gap:8px;font-size:12.5px;line-height:1.35;}
   .up li span{flex:none;width:18px;text-align:center;}
@@ -385,7 +399,9 @@ function renderScores(games, lines){
     const rc = recaps[gid];
     return `<button class="card game" data-gid="${gid}" aria-label="${esc(nick(a))} ${al[0]}, ${esc(nick(h))} ${hl[0]}. Open box score">
       ${row(a, al[0], !hw)}${row(h, hl[0], hw)}
-      <div class="meta">Final${ot ? ` <span class="badge ot">${ot}</span>` : ""}${clutch.has(gid) ? ` <span class="badge hot" title="Close in the last 5 minutes">🔥 Crunch time</span>` : ""}${(() => { const pk = PRED && PRED.picks && PRED.picks[gid]; return pk ? ` <span class="pickres ${pk[2] ? "ok" : "no"}" title="Pulse's pick before the game: ${esc(nick(pk[0]))} (${Math.round(pk[1] * 100)}%)">Pulse pick ${esc(pk[0])} ${pk[2] ? "✓" : "✗"}</span>` : ""; })()}</div>
+      <div class="meta">Final${ot ? ` <span class="badge ot">${ot}</span>` : ""}${clutch.has(gid) ? ` <span class="badge hot" title="Close in the last 5 minutes">🔥 Crunch time</span>` : ""}${(() => { const pk = PRED && PRED.picks && PRED.picks[gid]; const at = PRED && PRED.ats && PRED.ats[gid];
+        const atsB = at ? ` <span class="pickres ${at[3] === 1 ? "ok" : at[3] === 0 ? "no" : ""}" title="Pulse against the spread: took ${esc(at[0])} (line ${sgnNum(at[2])} for the home team)">ATS ${esc(at[0])} ${at[3] === 1 ? "✓" : at[3] === 0 ? "✗" : "push"}</span>` : "";
+        return (pk ? ` <span class="pickres ${pk[2] ? "ok" : "no"}" title="Pulse's pick before the game: ${esc(nick(pk[0]))} (${Math.round(pk[1] * 100)}%)">Pulse pick ${esc(pk[0])} ${pk[2] ? "✓" : "✗"}</span>` : "") + atsB; })()}</div>
       <div class="tops">${tl(a)}${tl(h)}</div>
       ${rc ? `<div class="recap"><b>${esc(rc.h)}</b></div>` : ""}</button>`;
   }).join("") : `<div class="card empty">No games were played this night.</div>`;
@@ -399,6 +415,11 @@ function pickFact(games){
   if(!(w + l)) return null;
   return [`${w}-${l}`, `Pulse picks · ${Math.round(100 * w / (w + l))}%${night.length ? ` · ${nw}-${night.length - nw} this night` : ""}`];
 }
+function atsFact(){
+  const r = PRED && PRED.atsRecord;
+  if(!r || !(r[0] + r[1] + r[2])) return null;
+  return [`${r[0]}-${r[1]}${r[2] ? "-" + r[2] : ""}`, `Pulse vs spread · ${Math.round(100 * r[0] / Math.max(1, r[0] + r[1]))}%`];
+}
 function renderFacts(games, lines){
   const ots = games.filter(g => g[6] > 48).length, close = games.filter(g => Math.abs(g[4][0] - g[5][0]) <= 5).length;
   const hi = lines.slice().sort((a, b) => b.pts - a.pts)[0];
@@ -410,6 +431,7 @@ function renderFacts(games, lines){
     hi ? [hi.pts, "top score · " + esc(lastName(hi.name))] : null,
     best ? [best.s, "most pts · " + esc(best.t)] : null,
     pickFact(games),
+    atsFact(),
   ].filter(Boolean).map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
@@ -496,6 +518,56 @@ function renderNews(){
     : `<div class="empty">Headlines are collected during the morning update. They'll show up after the next one.</div>`;
 }
 
+/* ---------- injuries on game cards (ESPN's game-page injury report, refreshed hourly with the lines) ---------- */
+const INJ_ORDER = {out:0, doubtful:1, questionable:2, "day-to-day":3, probable:4};
+function injHtml(u){
+  const g = MORNING && MORNING.inj && MORNING.inj[u.id];
+  if(!g) return "";
+  const side = t => {
+    const rows = (g[t] || []).filter(r => r[0] && !/^active$/i.test(r[1]))
+      .sort((a, b) => (INJ_ORDER[String(a[1]).toLowerCase()] ?? 5) - (INJ_ORDER[String(b[1]).toLowerCase()] ?? 5));
+    if(!rows.length) return `<div><span>${esc(t)}</span><em>No injuries listed</em></div>`;
+    return `<div><span>${esc(t)}</span>${rows.slice(0, 4).map(r => { const st = String(r[1]).toLowerCase();
+      const cls = st === "out" ? "out" : st === "doubtful" ? "dbt" : "q";
+      return `<i class="${cls}" title="${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}">${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b></i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
+  };
+  return `<div class="inj">${side(u.away)}${side(u.home)}</div>`;
+}
+
+/* ---------- live scores: straight from ESPN in the visitor's browser, every 30 seconds while games are on ---------- */
+let liveTimer = null, LIVE = {};
+async function pollLive(){
+  const d = new Date(), ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const y = new Date(Date.now() - 864e5), ymdY = `${y.getFullYear()}${String(y.getMonth() + 1).padStart(2, "0")}${String(y.getDate()).padStart(2, "0")}`;
+  let anyLive = false;
+  for(const day of [ymdY, ymd]){
+    try{
+      const j = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${day}`).then(r => r.json());
+      (j.events || []).forEach(e => {
+        const c = (e.competitions || [{}])[0], st = (e.status || {}).type || {};
+        const side = k => (c.competitors || []).find(x => x.homeAway === k) || {};
+        LIVE[e.id] = {state: st.state, detail: st.shortDetail || "", home: +side("home").score || 0, away: +side("away").score || 0};
+        if(st.state === "in") anyLive = true;
+      });
+    }catch(_){ }
+  }
+  paintLive();
+  const soon = ((PRED && PRED.upcoming) || []).some(u => Math.abs(new Date(u.t) - Date.now()) < 20 * 6e4);
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(pollLive, anyLive || soon ? 30e3 : 5 * 60e3);
+}
+function paintLive(){
+  document.querySelectorAll("[data-up]").forEach(card => {
+    const L = LIVE[card.dataset.up], box = card.querySelector(".live");
+    if(!L || L.state === "pre"){ box.hidden = true; return; }
+    const u = ((PRED && PRED.upcoming) || []).find(x => x.id === card.dataset.up);
+    const lead = L.home === L.away ? null : L.home > L.away ? u.home : u.away;
+    const pickNote = !u || lead == null ? "" : lead === u.pick ? `Pulse pick ${esc(u.pick)} ${L.state === "post" ? "won ✓" : "leads"}` : `Pulse pick ${esc(u.pick)} ${L.state === "post" ? "lost ✗" : "trails"}`;
+    box.hidden = false;
+    box.innerHTML = `<b>${esc(u ? u.away : "")} ${L.away} – ${L.home} ${esc(u ? u.home : "")}</b><div style="text-align:right"><small class="${L.state === "in" ? "on" : ""}">${L.state === "in" ? esc(L.detail) : "Final"}</small><br><em>${pickNote}</em></div>`;
+  });
+}
+
 /* ---------- betting lines (data/morning.json "odds", from ESPN's sportsbook feed) ---------- */
 const sgnNum = n => n == null ? "—" : (n > 0 ? "+" : "") + (Number.isInteger(n) ? n : n.toFixed(1));
 const implied = ml => ml == null ? null : ml < 0 ? -ml / (-ml + 100) : 100 / (ml + 100);
@@ -514,10 +586,16 @@ function linesHtml(u){
       ? `<div class="vegas">Pulse and Vegas agree: ${esc(nick(u.pick))} (Pulse ${Math.round(pulseP * 100)}%, Vegas ${Math.round(vP * 100)}%)</div>`
       : `<div class="vegas upset">🚨 Upset pick: Pulse likes the ${esc(nick(u.pick))} (${Math.round(pulseP * 100)}%); Vegas favors the ${esc(nick(vFav))} (${Math.round(vP * 100)}%)</div>`;
   }
+  let ats = "";
+  if(o.spread != null && u.margin != null){
+    const pm = u.margin, side = pm + o.spread > 0 ? u.home : u.away, sideLine = side === u.home ? o.spread : -o.spread;
+    const pl = Math.abs(pm) < .05 ? "even" : `${esc(pm > 0 ? u.home : u.away)} ${sgnNum(-Math.round(Math.abs(pm) * 10) / 10)}`;
+    ats = `<div class="vegas ats">📏 Pulse line: <b>${pl}</b> · against the spread Pulse takes <b>${esc(side)} ${sideLine === 0 ? "PK" : sgnNum(sideLine)}</b></div>`;
+  }
   return `<div class="lines" title="${esc(o.book || "Sportsbook")} lines">
       <div><span>Spread</span><b>${sp}</b>${moved(o.spread, o.open && o.open.spread)}</div>
       <div><span>Total</span><b>${o.total != null ? "O/U " + o.total : "—"}</b>${moved(o.total, o.open && o.open.total)}</div>
-      <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}`;
+      <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}${ats}`;
 }
 
 /* ---------- coming up: next 7 days with Pulse picks and storylines (data/predictions.json, built by predict.py) ---------- */
@@ -534,7 +612,7 @@ function renderUpcoming(){
   const tomorrow = localDay(new Date(Date.now() + 864e5).toISOString());
   $("upDays").innerHTML = days.map(d => { const dt = new Date(d + "T12:00:00"); const n = list.filter(u => localDay(u.t) === d).length;
     return `<button class="${d === upDay ? "on" : ""}" data-d="${d}"><b>${d === today ? "Today" : d === tomorrow ? "Tomorrow" : dt.toLocaleDateString("en-US", {weekday:"short"})}</b><small>${dt.toLocaleDateString("en-US", {month:"short", day:"numeric"})} · ${n}</small></button>`; }).join("");
-  $("upDays").querySelectorAll("button").forEach(b => b.onclick = () => { upDay = b.dataset.d; renderUpcoming(); });
+  $("upDays").querySelectorAll("button").forEach(b => b.onclick = () => { upDay = b.dataset.d; renderUpcoming(); paintLive(); });
   const R = standings();
   const color = t => (TEAMS[t] && TEAMS[t].c1) || "#888";
   $("upcoming").innerHTML = list.filter(u => localDay(u.t) === upDay).map(u => {
@@ -542,8 +620,9 @@ function renderUpcoming(){
     const pa = u.pick === u.away ? u.p : 1 - u.p, ph = 1 - pa;
     const row = (t, chance) => `<div class="tm">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>${u.pick === t ? `<span class="pk" title="Pulse's pick: ${Math.round(chance * 100)}% to win">Pulse pick · ${Math.round(chance * 100)}%</span>` : `<span style="color:var(--dim);font-size:12px">${Math.round(chance * 100)}%</span>`}</div>`;
     const stories = (u.stories || []).map(([k, txt, link]) => `<li><span>${STORY_ICON[k] || "•"}</span><div>${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(txt)}</a>` : esc(txt)}</div></li>`).join("");
-    return `<div class="card up"><div class="when"><span>${time}${u.arena ? " · " + esc(u.arena) : ""}</span><span>${esc((u.tv || "").split(",").slice(0, 2).join(", "))}</span></div>
+    return `<div class="card up" data-up="${esc(u.id)}"><div class="live" hidden></div><div class="when"><span>${time}${u.arena ? " · " + esc(u.arena) : ""}</span><span>${esc((u.tv || "").split(",").slice(0, 2).join(", "))}</span></div>
       ${row(u.away, pa)}${row(u.home, ph)}
+      ${injHtml(u)}
       ${linesHtml(u)}
       <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
       <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul></div>`;
@@ -604,7 +683,7 @@ async function init(){
   $("prev").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i > 0) showNight(NIGHTS[i - 1]); };
   $("next").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i < NIGHTS.length - 1) showNight(NIGHTS[i + 1]); };
   document.querySelectorAll("#standTabs button").forEach(b => b.onclick = () => { standView = b.dataset.v; store.set("home.stand", standView); renderStandings(); });
-  renderNews(); renderTx(); renderUpcoming();
+  renderNews(); renderTx(); renderUpcoming(); pollLive();
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
 init();

@@ -17,6 +17,12 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 PRIOR_GAMES, PRIOR_SHRINK, SCALE, HOME_EDGE = 3, 0.5, 0.03, 8.0
+# Pulse's projected home margin in points (fit on every 2025-26 game, pre-game ratings only; misses by 11.5 pts on average)
+SPREAD_K, SPREAD_B = 0.2414, -0.39
+
+
+def pulse_margin(rh, ra):
+    return SPREAD_K * (rh - ra + HOME_EDGE) + SPREAD_B
 DAYS_AHEAD = 7
 BBR2NBA = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
 NAMES = {"ATL": "Hawks", "BOS": "Celtics", "BKN": "Nets", "CHA": "Hornets", "CHI": "Bulls", "CLE": "Cavaliers",
@@ -100,6 +106,8 @@ def update(now, year):
         return (s + PRIOR_GAMES * p) / (c + PRIOR_GAMES)
 
     picks, w, l = {}, 0, 0
+    lines = load(os.path.join(DATA, "lines_log.json"), {}) or {}
+    ats, aw, al_, ap = {}, 0, 0, 0
     results = []   # [date, home, away, home pts, away pts]
     for gid, date, h, a, hl, al, _ in games:
         p = win_chance(rating(h), rating(a))
@@ -109,6 +117,17 @@ def update(now, year):
         w += ok
         l += not ok
         picks[gid] = [pick, round(max(p, 1 - p), 3), 1 if ok else 0]
+        ln = lines.get(gid)
+        if ln and ln.get("spread") is not None:      # against the spread: home spread, negative = home favored
+            pm = pulse_margin(rating(h), rating(a))
+            side = h if pm + ln["spread"] > 0 else a
+            res = (hl[0] - al[0]) + ln["spread"]
+            covered = h if res > 0 else a if res < 0 else None
+            r = -1 if covered is None else (1 if covered == side else 0)
+            aw += r == 1
+            al_ += r == 0
+            ap += r == -1
+            ats[gid] = [side, round(pm, 1), ln["spread"], r]
         results.append([date, h, a, hl[0], al[0]])
         for t, me, op in ((h, hl, al), (a, al, hl)):
             x = sums.setdefault(t, [0.0, 0])
@@ -131,15 +150,16 @@ def update(now, year):
         p = win_chance(ratings[h], ratings[a])
         upcoming.append({"id": gid, "t": when, "home": h, "away": a, "tv": g[8], "arena": g[7],
                          "pick": h if p >= .5 else a, "p": round(max(p, 1 - p), 3),
+                         "margin": round(pulse_margin(ratings[h], ratings[a]), 1),
                          "stories": stories(gid, h, a, when, results, sched, now, year)})
     upcoming.sort(key=lambda u: u["t"])
     out = {"at": now.isoformat(timespec="seconds"), "season": label(year),
            "model": {"scale": SCALE, "homeEdge": HOME_EDGE, "priorGames": PRIOR_GAMES, "priorShrink": PRIOR_SHRINK,
                      "tested": "picked 68.0% of 2025-26 winners using only games played before each one"},
-           "record": [w, l], "picks": picks, "ratings": ratings, "upcoming": upcoming}
+           "record": [w, l], "picks": picks, "ats": ats, "atsRecord": [aw, al_, ap], "ratings": ratings, "upcoming": upcoming}
     with open(os.path.join(DATA, "predictions.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"))
-    print(f"Predictions: Pulse picks {w}-{l} this season, {len(upcoming)} games in the next {DAYS_AHEAD} days")
+    print(f"Predictions: against the spread {aw}-{al_}-{ap}; Pulse picks {w}-{l} this season, {len(upcoming)} games in the next {DAYS_AHEAD} days")
 
 
 # ---------- storylines ----------

@@ -86,7 +86,24 @@ def odds_of(summary):
     return None
 
 
-def previews(old, now, odds):
+def injuries_of(summary):
+    """{team: [[player, status, what]]} from ESPN's game page (Out, Doubtful, Questionable, Day-To-Day...)."""
+    out = {}
+    for t in (summary or {}).get("injuries") or []:
+        code = tri((t.get("team") or {}).get("abbreviation"))
+        rows = []
+        for i in t.get("injuries") or []:
+            a = i.get("athlete") or {}
+            d = i.get("details") or {}
+            what = " ".join(x for x in (d.get("location") if d.get("type") in (None, "", "Other") else None, d.get("type")) if x) or ""
+            rows.append([a.get("displayName") or a.get("fullName") or "", i.get("status") or "", what,
+                         ((d.get("fantasyStatus") or {}).get("abbreviation") or "")])
+        if code:
+            out[code] = rows
+    return out
+
+
+def previews(old, now, odds, inj=None):
     """ESPN's preview story for games in the next week, when it has one (usually posted the day of the game)."""
     sched = (load(SCHEDULE_PATH, {}) or {}).get("games") or []
     soon = (now + dt.timedelta(days=7)).isoformat()[:16]
@@ -98,6 +115,8 @@ def previews(old, now, odds):
             continue
         s = get_json(f"{SITE}/summary?event={g[0]}")
         line = odds_of(s) if s else None
+        if s and inj is not None and s.get("injuries") is not None:
+            inj[g[0]] = injuries_of(s)
         if line:
             odds[g[0]] = line
         a = article_of(s, None) if s else None
@@ -167,14 +186,19 @@ def update(now, current_year):
         print(f"Morning: recaps failed ({e})")
         out["recaps"] = old.get("recaps") or {}
     try:
-        odds = {}
-        out["previews"] = previews(old.get("previews") or {}, now, odds)
+        odds, inj = {}, {}
+        out["previews"] = previews(old.get("previews") or {}, now, odds, inj)
+        out["inj"] = inj or old.get("inj") or {}
+        out["injAt"] = out["at"] if inj else old.get("injAt")
         out["odds"] = odds or old.get("odds") or {}
+        if odds:
+            log_lines(odds, now)
         out["oddsAt"] = out["at"] if odds else old.get("oddsAt")
     except Exception as e:  # noqa: BLE001
         print(f"Morning: previews failed ({e})")
         out["previews"] = old.get("previews") or {}
         out["odds"], out["oddsAt"] = old.get("odds") or {}, old.get("oddsAt")
+        out["inj"], out["injAt"] = old.get("inj") or {}, old.get("injAt")
     out["news"] = news() or old.get("news") or []
     out["newsAt"] = out["at"] if out["news"] is not old.get("news") else old.get("newsAt")
     tx = transactions()
@@ -184,14 +208,35 @@ def update(now, current_year):
     save(OUT, out)
 
 
+LINES_LOG = os.path.join(HERE, "data", "lines_log.json")
+
+
+def log_lines(odds, now):
+    """Keep the latest line for each game until it tips off; that last one is what Pulse is graded against."""
+    sched = {g[0]: g for g in (load(SCHEDULE_PATH, {}) or {}).get("games") or []}
+    log = load(LINES_LOG, {}) or {}
+    stamp = now.isoformat(timespec="seconds")
+    for gid, o in odds.items():
+        g = sched.get(gid)
+        if not g or g[4] == 3 or g[1] <= stamp[:16]:      # already started or final: keep the pre-game line
+            continue
+        if o.get("spread") is not None:
+            log[gid] = {"spread": o["spread"], "total": o.get("total"), "mlHome": o.get("mlHome"), "mlAway": o.get("mlAway"),
+                        "book": o.get("book"), "at": stamp}
+    save(LINES_LOG, log)
+
+
 def refresh_lines():
     """Quick refresh between full updates: just the betting lines and ESPN previews for the next week's games."""
     now = dt.datetime.now(dt.timezone.utc)
     m = load(OUT, {}) or {}
-    odds = {}
-    m["previews"] = previews(m.get("previews") or {}, now, odds)
+    odds, inj = {}, {}
+    m["previews"] = previews(m.get("previews") or {}, now, odds, inj)
+    if inj:
+        m["inj"], m["injAt"] = inj, now.isoformat(timespec="seconds")
     if odds:
         m["odds"], m["oddsAt"] = odds, now.isoformat(timespec="seconds")
+        log_lines(odds, now)
     save(OUT, m)
 
 

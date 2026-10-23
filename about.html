@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About Pulse · Full Court Geek Press</title>
+<meta name="description" content="What Pulse measures, how it's calculated, the Pulse+, Clutch Pulse and Pulse$ versions, how well Pulse predicts games, and where the data comes from.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --court:#1D428A; --good:#2f9e44; --bad:#d6336c; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --court:#7aa2ff; --good:#51cf66; --bad:#ff6b9a; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  .nba-band{color:#fff;}
+  .band-in{max-width:860px;margin:0 auto;padding:30px 16px 28px;}
+  .band-in .eyebrow{font:700 13px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#ff4d63;margin-bottom:10px;}
+  h1{font:700 48px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:0;}
+  h1 span{background:#C8102E;padding:0 8px;border-radius:4px;margin-left:4px;}
+  .lede{font-size:17px;opacity:.9;margin:12px 0 0;max-width:640px;}
+  main{max-width:860px;margin:0 auto;padding:10px 16px 60px;}
+  h2{font:700 26px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:34px 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:12px 0;}
+  .formula{font:600 clamp(16px,3.4vw,22px)/1.4 "Barlow Condensed",sans-serif;letter-spacing:.3px;text-align:center;padding:18px 12px;background:#0b0b0d;color:#fff;border-radius:12px;border-bottom:4px solid;border-image:linear-gradient(90deg,#1D428A 50%,#C8102E 50%) 1;}
+  .formula small{display:block;font:500 12.5px Inter,sans-serif;opacity:.75;margin-top:6px;letter-spacing:0;}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);}
+  td.w{font-weight:700;white-space:nowrap;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;}
+  .grid .card{margin:0;}
+  .grid h3{margin:0 0 6px;font:700 19px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;}
+  .grid p{margin:0;color:var(--dim);font-size:14px;}
+  .big{font:700 40px/1 "Barlow Condensed",sans-serif;color:var(--accent);}
+  .note{color:var(--dim);font-size:13px;}
+  ul{padding-left:20px;} li{margin:4px 0;}
+  .tw{overflow-x:auto;}
+  @media (max-width:560px){ h1{font-size:38px;} }
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="band-in">
+  <div class="eyebrow">About the stat</div>
+  <h1>What is <span>Pulse</span>?</h1>
+  <p class="lede">A pulse is how you know someone is alive. Pulse measures how alive a player is for every minute he's on the floor: how much he does to help his team win each possession.</p>
+</div></div>
+
+<main>
+  <h2>The formula</h2>
+  <div class="formula">(PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN
+    <small>Everything a player adds in a game, minus his turnovers, divided by the minutes he played</small></div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Stat</th><th>Worth</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="w">Points</td><td>×1</td><td>The baseline: every point counts once.</td></tr>
+        <tr><td class="w">Assists</td><td>×2</td><td>An assist creates a basket for someone else. Passing is worth more than the box score usually gives it credit for.</td></tr>
+        <tr><td class="w">Rebounds</td><td>×2</td><td>A defensive rebound finishes a stop; an offensive rebound buys another shot. We tested halving defensive rebounds, and it made Pulse <i>worse</i> at predicting wins, so they stay at ×2.</td></tr>
+        <tr><td class="w">Steals</td><td>×4</td><td>A steal ends the other team's possession <i>and</i> usually starts a fast break: a two-possession swing.</td></tr>
+        <tr><td class="w">Blocks</td><td>×1</td><td>A block stops a shot, but the other team often keeps the ball.</td></tr>
+        <tr><td class="w">Turnovers</td><td>−4</td><td>The mirror image of a steal: a possession thrown away, often leading to easy points the other way.</td></tr>
+        <tr><td class="w">Minutes</td><td>÷</td><td>Everything is per minute, so a 12-minute bench spark and a 38-minute star can be compared fairly.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Pulse's signature is the heavy weight on <b>possessions</b>. Most box-score stats are built around scoring; Pulse says that winning and losing the ball matters as much as putting it in the basket.</p>
+
+  <h2>The Pulse family</h2>
+  <div class="grid">
+    <div class="card"><h3>Pulse+</h3><p>Pulse that also charges missed shots: −1 per missed field goal, −0.5 per missed free throw. A player breaks even on twos at 33% and on threes at 25%, so a 10-for-30 night costs him.</p></div>
+    <div class="card"><h3>Clutch Pulse</h3><p>The same formula using only what a player does in crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by his crunch-time minutes. No crunch-time minutes = 0.</p></div>
+    <div class="card"><h3>Pulse$</h3><p>Value per dollar: Pulse production per $1M of salary. "Plays like" shows what the league pays for production like his, and pay tiers compare players with others paid about the same, so stars are measured against stars.</p></div>
+    <div class="card"><h3>Team Pulse</h3><p>A team's total production per 48 minutes, and the margin over its opponents, which is what powers the game picks.</p></div>
+  </div>
+
+  <h2>Does it work?</h2>
+  <p>Every test below uses only what was known <i>before</i> each game, the same way the picks on The Morning Press are made. There's no hindsight.</p>
+  <div class="grid">
+    <div class="card"><div class="big">68%</div><h3>Game winners</h3><p>Team Pulse ratings plus home court picked the winner of 68% of 2025-26 games. Sportsbook favorites typically win about 67–70%.</p></div>
+    <div class="card"><div class="big">87.7%</div><h3>Pulse+ in the box score</h3><p>The team with the higher Pulse+ in a game won 87.7% of 2025-26 games (Pulse: 83.8%). Missed shots matter.</p></div>
+    <div class="card"><div class="big">0.84</div><h3>Season win %</h3><p>Over a season, a team's Pulse margin tracks its winning percentage with a 0.84 correlation (1.00 would be perfect).</p></div>
+  </div>
+  <p class="note">This season's pick record, and Pulse's record against the spread, are tracked live on <a href="index.html">The Morning Press</a>.</p>
+
+  <h2>What Pulse doesn't see</h2>
+  <ul>
+    <li><b>Defense beyond steals and blocks.</b> A great position defender who contests and rotates without gambling looks average.</li>
+    <li><b>Shooting efficiency</b> in plain Pulse (that's what Pulse+ is for).</li>
+    <li><b>Pace and teammates.</b> Faster teams create more chances to pile up numbers.</li>
+    <li><b>Small samples.</b> A few minutes can produce wild numbers, so leaderboards use minimum games and minutes.</li>
+  </ul>
+
+  <h2>Where the data comes from</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><b>Box scores, play-by-play, shot locations, schedules, injuries, recaps and headlines:</b> ESPN.</li>
+      <li><b>Season and career totals, contracts, bios, awards, franchise history:</b> Basketball-Reference.</li>
+      <li><b>Draft pick ownership:</b> RealGM.</li>
+      <li><b>Betting lines:</b> DraftKings, as shown by ESPN. For information only, 21+. Gambling problem? Call 1-800-GAMBLER.</li>
+      <li><b>When it updates:</b> full updates around 12:15, 3:15 and 6:15 AM Central; betting lines and injuries every hour from 10 AM to 11 PM; live scores every 30 seconds during games.</li>
+    </ul>
+  </div>
+  <p class="note">Full Court Geek Press is an independent fan site and isn't affiliated with the NBA or its teams.</p>
+</main>
+<script src="nav.js"></script>
+</body>
+</html>

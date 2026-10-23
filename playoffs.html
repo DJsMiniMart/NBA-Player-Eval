@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playoff Picture · Full Court Geek Press</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A;
+    --good:#2f9e44; --good-soft:#e6f4ea; --warn:#b7791f; --warn-soft:#fdf3dc; --bad:#d6336c; --bad-soft:#fde8ef; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff;
+    --good:#51cf66; --good-soft:#14301c; --warn:#f2b84b; --warn-soft:#3a2c10; --bad:#ff6b9a; --bad-soft:#3a1525; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  button,select{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px;}
+  .nba-band{color:#fff;}
+  .band-in{padding-top:24px;padding-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
+  h1 span{background:#C8102E;padding:0 8px;border-radius:4px;margin-left:4px;}
+  .meta{opacity:.85;margin-top:6px;font-size:13px;}
+  .ctl{display:flex;gap:6px;flex-wrap:wrap;}
+  .ctl button{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff;font-weight:600;border-radius:999px;}
+  .ctl button.on{background:#fff;color:#0b0b0d;border-color:#fff;}
+  .tabs{display:flex;gap:6px;margin:18px 0 6px;}
+  .tabs button{font-weight:700;border-radius:999px;}
+  .tabs button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
+  h2{font:700 22px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;margin:22px 0 10px;}
+  .note{color:var(--dim);font-size:12.5px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+  .confs{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:900px){ .confs{grid-template-columns:1fr;} }
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:13px;}
+  th.l,td.l{text-align:left;}
+  td.tm{white-space:nowrap;}
+  td.tm img{width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:8px;}
+  td.tm a{color:inherit;text-decoration:none;font-weight:600;} td.tm a:hover{text-decoration:underline;}
+  td.sd{font-weight:700;color:var(--dim);width:28px;}
+  tr.cut6 td{border-bottom:2px solid var(--ink);} tr.cut10 td{border-bottom:2px dashed var(--dim);}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;letter-spacing:.3px;text-transform:uppercase;}
+  .tag.po{background:var(--good-soft);color:var(--good);} .tag.pi{background:var(--warn-soft);color:var(--warn);} .tag.lot{background:var(--bad-soft);color:var(--bad);}
+  /* bracket */
+  .bracket{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px;}
+  @media (max-width:700px){ .bracket{grid-template-columns:1fr 1fr;} }
+  .mu{border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .mu div{display:flex;align-items:center;gap:7px;padding:7px 10px;font-weight:600;font-size:13px;}
+  .mu div + div{border-top:1px solid var(--line);}
+  .mu img{width:20px;height:20px;object-fit:contain;}
+  .mu b{width:16px;color:var(--dim);font-size:12px;}
+  .mu small{margin-left:auto;color:var(--dim);font-weight:500;}
+  .pin{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 14px 14px;}
+  @media (max-width:700px){ .pin{grid-template-columns:1fr;} }
+  .pin .mu > span{display:block;font-size:10.5px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;padding:6px 10px 0;}
+  /* lottery */
+  .lot td.own{white-space:normal;text-align:left;min-width:240px;font-size:12px;color:var(--dim);}
+  .lot td.own b{color:var(--ink);}
+  .odds{display:flex;gap:1px;}
+  .odds i{display:block;width:13px;height:18px;border-radius:2px;background:var(--row);}
+  .tw{overflow-x:auto;}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:10px 0;}
+  .rules .card{padding:12px 14px;} .rules b{display:block;font:700 16px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;}
+  .rules p{margin:0;color:var(--dim);font-size:13px;}
+  .foot{margin:24px 0 40px;}
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="wrap band-in">
+  <div><h1>Playoff <span>Picture</span></h1><div class="meta" id="meta">Loading…</div></div>
+  <div class="ctl" id="views"><button data-v="now" class="on">As of today</button><button data-v="proj">Pulse projection</button></div>
+</div></div>
+<main class="wrap">
+  <div class="tabs" id="tabs"><button data-t="po" class="on">Playoff picture</button><button data-t="lot">Lottery tracker</button></div>
+  <div id="po"></div>
+  <div id="lot" hidden></div>
+  <p class="note foot" id="foot"></p>
+</main>
+<script src="nav.js"></script>
+<script src="player.js"></script>
+<script src="picks.js"></script>
+<script>
+(function(){
+"use strict";
+const TEAMS = (window.PlayerPage && PlayerPage.TEAMS) || {};
+const DIV = {Atlantic:["BOS","BKN","NYK","PHI","TOR"], Central:["CHI","CLE","DET","IND","MIL"], Southeast:["ATL","CHA","MIA","ORL","WAS"],
+  Northwest:["DEN","MIN","OKC","POR","UTA"], Pacific:["GSW","LAC","LAL","PHX","SAC"], Southwest:["DAL","HOU","MEM","NOP","SAS"]};
+const CONF = {}; Object.entries(DIV).forEach(([d, l]) => l.forEach(t => CONF[t] = ["Atlantic","Central","Southeast"].includes(d) ? "East" : "West"));
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const img = c => `<img src="${logo(c)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+const nick = c => { const n = (TEAMS[c] && TEAMS[c].n) || c; return /Trail Blazers$/.test(n) ? "Trail Blazers" : n.split(" ").slice(-1)[0]; };
+const pct = x => x >= .9995 ? "100%" : x < .0005 ? "—" : (x * 100 >= 10 ? Math.round(x * 100) : (x * 100).toFixed(1)) + "%";
+async function getJSON(p){ try{ const r = await fetch(p + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
+const store = {get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(_){} }};
+
+let LEAGUE, SCHED, PRED, PICKS, VIEW = store.get("po.view") || "now", TAB = store.get("po.tab") || "po";
+
+/* ---------- 2027 draft lottery rules (the "3-2-1" lottery, approved May 28, 2026; in effect for the 2027-29 drafts) ---------- */
+const NO_REPEAT_NUMBER_ONE = ["WAS"];     // won the 2026 No. 1 pick: can't pick No. 1 in 2027
+const NO_TOP5 = ["UTA"];                  // top-5 picks in 2025 (No. 5) and 2026 (No. 2): can't pick top 5 in 2027
+const SIMS = 20000;
+
+function records(){
+  const R = {}; Object.keys(CONF).forEach(t => R[t] = {t, w:0, l:0});
+  (LEAGUE.games || []).forEach(g => { const hw = g[4][0] > g[5][0]; R[g[2]] && (hw ? R[g[2]].w++ : R[g[2]].l++); R[g[3]] && (hw ? R[g[3]].l++ : R[g[3]].w++); });
+  return R;
+}
+/* Pulse projection: today's record + every remaining game played out with Pulse's win chance */
+function projected(R){
+  const P = {}; Object.values(R).forEach(r => P[r.t] = {t:r.t, w:r.w, l:r.l});
+  const m = (PRED && PRED.model) || {scale:.03, homeEdge:8}, rt = (PRED && PRED.ratings) || {};
+  ((SCHED && SCHED.games) || []).forEach(g => {
+    if(g[4] === 3 || !P[g[2]] || !P[g[3]]) return;      // skip games already final (NBA Cup group games count in the standings)
+    const p = 1 / (1 + Math.exp(-m.scale * ((rt[g[2]] || 0) - (rt[g[3]] || 0) + m.homeEdge)));
+    P[g[2]].w += p; P[g[2]].l += 1 - p; P[g[3]].w += 1 - p; P[g[3]].l += p;
+  });
+  return P;
+}
+const winPct = r => r.w + r.l ? r.w / (r.w + r.l) : .5;
+function seeds(R){
+  const out = {};
+  ["East", "West"].forEach(c => { out[c] = Object.values(R).filter(r => CONF[r.t] === c).sort((a, b) => winPct(b) - winPct(a) || b.w - a.w || a.t.localeCompare(b.t)); });
+  return out;
+}
+const rec = r => VIEW === "proj" ? `${Math.round(r.w)}-${Math.round(r.l)}` : `${r.w}-${r.l}`;
+
+/* ---------- playoff picture ---------- */
+function drawPlayoffs(S){
+  const table = c => {
+    const list = S[c], lead = list[0];
+    return `<div><h2>${c}ern Conference</h2><div class="card tw"><table><thead><tr><th class="l"></th><th class="l">Team</th><th>W-L</th><th>Pct</th><th>GB</th><th class="l"></th></tr></thead><tbody>${
+      list.map((r, i) => { const gb = ((lead.w - r.w) + (r.l - lead.l)) / 2;
+        const tag = i < 6 ? `<span class="tag po">Playoffs</span>` : i < 10 ? `<span class="tag pi">Play-in</span>` : `<span class="tag lot">Lottery</span>`;
+        return `<tr class="${i === 5 ? "cut6" : i === 9 ? "cut10" : ""}"><td class="l sd">${i + 1}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td>
+          <td>${rec(r)}</td><td>${winPct(r).toFixed(3).replace(/^0/, "")}</td><td>${gb > 0 ? gb.toFixed(1) : "—"}</td><td class="l">${tag}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  };
+  const team = (s, r) => `<div><b>${s}</b>${img(r.t)}${esc(nick(r.t))}<small>${rec(r)}</small></div>`;
+  const bracket = c => {
+    const L = S[c];
+    // "if the season ended today": the higher seed wins each play-in game
+    const playin = `<div class="pin">
+      <div class="mu"><span>7 vs 8 · winner is the 7 seed</span>${team(7, L[6])}${team(8, L[7])}</div>
+      <div class="mu"><span>9 vs 10 · loser is out</span>${team(9, L[8])}${team(10, L[9])}</div>
+      <div class="mu"><span>Loser of 7/8 vs winner of 9/10 · for the 8 seed</span>${team(8, L[7])}${team(9, L[8])}</div></div>`;
+    const mus = [[0, 7], [3, 4], [2, 5], [1, 6]].map(([a, b]) => `<div class="mu">${team(a + 1, L[a])}${team(b + 1, L[b])}</div>`).join("");
+    return `<h2>${c}: first round if the season ended today</h2><div class="card"><div class="bracket">${mus}</div>
+      <p class="note" style="margin:0 14px 8px">Play-in tournament (higher seeds assumed to win):</p>${playin}</div>`;
+  };
+  $("po").innerHTML = `<div class="confs">${table("East")}${table("West")}</div>${bracket("East")}${bracket("West")}`;
+}
+
+/* ---------- lottery tracker ---------- */
+function lotteryTeams(S){
+  // 16 teams: the 10 teams seeded 11-15 (3 worst records: 2 balls; next 7: 3 balls), the 9 and 10 seeds (2 balls),
+  // and the losers of the 7-vs-8 play-in games (1 ball; "if the season ended today" that's the 8 seeds)
+  const out = ["East", "West"].flatMap(c => S[c].slice(10)).sort((a, b) => winPct(a) - winPct(b) || a.w - b.w);
+  const L = out.map((r, i) => ({...r, balls: i < 3 ? 2 : 3, group: i < 3 ? "Bottom 3 (relegation)" : "Non-play-in"}));
+  ["East", "West"].forEach(c => { L.push({...S[c][8], balls: 2, group: "9 seed"}, {...S[c][9], balls: 2, group: "10 seed"}, {...S[c][7], balls: 1, group: "7/8 play-in loser"}); });
+  return L;
+}
+function simulate(L){
+  const n = L.length, counts = L.map(() => new Array(n).fill(0)), bottom3 = new Set([0, 1, 2]);
+  for(let s = 0; s < SIMS; s++){
+    const left = L.map((_, i) => i);
+    for(let pick = 1; pick <= n; pick++){
+      let pool = left;
+      const b3left = left.filter(i => bottom3.has(i)).length;
+      if(b3left && b3left >= 12 - pick + 1) pool = left.filter(i => bottom3.has(i));          // bottom 3 can't fall below 12
+      pool = pool.filter(i => !(pick === 1 && NO_REPEAT_NUMBER_ONE.includes(L[i].t)) && !(pick <= 5 && NO_TOP5.includes(L[i].t)));
+      if(!pool.length) pool = left;
+      const tot = pool.reduce((a, i) => a + L[i].balls, 0);
+      let x = Math.random() * tot, k = pool[pool.length - 1];
+      for(const i of pool){ x -= L[i].balls; if(x < 0){ k = i; break; } }
+      counts[k][pick - 1]++;
+      left.splice(left.indexOf(k), 1);
+    }
+  }
+  return counts.map(c => c.map(v => v / SIMS));
+}
+/* who owns a team's 2027 first-round pick, from RealGM's pick text */
+function ownership(team){
+  const T = window.PickRights ? PickRights.parseAll((PICKS && PICKS.teams) || {}) : {};
+  const holders = [];
+  Object.entries(T).forEach(([x, years]) => { const c = years[2027] && years[2027][1]; if(!c || x === team) return;
+    c.assets.filter(a => a.kind === "acquired" && a.orig === team).forEach(a => holders.push({by: x, range: a.range, cond: a.cond})); });
+  const own = T[team] && T[team][2027] && T[team][2027][1];
+  const inRange = (r, s) => { if(!r) return true; const [a, b] = r.split("-").map(Number); return s >= a && s <= (b || a); };
+  return {holders, own, ownerAt: s => { const h = holders.find(h => inRange(h.range, s)); return h ? h.by : team; },
+    text: () => holders.length ? holders.map(h => `<b>${esc(h.by)}</b>${h.range ? ` if ${esc(h.range)}` : ""}${h.cond ? ` (${esc(h.cond)})` : ""}`).join(", ") + (holders.every(h => h.range) ? `; otherwise <b>${esc(team)}</b> keeps it` : "")
+      : own && own.ownOwed ? `Owed away: ${esc(own.raw)}` : `<b>${esc(team)}</b> (own)`};
+}
+function drawLottery(S){
+  const L = lotteryTeams(S), P = simulate(L);
+  const rows = L.map((r, i) => ({...r, p: P[i], exp: P[i].reduce((a, v, k) => a + v * (k + 1), 0)}));
+  const order = rows.slice().sort((a, b) => a.exp - b.exp);
+  const totBalls = L.reduce((a, r) => a + r.balls, 0);
+  const cols = Array.from({length: 16}, (_, k) => k);
+  const shade = v => v ? `background:rgba(200,16,46,${Math.min(.85, .08 + v * 1.4).toFixed(2)});color:${v > .35 ? "#fff" : "inherit"}` : "";
+  const body = order.map((r, i) => {
+    const o = ownership(r.t), likely = r.p.indexOf(Math.max(...r.p)) + 1, owner = o.ownerAt(likely);
+    const notes = [r.group, NO_REPEAT_NUMBER_ONE.includes(r.t) ? "can't pick No. 1 (won it in 2026)" : "", NO_TOP5.includes(r.t) ? "can't pick top 5 (top 5 in 2025 and 2026)" : ""].filter(Boolean).join(" · ");
+    return `<tr><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td>
+      <td title="${esc(notes)}"><span class="odds">${"<i style=\"background:var(--accent)\"></i>".repeat(r.balls)}</span></td>
+      <td><b>${pct(r.balls / totBalls)}</b></td><td>${pct(r.p.slice(0, 4).reduce((a, b) => a + b, 0))}</td><td>${r.exp.toFixed(1)}</td>
+      ${cols.map(k => `<td style="${shade(r.p[k])};font-size:11.5px">${r.p[k] >= .0005 ? pct(r.p[k]) : ""}</td>`).join("")}
+      <td class="own">${o.text()}${owner !== r.t ? `<br>At its most likely spot (No. ${likely}): <b>${esc(owner)}</b> picks` : ""}</td></tr>`;
+  }).join("");
+  const rest = ["East", "West"].flatMap(c => S[c].slice(0, 7)).filter(r => !L.some(x => x.t === r.t)).sort((a, b) => winPct(a) - winPct(b));
+  $("lot").innerHTML = `
+    <div class="rules">
+      <div class="card"><b>16 teams · 37 balls</b><p>Every lottery pick, 1 through 16, is drawn. Non-lottery teams pick 17-30 by record.</p></div>
+      <div class="card"><b>Bottom 3: 2 balls</b><p>"Draft relegation": the three worst records lose a ball (5.4% for No. 1) but can't fall below No. 12.</p></div>
+      <div class="card"><b>Next 7: 3 balls</b><p>The rest of the non-play-in teams get the best odds: 8.1% for No. 1.</p></div>
+      <div class="card"><b>Play-in: 2 or 1</b><p>No. 9 and 10 seeds get 2 balls; the losers of the 7-vs-8 games get 1 (2.7%).</p></div>
+      <div class="card"><b>No repeats</b><p>No team can pick No. 1 two years running, or top 5 three years running.${NO_REPEAT_NUMBER_ONE.length ? ` This year: ${NO_REPEAT_NUMBER_ONE.map(nick).join(", ")} can't win No. 1; ${NO_TOP5.map(nick).join(", ")} can't land top 5.` : ""}</p></div>
+    </div>
+    <h2>2027 lottery odds ${VIEW === "proj" ? "(Pulse projection)" : "(if the season ended today)"}</h2>
+    <div class="card tw lot"><table><thead><tr><th class="l">Team</th><th>W-L</th><th>Balls</th><th>No. 1</th><th>Top 4</th><th title="Average pick">Avg</th>${cols.map(k => `<th>${k + 1}</th>`).join("")}<th class="l">Who owns the pick</th></tr></thead><tbody>${body}</tbody></table></div>
+    <p class="note">Odds come from ${SIMS.toLocaleString()} simulated lotteries with the rules above. Ties are broken by record and then alphabetically (the league uses coin flips). "If the season ended today," the higher seed is assumed to win each play-in game, so the 8 seeds stand in for the 7-vs-8 losers. Pick ownership and protections come from RealGM and can be complex; check a team's Draft picks section for the full text.</p>
+    <h2>Picks 17-30</h2>
+    <div class="card tw"><table><thead><tr><th class="l">Pick</th><th class="l">Team</th><th>W-L</th><th class="l">Who owns the pick</th></tr></thead><tbody>${
+      rest.map((r, i) => `<tr><td class="l sd">${17 + i}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td><td class="l" style="white-space:normal">${(() => { const o = ownership(r.t), ow = o.ownerAt(17 + i); return ow === r.t ? `<b>${esc(r.t)}</b>` : `<b>${esc(ow)}</b> <span class="note">(${o.text()})</span>`; })()}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+function draw(){
+  const R = records(), S = seeds(VIEW === "proj" ? projected(R) : R);
+  const gp = Object.values(R).reduce((a, r) => a + r.w + r.l, 0) / 2;
+  $("meta").textContent = `${LEAGUE.season || ""} · ${gp} games played · ${VIEW === "proj" ? "Pulse plays out every remaining game with its win chances" : "standings as of today"}`;
+  document.querySelectorAll("#views button").forEach(b => b.classList.toggle("on", b.dataset.v === VIEW));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB));
+  $("po").hidden = TAB !== "po"; $("lot").hidden = TAB !== "lot";
+  if(TAB === "po") drawPlayoffs(S); else drawLottery(S);
+  $("foot").innerHTML = `Seeds 1-6 make the playoffs; 7-10 go to the play-in tournament; 11-15 are in the lottery. Ties are broken by record, then alphabetically. Early in the season the standings move a lot every night; the Pulse projection is steadier. Lottery rules: the "3-2-1" lottery approved by the NBA's Board of Governors on May 28, 2026, in effect for the 2027-2029 drafts.`;
+}
+async function init(){
+  [LEAGUE, SCHED, PRED, PICKS] = await Promise.all([getJSON("data/teams/league.json"), getJSON("data/schedule.json"), getJSON("data/predictions.json"), getJSON("picks.json")]);
+  LEAGUE = LEAGUE || {games: []};
+  document.querySelectorAll("#views button").forEach(b => b.onclick = () => { VIEW = b.dataset.v; store.set("po.view", VIEW); draw(); });
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { TAB = b.dataset.t; store.set("po.tab", TAB); draw(); });
+  if(location.hash === "#lottery") TAB = "lot";
+  draw();
+}
+init();
+})();
+</script>
+</body>
+</html>
