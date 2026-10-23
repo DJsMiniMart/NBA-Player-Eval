@@ -1,0 +1,55 @@
+name: Update clock
+
+# GitHub's own schedule ("cron") often fires hours late or not at all, so this keeps its own time:
+# it waits until the next update time, starts "Update NBA stats" directly (that always works), then
+# starts a fresh copy of itself for the next one. A job can only wait about 6 hours, so long gaps are
+# covered by a chain of waits. The schedule below only restarts the clock if the chain ever breaks.
+#
+# Update times (UTC): 05:15 (~12:15 AM Central, early games final), 08:15 (~3:15 AM, West Coast games
+# final), 11:15 (~6:15 AM, backup). Subtract 5 hours for Central (6 in winter).
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "37 */4 * * *"   # restart the clock if it has stopped (harmless if it's running)
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: update-clock
+  cancel-in-progress: true   # only one clock at a time; the newest one takes over
+
+jobs:
+  wait:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Wait for the next update time, then start it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref_name }}
+        run: |
+          set -u
+          now=$(date -u +%s)
+          today=$(date -u +%F)
+          next=""
+          for d in "$today" "$(date -u -d tomorrow +%F)"; do
+            for t in 05:15 08:15 11:15; do
+              s=$(date -u -d "$d $t" +%s)
+              if [ "$s" -gt $((now + 60)) ]; then next=$s; break 2; fi
+            done
+          done
+          wait=$((next - now))
+          echo "Next update: $(date -u -d @$next) (in $((wait / 60)) minutes)"
+          dispatch() { curl -sf -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/workflows/$1/dispatches" -d "{\"ref\":\"$REF\"}" && echo "Started $1"; }
+          if [ "$wait" -gt 19800 ]; then
+            sleep 19800                       # 5.5 hours, then hand over to a fresh clock
+          else
+            sleep "$wait"
+            dispatch update-stats.yml || dispatch update-stats.yml
+          fi
+          dispatch wake.yml || dispatch wake.yml
