@@ -672,7 +672,7 @@ function drawValue(){
   card.hidden = false;
   $('vSub').textContent = `Who's playing above his contract · league average ${rate.toFixed(1)} Pulse points per $1M of salary · ${q.length} qualified players with a listed salary`;
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
-  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
+  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `${teamBadge(T[c].id)}` : ""; };
   // best outperformer in each pay tier
   $('vTiles').innerHTML = TIERS.map(t => { const r = q.filter(x => x.tier[0] === t[0] && x.over > 0).sort((a, b) => b.over - a.over)[0];
     return r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">Best value · ${t[1]}</div><div class="n">${esc(r.name)}</div><div class="v">${money(r.sal)}<small>plays like ${money(r.like)}</small></div></button>` : ""; }).join("");
@@ -727,7 +727,7 @@ function drawRookies(){
   if(!rows.length){ card.hidden = true; return; }
   card.hidden = false;
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
-  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
+  const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `${teamBadge(T[c].id)}` : ""; };
   const q = rows.filter(r => r.q);
   $('rkSub').textContent = `${rows.length} rookies have played this season · ${q.length} qualify (${minG}+ game${minG === 1 ? "" : "s"}, ${minM}+ minutes a game)`;
   const best = (k, f) => q.slice().sort((a, b) => (b[k] ?? -1e9) - (a[k] ?? -1e9))[0];
@@ -795,7 +795,7 @@ const NBA_TO_BBR = {BKN:"BRK", CHA:"CHO", PHX:"PHO"};
 function buildLogoStrip(){
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
   const codes = Object.keys(T).sort((a,b)=>T[a].n.localeCompare(T[b].n));
-  $('logoStrip').innerHTML = codes.map(c => `<button data-team="${c}" title="${esc(T[c].n)}"><img src="https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg" alt="${esc(T[c].n)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'lbl',textContent:'${c}'}))"></button>`).join("");
+  $('logoStrip').innerHTML = codes.map(c => `<button data-team="${c}" title="${esc(T[c].n)}"><img src="${teamBadge(T[c].id)}" alt="${esc(T[c].n)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'lbl',textContent:'${c}'}))"></button>`).join("");
   $('logoStrip').querySelectorAll('button').forEach(b => b.onclick = () => {
     const code = NBA_TO_BBR[b.dataset.team] || b.dataset.team;
     const opts = [...$('team').options].map(o=>o.value);

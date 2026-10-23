@@ -27,7 +27,7 @@ const f3n = n => n == null || !isFinite(n) ? "—" : n.toFixed(3);
 const f1 = n => n == null || !isFinite(n) ? "—" : n.toFixed(1);
 const pct = n => n == null || !isFinite(n) ? "—" : (n*100).toFixed(1) + "%";
 const sgn = n => n == null || !isFinite(n) ? "—" : (n > 0 ? "+" : "") + n.toFixed(1);
-const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const ord = n => n + (["th","st","nd","rd"][(n % 100 - 20) % 10] || ["th","st","nd","rd"][n % 100] || "th");
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 

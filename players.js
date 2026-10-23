@@ -68,7 +68,7 @@ function render(el){
   el.querySelector("#plBody").innerHTML = (groups.length ? groups.map(g => {
     const pay = g.list.reduce((t,r)=>t+(r.salary||0),0);
     return `<section class="pl-team" style="--c1:${g.t.c1};--c2:${g.t.c2}">
-      <header><img src="https://cdn.nba.com/logos/nba/${g.t.id}/primary/L/logo.svg" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <header><img src="${teamBadge(g.t.id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
         <div><h3>${esc(g.t.n)}</h3><small>${g.list.length} player${g.list.length===1?"":"s"}${pay ? " · " + money(pay) + " this season" : ""}</small></div>
         <a class="pl-trade" href="team.html#${esc(g.c)}">Team page →</a><a class="pl-trade" style="margin-left:12px" href="trade.html#${esc(g.c)}">Trade machine →</a></header>
       <div class="pl-rows">${g.list.map(row).join("")}</div></section>`;

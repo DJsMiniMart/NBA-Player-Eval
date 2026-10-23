@@ -7,7 +7,7 @@ const COLS = ["pts","fgm","fga","fg3m","fg3a","ftm","fta","oreb","dreb","ast","s
 const I = Object.fromEntries(COLS.map((c,i) => [c, i]));
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
-const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const $ = id => document.getElementById(id);
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 

@@ -39,7 +39,7 @@ const TEAMS = {
 const DEFAULT_TEAM = {id:null, n:"", c1:"#1D428A", c2:"#C8102E"};
 /* Retired players get the league's own colors */
 const NBA_SCHEME = {id:null, n:"NBA", c1:"#1D428A", c2:"#C8102E", league:true};
-const NBA_LOGO = "https://cdn.nba.com/logos/leagues/logo-nba.svg";
+const NBA_LOGO = "img/icon-64.png";   // retired players: the site emblem
 /* Basketball-Reference team codes. f = today's franchise (for colors); same = still the same team
    name, so today's logo is right for it. Older names get a colored badge instead of a logo. */
 const BBR_TEAMS = {
@@ -56,7 +56,7 @@ function teamInfo(code){
   const f = b ? b.f : code, t = TEAMS[f];
   if(!t) return {code, n:code, c1:"#1D428A", c2:"#C8102E", logo:null};
   const same = !b || b.same;
-  return {code, n: same ? t.n : b.n, c1:t.c1, c2:t.c2, logo: same ? `https://cdn.nba.com/logos/nba/${t.id}/primary/L/logo.svg` : null, franchise:t.n};
+  return {code, n: same ? t.n : b.n, c1:t.c1, c2:t.c2, logo: same ? `${teamBadge(t.id)}` : null, franchise:t.n};
 }
 /* Every team in the player's career, in order, with the seasons they were there */
 function careerTeams(){
@@ -177,7 +177,7 @@ function heroHtml(team){
     <button class="pp-back" id="ppBack">← ${window.PE_BACK === "#/players" ? "Back to players" : "Back to leaderboard"}</button>
     <div class="pp-top">
       <div class="pp-logo">${team.league ? `<img src="${NBA_LOGO}" alt="NBA logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'NBA',style:'color:#1D428A;font-size:26px'}))">`
-        : team.id ? `<img src="https://cdn.nba.com/logos/nba/${team.id}/primary/L/logo.svg" alt="${esc(team.n)} logo" onerror="this.style.display='none'">` : ""}</div>
+        : team.id ? `<img src="${teamBadge(team.id)}" alt="${esc(team.n)} logo" onerror="this.style.display='none'">` : ""}</div>
       <div>
         <div id="ppAwards">${awardsHtml(REC.id)}</div>
         <h1 class="pp-name">${esc(REC.name)}</h1>
@@ -856,7 +856,7 @@ function cmpRows(A, B){
 function cmpHead(S){
   if(!S) return `<div class="cmp-p" style="background:var(--row);color:var(--dim)">Pick a player above</div>`;
   const t = S.team;
-  const logo = t.league ? NBA_LOGO : (t.id ? `https://cdn.nba.com/logos/nba/${t.id}/primary/L/logo.svg` : null);
+  const logo = t.league ? NBA_LOGO : (t.id ? `${teamBadge(t.id)}` : null);
   return `<a class="cmp-p" href="#/player/${encodeURIComponent(S.rec.id)}" style="background:${t.c1};text-decoration:none">
     <div class="lg">${logo ? `<img src="${logo}" alt="" onerror="this.style.display='none'">` : ""}</div>
     <div style="min-width:0"><div class="nm">${esc(S.rec.name)}</div><div class="tm">${S.retired ? "Retired" : esc(t.n)} · ${esc(S.span)}</div></div></a>`;

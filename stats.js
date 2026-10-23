@@ -10,7 +10,7 @@ const I = Object.fromEntries(COLS.map((c,i) => [c, i]));
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
-const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const n0 = v => v == null || !isFinite(v) ? "—" : Math.round(v).toLocaleString();
 const n1 = v => v == null || !isFinite(v) ? "—" : v.toFixed(1);
 const n3 = v => v == null || !isFinite(v) ? "—" : v.toFixed(3);

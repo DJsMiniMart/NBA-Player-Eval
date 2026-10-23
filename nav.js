@@ -2,6 +2,20 @@
    To add a page, add a line to PAGES. "match" decides which item is highlighted. */
 (function(){
 "use strict";
+
+/* Team badges: an original round badge in each team's colors (no NBA logos). window.teamBadge(code or NBA team id)
+   returns an image address, so it drops in anywhere an <img src> is used. */
+const BADGE_COLORS = {ATL:["#C8102E","#FDB927",1610612737], BOS:["#007A33","#BA9653",1610612738], BKN:["#000000","#A1A1A4",1610612751], CHA:["#1D1160","#00788C",1610612766], CHI:["#CE1141","#000000",1610612741], CLE:["#860038","#FDBB30",1610612739], DAL:["#00538C","#B8C4CA",1610612742], DEN:["#0E2240","#FEC524",1610612743], DET:["#C8102E","#1D42BA",1610612765], GSW:["#1D428A","#FFC72C",1610612744], HOU:["#CE1141","#C4CED4",1610612745], IND:["#002D62","#FDBB30",1610612754], LAC:["#C8102E","#1D428A",1610612746], LAL:["#552583","#FDB927",1610612747], MEM:["#12173F","#5D76A9",1610612763], MIA:["#98002E","#F9A01B",1610612748], MIL:["#00471B","#EEE1C6",1610612749], MIN:["#0C2340","#78BE20",1610612750], NOP:["#0C2340","#C8102E",1610612740], NYK:["#006BB6","#F58426",1610612752], OKC:["#007AC1","#EF3B24",1610612760], ORL:["#0077C0","#C4CED4",1610612753], PHI:["#006BB6","#ED174C",1610612755], PHX:["#1D1160","#E56020",1610612756], POR:["#E03A3E","#000000",1610612757], SAC:["#5A2D81","#63727A",1610612758], SAS:["#000000","#C4CED4",1610612759], TOR:["#CE1141","#000000",1610612761], UTA:["#3E2680","#000000",1610612762], WAS:["#002B5C","#E31837",1610612764]};
+const BADGE_BY_ID = {}; Object.entries(BADGE_COLORS).forEach(([c, v]) => BADGE_BY_ID[v[2]] = c);
+const badgeCache = {};
+window.teamBadge = function(key){
+  const code = BADGE_COLORS[key] ? key : BADGE_BY_ID[key] || ({BRK:"BKN", CHO:"CHA", PHO:"PHX"})[key] || String(key || "");
+  if(badgeCache[code]) return badgeCache[code];
+  const [c1, c2] = BADGE_COLORS[code] || ["#1D428A", "#C8102E"];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18.2" fill="${c1}" stroke="${c2}" stroke-width="3.2"/>` +
+    `<text x="20" y="24.3" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="11.6" letter-spacing=".2" fill="#fff">${code.slice(0, 3)}</text></svg>`;
+  return badgeCache[code] = "data:image/svg+xml," + encodeURIComponent(svg);
+};
 const PAGES = [
   {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$/.test(p.path)},
   {label:"The Pulse Board", sub:"Leaderboard, Pulse$, rookie report",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
@@ -89,7 +103,7 @@ function build(){
         ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
         <a role="menuitem" href="#" id="sitenavApp" hidden><b>📲 Get the app</b><small>Add Full Court Geek Press to your home screen</small></a>
         <div class="sitenav-teams"><small>Franchise Files</small><div class="sitenav-grid">
-          ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="https://cdn.nba.com/logos/nba/${id}/primary/L/logo.svg" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
+          ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="${teamBadge(c)}" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
         </div></div>
       </div>
     </div></div>`;

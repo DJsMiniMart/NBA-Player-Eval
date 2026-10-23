@@ -303,7 +303,7 @@ Object.entries(DIV).forEach(([d, l]) => l.forEach(t => { DIV_OF[t] = d; CONF_OF[
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
-const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const img = (c, cls = "") => logo(c) ? `<img class="${cls}" src="${logo(c)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
 const short = c => (TEAMS[c] && TEAMS[c].n.split(" ").slice(-1)[0]) || c;
 const nick = c => { const n = (TEAMS[c] && TEAMS[c].n) || c; return /Trail Blazers$/.test(n) ? "Trail Blazers" : n.split(" ").slice(-1)[0]; };

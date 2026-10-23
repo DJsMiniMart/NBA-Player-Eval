@@ -16,7 +16,7 @@ const M = n => (n < 0 ? "−" : "") + "$" + (Math.abs(n)/1e6).toFixed(Math.abs(n
 const Mfull = n => (n < 0 ? "−$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
 const TEAMS = (window.PlayerPage && PlayerPage.TEAMS) || {};
 const CODES = Object.keys(TEAMS).sort((a,b) => TEAMS[a].n.localeCompare(TEAMS[b].n));
-const logo = c => TEAMS[c] ? `https://cdn.nba.com/logos/nba/${TEAMS[c].id}/primary/L/logo.svg` : "";
+const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const short = c => TEAMS[c] ? TEAMS[c].n.split(" ").slice(-1)[0] : c;
 const ZONES = [
   {k:"under", label:"Under the cap", c:"var(--z-cap)"},
