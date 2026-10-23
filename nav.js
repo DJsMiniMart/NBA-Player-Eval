@@ -3,11 +3,11 @@
 (function(){
 "use strict";
 const PAGES = [
-  {label:"Home",          sub:"Last night in the NBA",          href:"index.html",          match:p => /index\.html$|\/$/.test(p.path)},
-  {label:"MVR",            sub:"MVR leaderboard",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
-  {label:"Players",       sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
-  {label:"Stats",         sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
-  {label:"Teams",         sub:"Stats, lineups, cap, picks",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
+  {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$/.test(p.path)},
+  {label:"The MVR Board", sub:"Leaderboard, MVR$, rookie report",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
+  {label:"The Locker Room", sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
+  {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
+  {label:"Franchise Files", sub:"Every team: stats, lineups, cap, picks, history",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
 ];
 /* [code, NBA logo id, name] for the team grid in the menu */
@@ -81,12 +81,12 @@ function build(){
     <a class="sitenav-brand" href="index.html" aria-label="Full Court Geek Press home"><img src="img/emblem-sm.png" alt=""><span class="sitenav-word"><b>Full Court</b><i>Geek Press</i></span><span class="sitenav-cur" id="sitenavCur"></span></a>
     <div class="sitenav-menu">
       <button class="sitenav-btn" id="sitenavBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitenavList">
-        Team Pages <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+        Menu <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
       </button>
       <div class="sitenav-list" id="sitenavList" role="menu">
         ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
         <a role="menuitem" href="#" id="sitenavApp" hidden><b>📲 Get the app</b><small>Add Full Court Geek Press to your home screen</small></a>
-        <div class="sitenav-teams"><small>Team pages</small><div class="sitenav-grid">
+        <div class="sitenav-teams"><small>Franchise Files</small><div class="sitenav-grid">
           ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="https://cdn.nba.com/logos/nba/${id}/primary/L/logo.svg" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
         </div></div>
       </div>
@@ -150,7 +150,7 @@ function mark(){
     a.classList.toggle("on", on);
     if(on && !cur) cur = PAGES[+a.dataset.i].label;
   });
-  const c = document.getElementById("sitenavCur"); if(c) c.textContent = cur && cur !== "Home" ? "· " + cur : "";
+  const c = document.getElementById("sitenavCur"); if(c) c.textContent = cur && cur !== "The Morning Press" ? "· " + cur : "";
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
 })();

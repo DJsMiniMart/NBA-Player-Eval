@@ -88,9 +88,9 @@ function row(r){
 }
 
 async function show(el){
-  document.title = "Players · Full Court Geek Press";
+  document.title = "The Locker Room · Full Court Geek Press";
   el.innerHTML = `<div class="nba-band"><div class="wrap band-in"><header>
-      <div><h1>All <span>Players</span></h1><div class="meta" id="plCount">Loading…</div></div>
+      <div><h1>The Locker <span>Room</span></h1><div class="meta" id="plCount">Loading…</div></div>
       <div class="formula"><b>Every player under contract</b>, grouped by team. Salary is this season's; the number on the right is their latest MVR. Search also finds past players.</div>
     </header></div></div>
     <div class="wrap" style="padding-top:16px">

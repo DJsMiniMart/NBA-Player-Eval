@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MVR Leaderboard · Full Court Geek Press</title>
+<title>The MVR Board · Full Court Geek Press</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -135,7 +135,7 @@
   <div class="wrap band-in">
   <header>
     <div>
-      <h1 id="title">MVR <span>Leaderboard</span></h1>
+      <h1 id="title">The MVR <span>Board</span></h1>
       <div class="meta" id="meta">Loading…</div>
     </div>
   </header>
@@ -758,7 +758,7 @@ function drawRookies(){
 }
 
 async function load(){
-  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = `${esc(STAT_NAME)} <span>Leaderboard</span>`; document.title = STAT_NAME + " Leaderboard · Full Court Geek Press"; }
+  if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = `The ${esc(STAT_NAME)} <span>Board</span>`; document.title = "The " + STAT_NAME + " Board · Full Court Geek Press"; }
   CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
   CUR.players = CUR.players || [];
   await loadClutch();
@@ -835,7 +835,7 @@ function route(){
     PlayerPage.show(decodeURIComponent(m[1]), $('playerView'));
   } else {
     $('playerView').hidden = true; $('boardView').hidden = false;
-    document.title = STAT_NAME + " Leaderboard · Full Court Geek Press";
+    document.title = "The " + STAT_NAME + " Board · Full Court Geek Press";
     requestAnimationFrame(() => window.scrollTo(0, boardScroll));
   }
 }
