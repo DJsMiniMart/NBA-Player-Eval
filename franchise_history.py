@@ -173,6 +173,18 @@ def finals(html):
     return out
 
 
+def finals_series(html):
+    """Finals series scores from /playoffs/series.html (table playoffs_series): [[end year, winner wins, loser wins, dates], ...]"""
+    out = []
+    for tr in body_rows(soup_all(html), "playoffs_series"):
+        if not re.match(r"^(BAA )?Finals$", cell(tr, "series")) or cell(tr, "lg") not in ("NBA", "BAA"):
+            continue
+        year = to_int(cell(tr, "season"))
+        if year:
+            out.append([year, to_int(cell(tr, "wins_winner")), to_int(cell(tr, "wins_loser")), cell(tr, "date_range")])
+    return out
+
+
 def finals_mvps(html):
     out = []
     for tr in body_rows(soup_all(html), "finals_mvp_NBA"):
@@ -374,6 +386,11 @@ def update(now, current_year):
             if got:
                 cache["finals"] = got
                 stamp("finals")
+        if not fresh("finals_series", 7):
+            got = finals_series(get(f"{BBR}/playoffs/series.html"))
+            if got:
+                cache["finals_series"] = got
+                stamp("finals_series")
         if not fresh("roy_list", 7):
             got = roy_list(get(f"{BBR}/awards/roy.html"))
             if got:
@@ -470,16 +487,19 @@ def write_league_history(now, cache, awards):
         rows.append([year, key, tier or "", pid or "", name, team or "", HIST.get(team or "", "")])
     rows.sort(key=lambda r: (-r[0], ORDER.index(r[1]) if r[1] in ORDER else 99, r[2], r[4]))
     lost = {r[0]: r for r in cache.get("finals", [])}       # the team each champion beat in the Finals
+    score = {r[0]: r for r in cache.get("finals_series", [])}   # and how many games it took
     champs = []
     for year, lg, code, name in cache.get("champions", []):
-        f = lost.get(year)
+        f, sc = lost.get(year), score.get(year)
         champs.append([year, lg, code, name, HIST.get(code, ""),
-                       f[4] if f else "", f[5] if f else "", HIST.get(f[4], "") if f else ""])
+                       f[4] if f else "", f[5] if f else "", HIST.get(f[4], "") if f else "",
+                       sc[1] if sc else None, sc[2] if sc else None, sc[3] if sc else ""])
     champs.sort(key=lambda r: -r[0])
     save(os.path.join(DATA_DIR, "league_history.json"), {
         "at": now.isoformat(timespec="seconds"), "source": "basketball-reference.com",
         "cols": ["year", "key", "tier", "id", "name", "team", "franchise"], "order": ORDER, "labels": labels,
-        "champCols": ["year", "league", "code", "name", "franchise", "runner-up code", "runner-up", "runner-up franchise"],
+        "champCols": ["year", "league", "code", "name", "franchise", "runner-up code", "runner-up", "runner-up franchise",
+                      "series wins", "series losses", "dates"],
         "champions": champs, "rows": rows})
 
 
