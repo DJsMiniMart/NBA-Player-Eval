@@ -104,15 +104,18 @@ function wireMore(){ const m = $("more"); if(m) m.onclick = () => { SHOWN += 60;
 
 function drawChamps(){
   const fm = new Map(ROWS.filter(r => r.key === "fmvp").map(r => [r.year, r]));
-  let list = H.champions.map(c => ({year:c[0], lg:c[1], code:c[2], name:c[3], fr:c[4], fmvp: fm.get(c[0])}));
-  if(Q) list = list.filter(c => hit(c.name) || hit(c.code) || (c.fmvp && hit(c.fmvp.name)));
+  let list = H.champions.map(c => ({year:c[0], lg:c[1], code:c[2], name:c[3], fr:c[4], rcode:c[5] || "", rname:c[6] || "", rfr:c[7] || "", fmvp: fm.get(c[0])}));
+  if(Q) list = list.filter(c => hit(c.name) || hit(c.code) || hit(c.rname) || (c.fmvp && hit(c.fmvp.name)));
+  const fin = new Map();   // Finals record by franchise
+  H.champions.forEach(c => { [[c[4] || c[2], 1], [c[7] || c[5], 0]].forEach(([k, w]) => { if(!k) return; const x = fin.get(k) || [0, 0]; x[w ? 0 : 1]++; fin.set(k, x); }); });
   const counts = new Map(); H.champions.forEach(c => { const k = c[4] || c[2]; const x = counts.get(k) || {code:k, n:0, names:new Set(), years:[]}; x.n++; x.names.add(c[3]); x.years.push(c[0]); counts.set(k, x); });
   const top = [...counts.values()].sort((a, b) => b.n - a.n || a.code.localeCompare(b.code));
-  $("body").innerHTML = `<div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>Champion</th><th>Finals MVP</th></tr></thead><tbody>${
+  $("body").innerHTML = `<div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>Champion</th><th>Beat</th><th>Finals MVP</th></tr></thead><tbody>${
     list.slice(0, SHOWN).map(c => `<tr><td class="yr">${season(c.year)}</td><td><span class="trophy">🏆</span><span class="tm">${c.fr ? `<img src="${teamBadge(c.fr)}" alt="">` : ""}<b>${mark(c.name)}</b></span>${c.lg === "BAA" ? ` <span class="tier">BAA</span>` : ""}</td>
+      <td>${c.rname ? `<span class="tm" style="opacity:.85">${c.rfr ? `<img src="${teamBadge(c.rfr)}" alt="">` : ""}${mark(c.rname)}</span>` : "—"}</td>
       <td>${c.fmvp ? `${person(c.fmvp)} <span class="note">${esc(c.fmvp.team)}</span>` : `<span class="note">${c.year < 1969 ? "Award began in 1969" : "—"}</span>`}</td></tr>`).join("")
   }</tbody></table>${moreBtn(list.length)}</div>
-  <div><div class="card lead"><h3>Titles by franchise</h3><ol>${top.map(x => `<li><span class="tm">${window.teamBadge && x.code.length === 3 ? `<img src="${teamBadge(x.code)}" alt="">` : ""}<span title="${esc([...x.names].join(" / "))}">${esc([...x.names][0])}</span></span><b title="${esc(x.years.sort().map(season).join(", "))}">${x.n}</b></li>`).join("")}</ol></div>
+  <div><div class="card lead"><h3>Titles by franchise</h3><ol>${top.map(x => `<li><span class="tm">${window.teamBadge && x.code.length === 3 ? `<img src="${teamBadge(x.code)}" alt="">` : ""}<span title="${esc([...x.names].join(" / "))}">${esc([...x.names][0])}</span></span><span><b title="Titles: ${esc(x.years.sort().map(season).join(", "))}">${x.n}</b>${fin.get(x.code) ? ` <small class="note" title="Finals record">${fin.get(x.code)[0]}-${fin.get(x.code)[1]}</small>` : ""}</span></li>`).join("")}</ol><p class="note" style="margin:0;padding:8px 12px">Titles, then Finals record (wins-losses).</p></div>
   ${leaders(ROWS.filter(r => r.key === "fmvp"), "Most Finals MVPs")}</div></div>`;
   wireMore();
 }
