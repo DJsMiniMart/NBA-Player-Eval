@@ -163,6 +163,12 @@
   .up .odds{display:flex;height:6px;margin:4px 14px 8px;border-radius:3px;overflow:hidden;background:var(--row);}
   .up .odds i{display:block;height:100%;}
   .up .oddsl{display:flex;justify-content:space-between;padding:0 14px 8px;font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums;}
+  .up .lines{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 14px 8px;}
+  .up .lines div{border:1px solid var(--line);border-radius:8px;padding:5px 8px;text-align:center;font-variant-numeric:tabular-nums;}
+  .up .lines span{display:block;font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
+  .up .lines b{font-size:13px;} .up .lines small{display:block;font-size:10.5px;color:var(--dim);}
+  .up .vegas{margin:0 14px 8px;font-size:12px;padding:5px 9px;border-radius:8px;background:var(--row);color:var(--dim);}
+  .up .vegas.upset{background:var(--warn-soft);color:var(--warn);font-weight:600;}
   .up ul{list-style:none;margin:0;padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--row);display:grid;gap:5px;flex:1;}
   .up li{display:flex;gap:8px;font-size:12.5px;line-height:1.35;}
   .up li span{flex:none;width:18px;text-align:center;}
@@ -214,6 +220,7 @@
     <div class="sec-h"><h2>Coming up</h2><small id="upNote">The next 7 days · Pulse picks the winner · storylines for every game</small></div>
     <div class="daytabs" id="upDays"></div>
     <div class="upgrid" id="upcoming"><div class="card empty">Loading the schedule…</div></div>
+    <p class="note" id="upLines" style="margin:8px 2px 0"></p>
   </section>
 
   <div class="cols">
@@ -489,6 +496,30 @@ function renderNews(){
     : `<div class="empty">Headlines are collected during the morning update. They'll show up after the next one.</div>`;
 }
 
+/* ---------- betting lines (data/morning.json "odds", from ESPN's sportsbook feed) ---------- */
+const sgnNum = n => n == null ? "—" : (n > 0 ? "+" : "") + (Number.isInteger(n) ? n : n.toFixed(1));
+const implied = ml => ml == null ? null : ml < 0 ? -ml / (-ml + 100) : 100 / (ml + 100);
+function linesHtml(u){
+  const o = MORNING && MORNING.odds && MORNING.odds[u.id];
+  if(!o) return "";
+  const fav = o.spread == null ? null : o.spread <= 0 ? u.home : u.away;
+  const sp = o.spread == null ? "—" : o.spread === 0 ? "PK" : `${esc(fav)} ${sgnNum(-Math.abs(o.spread))}`;
+  const moved = (now, open) => now != null && open != null && now !== open ? `<small>opened ${open === 0 ? "PK" : sgnNum(open)}</small>` : `<small>&nbsp;</small>`;
+  const ih = implied(o.mlHome), ia = implied(o.mlAway);
+  let vegas = "";
+  if(ih != null && ia != null){
+    const pH = ih / (ih + ia), vFav = pH >= .5 ? u.home : u.away, vP = Math.max(pH, 1 - pH);
+    const pulseP = u.p;
+    vegas = vFav === u.pick
+      ? `<div class="vegas">Pulse and Vegas agree: ${esc(nick(u.pick))} (Pulse ${Math.round(pulseP * 100)}%, Vegas ${Math.round(vP * 100)}%)</div>`
+      : `<div class="vegas upset">🚨 Upset pick: Pulse likes the ${esc(nick(u.pick))} (${Math.round(pulseP * 100)}%); Vegas favors the ${esc(nick(vFav))} (${Math.round(vP * 100)}%)</div>`;
+  }
+  return `<div class="lines" title="${esc(o.book || "Sportsbook")} lines">
+      <div><span>Spread</span><b>${sp}</b>${moved(o.spread, o.open && o.open.spread)}</div>
+      <div><span>Total</span><b>${o.total != null ? "O/U " + o.total : "—"}</b>${moved(o.total, o.open && o.open.total)}</div>
+      <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}`;
+}
+
 /* ---------- coming up: next 7 days with Pulse picks and storylines (data/predictions.json, built by predict.py) ---------- */
 const STORY_ICON = {rivalry:"⚔️", division:"🏟️", rematch:"🔁", streak:"📈", race:"🏁", revenge:"🔄", stars:"⭐", rookies:"🆕", rest:"😴", preview:"📰", note:"💬"};
 let upDay = null;
@@ -513,10 +544,13 @@ function renderUpcoming(){
     const stories = (u.stories || []).map(([k, txt, link]) => `<li><span>${STORY_ICON[k] || "•"}</span><div>${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(txt)}</a>` : esc(txt)}</div></li>`).join("");
     return `<div class="card up"><div class="when"><span>${time}${u.arena ? " · " + esc(u.arena) : ""}</span><span>${esc((u.tv || "").split(",").slice(0, 2).join(", "))}</span></div>
       ${row(u.away, pa)}${row(u.home, ph)}
+      ${linesHtml(u)}
       <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
       <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul></div>`;
   }).join("");
   const rec = PRED.record || [0, 0];
+  const book = Object.values((MORNING && MORNING.odds) || {})[0];
+  $("upLines").innerHTML = book ? `Lines from ${esc(book.book || "the sportsbook")} via ESPN${MORNING.oddsAt ? `, as of ${new Date(MORNING.oddsAt).toLocaleString("en-US", {weekday:"short", hour:"numeric", minute:"2-digit"})}` : ""}; they move, so check your book before betting. For information only, 21+. Gambling problem? Call 1-800-GAMBLER.` : "";
   $("upNote").textContent = `Pulse picks the winner from each team's Pulse margin plus home court · ${rec[0]}-${rec[1]} this season · tested at 68% on last season's games`;
 }
 

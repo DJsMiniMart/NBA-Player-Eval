@@ -63,7 +63,30 @@ def recaps(old, now):
     return {k: out[k] for k in keep}
 
 
-def previews(old, now):
+def num(v):
+    try:
+        return float(str(v).replace("+", "").replace("o", "").replace("u", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def odds_of(summary):
+    """Sportsbook lines ESPN shows for a game: {book, spread (home), total, mlHome, mlAway, open: {...}}."""
+    for pc in (summary or {}).get("pickcenter") or []:
+        h, a = pc.get("homeTeamOdds") or {}, pc.get("awayTeamOdds") or {}
+        ps, ml, tot = pc.get("pointSpread") or {}, pc.get("moneyline") or {}, pc.get("total") or {}
+        g = lambda d, side, when, k: ((d.get(side) or {}).get(when) or {}).get(k)  # noqa: E731
+        out = {"book": (pc.get("provider") or {}).get("name") or "", "spread": num(pc.get("spread")),
+               "total": num(pc.get("overUnder")), "mlHome": num(h.get("moneyLine")), "mlAway": num(a.get("moneyLine")),
+               "open": {"spread": num(g(ps, "home", "open", "line")), "total": num(g(tot, "over", "open", "line")),
+                        "mlHome": num(g(ml, "home", "open", "odds")), "mlAway": num(g(ml, "away", "open", "odds"))}}
+        if out["spread"] is None and out["mlHome"] is None:
+            continue
+        return out
+    return None
+
+
+def previews(old, now, odds):
     """ESPN's preview story for games in the next week, when it has one (usually posted the day of the game)."""
     sched = (load(SCHEDULE_PATH, {}) or {}).get("games") or []
     soon = (now + dt.timedelta(days=7)).isoformat()[:16]
@@ -74,11 +97,14 @@ def previews(old, now):
         if g[4] == 3 or not (start <= g[1] <= soon):
             continue
         s = get_json(f"{SITE}/summary?event={g[0]}")
+        line = odds_of(s) if s else None
+        if line:
+            odds[g[0]] = line
         a = article_of(s, None) if s else None
         if a and a.get("h"):
             out[g[0]] = a
             n += 1
-    print(f"Morning: previews for {n} upcoming games")
+    print(f"Morning: previews for {n} upcoming games, lines for {len(odds)}")
     return out
 
 
@@ -141,10 +167,14 @@ def update(now, current_year):
         print(f"Morning: recaps failed ({e})")
         out["recaps"] = old.get("recaps") or {}
     try:
-        out["previews"] = previews(old.get("previews") or {}, now)
+        odds = {}
+        out["previews"] = previews(old.get("previews") or {}, now, odds)
+        out["odds"] = odds or old.get("odds") or {}
+        out["oddsAt"] = out["at"] if odds else old.get("oddsAt")
     except Exception as e:  # noqa: BLE001
         print(f"Morning: previews failed ({e})")
         out["previews"] = old.get("previews") or {}
+        out["odds"], out["oddsAt"] = old.get("odds") or {}, old.get("oddsAt")
     out["news"] = news() or old.get("news") or []
     out["newsAt"] = out["at"] if out["news"] is not old.get("news") else old.get("newsAt")
     tx = transactions()
