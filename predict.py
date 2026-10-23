@@ -1,6 +1,6 @@
-"""MVR game picks and storylines for the home page (data/predictions.json).
+"""Pulse game picks and storylines for the home page (data/predictions.json).
 
-Team rating = average MVR production margin per game: (PTS + AST*2 + REB*2 + STL*4 + BLK - TOV*4) for the team
+Team rating = average Pulse production margin per game: (PTS + AST*2 + REB*2 + STL*4 + BLK - TOV*4) for the team
 minus the same for its opponents. Early in the season each team's rating leans on half of last season's
 (PRIOR_GAMES games' worth). Win chance for the home team = 1 / (1 + e^(-SCALE * (home - away + HOME_EDGE))).
 Fit on every 2025-26 game, using only what was known before each game: it picked 68.0% of winners.
@@ -139,7 +139,7 @@ def update(now, year):
            "record": [w, l], "picks": picks, "ratings": ratings, "upcoming": upcoming}
     with open(os.path.join(DATA, "predictions.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"))
-    print(f"Predictions: MVR picks {w}-{l} this season, {len(upcoming)} games in the next {DAYS_AHEAD} days")
+    print(f"Predictions: Pulse picks {w}-{l} this season, {len(upcoming)} games in the next {DAYS_AHEAD} days")
 
 
 # ---------- storylines ----------
@@ -252,7 +252,7 @@ def stories(gid, h, a, when, results, sched, now, year):
     # stars
     sh_, sa_ = c["stars"].get(h), c["stars"].get(a)
     if sh_ and sa_ and sh_[1] >= 1.2 and sa_[1] >= 1.2:
-        add("stars", f"MVR match-up: {sa_[0]} ({sa_[1]:.3f}) vs. {sh_[0]} ({sh_[1]:.3f}).")
+        add("stars", f"Pulse match-up: {sa_[0]} ({sa_[1]:.3f}) vs. {sh_[0]} ({sh_[1]:.3f}).")
     # rookies
     ra, rh = c["rooks"].get(a, []), c["rooks"].get(h, [])
     if ra and rh:

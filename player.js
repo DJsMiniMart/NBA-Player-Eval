@@ -81,7 +81,7 @@ const f1 = v => v == null ? "—" : (Math.round(v*10)/10).toFixed(1);
 const f3 = v => v == null ? "—" : v.toFixed(3);
 const pct = (m, a) => a ? (100*m/a).toFixed(1) + "%" : "—";
 const per = (t, g) => (num(t) != null && g) ? t/g : null;
-/* MVR: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / minutes */
+/* Pulse: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / minutes */
 const rebOf = s => s.trb != null ? s.trb : (s.drb || 0) + (s.orb || 0);
 const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*rebOf(s) + 4*s.stl + s.blk - 4*(s.tov || 0)) / s.mp : null;
 const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds ×2",2],["stl","Steals ×4",4],["blk","Blocks",1],["tov","Turnovers (×4, subtracted)",-4]];
@@ -184,7 +184,7 @@ function heroHtml(team){
         <div class="pp-teamline">${retired ? `Retired · played ${esc(seasons[0].season)} to ${esc(last.season)} · ${careerTeams().length} team${careerTeams().length===1?"":"s"}` : esc(team.n || "")}${facts ? " · " + esc(facts) : ""}</div>
       </div>
       <div class="pp-eval">
-        <div class="k">MVR · ${esc(last ? last.season : "")}</div>
+        <div class="k">Pulse · ${esc(last ? last.season : "")}</div>
         <div class="v">${f3(last ? last.value : null)}</div>
         <div class="s">Career ${f3(career)}</div>
         <button class="pp-back" id="ppCompare" style="margin-top:8px">Compare with another player</button>
@@ -253,7 +253,7 @@ function statLineCard(s, title, sub, extra){
     ["FG%", s.fga != null ? pct(s.fg, s.fga) : "—"], ["3P%", s.fg3a != null ? pct(s.fg3, s.fg3a) : "—"], ["FT%", s.fta != null ? pct(s.ft, s.fta) : "—"]];
   return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
     <div class="pp-line">${items.map(([k,v])=>`<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}
-    <div class="pp-stat hl"><div class="k">MVR</div><div class="v">${f3(s.value)}</div></div></div>${extra || ""}</div>`;
+    <div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(s.value)}</div></div></div>${extra || ""}</div>`;
 }
 /* Career totals across every season (percentages only when every season has the shooting numbers) */
 function careerTotals(list){
@@ -268,7 +268,7 @@ function careerTotals(list){
 }
 const money = n => "$" + Math.round(n).toLocaleString();
 
-/* MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
+/* Pulse+: Pulse that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
 function mvrPlus(s){
   if(!s || !s.mp || s.fga == null) return null;
   const trb = s.trb != null ? s.trb : (s.drb||0) + (s.orb||0);
@@ -284,9 +284,9 @@ function careerCard(list, title, withRank, sub){
   const career = careerTotals(list);
   const anyNoTov = seasons.some(x => x.noTov);
   return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
-    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th><th>MVR</th><th title="MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw)">MVR+</th>${withRank ? "<th>Rank</th>" : ""}</tr></thead>
+    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th class="l">Team</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th><th>Pulse</th><th title="Pulse+: Pulse that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw)">Pulse+</th>${withRank ? "<th>Rank</th>" : ""}</tr></thead>
     <tbody>${seasons.map(s => row(s, s.current ? "cur" : "")).join("")}${row(career, "career", "Career")}</tbody></table></div>
-    <div class="pp-note">MVR on the career row is worked out from career totals, not an average of seasons.${withRank ? " Rank = where they finished in MVR among qualified players that season." : ""}${anyNoTov ? " *The NBA didn't track turnovers before 1977-78, so nothing is subtracted for those seasons." : ""}</div></div>`;
+    <div class="pp-note">Pulse on the career row is worked out from career totals, not an average of seasons.${withRank ? " Rank = where they finished in Pulse among qualified players that season." : ""}${anyNoTov ? " *The NBA didn't track turnovers before 1977-78, so nothing is subtracted for those seasons." : ""}</div></div>`;
 }
 
 function zoneOfCell(bx, by){
@@ -397,7 +397,7 @@ function statText(g){
 }
 function top5Card(G){
   const logs = logObjs((G && G.logs) || []).filter(g => g.min >= MIN_TOP_GAME_MINUTES && g.eval != null).sort((a,b)=>b.eval-a.eval).slice(0,5);
-  return `<div class="pp-card"><h3>Top 5 MVR games <small>${MIN_TOP_GAME_MINUTES}+ minutes</small></h3>
+  return `<div class="pp-card"><h3>Top 5 Pulse games <small>${MIN_TOP_GAME_MINUTES}+ minutes</small></h3>
     ${logs.length ? `<div class="pp-top5">${logs.map((g,i)=>`<div class="pp-game"><div class="r">${i+1}</div>
       <div><div class="l">${g.home ? "vs" : "@"} ${esc(g.opp)} · ${esc(g.res)} · ${Math.round(g.min)} min</div><div class="d">${esc(shortDate(g.date))} · ${statText(g)}</div></div>
       <div class="e">${f3(g.eval)}</div></div>`).join("")}</div>` : `<div class="pp-empty">No games with ${MIN_TOP_GAME_MINUTES}+ minutes in this selection.</div>`}</div>`;
@@ -408,7 +408,7 @@ function gameLogCard(G, key){
   const all = !!LOGS_ALL[key];
   const shown = all ? logs : logs.slice(0, 20);
   return `<div class="pp-card c12"><h3>Game log <small>${logs.length} game${logs.length===1?"":"s"} · newest first</small></h3>
-    ${logs.length ? `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Date</th><th class="l">Opp</th><th class="l">Result</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th>MVR</th></tr></thead><tbody>
+    ${logs.length ? `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Date</th><th class="l">Opp</th><th class="l">Result</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th>Pulse</th></tr></thead><tbody>
       ${shown.map(g => `<tr><td class="l">${esc(shortDate(g.date))}</td><td class="l">${g.home ? "vs" : "@"} ${esc(g.opp)}</td><td class="l ${g.res === "W" ? "w" : "lo"}">${esc(g.res)}</td>
         <td>${Math.round(g.min)}</td><td>${g.pts}</td><td>${g.drb + g.orb}</td><td>${g.ast}</td><td>${g.stl}</td><td>${g.blk}</td><td>${g.tov}</td>
         <td>${g.fgm}-${g.fga}</td><td>${g.f3m}-${g.f3a}</td><td>${g.ftm}-${g.fta}</td><td>${g.pm > 0 ? "+" : ""}${g.pm}</td><td class="ev">${f3(g.eval)}</td></tr>`).join("")}
@@ -420,7 +420,7 @@ function gameLogCard(G, key){
 function rankChips(line, isCareer){
   if(isCareer){
     const ranked = (REC.seasons || []).filter(x => x.rank);
-    if(!ranked.length) return `<div class="pp-chips"><span class="pp-chip mute">Never qualified for an MVR ranking</span></div>`;
+    if(!ranked.length) return `<div class="pp-chips"><span class="pp-chip mute">Never qualified for a Pulse ranking</span></div>`;
     const best = ranked.slice().sort((a,b)=>a.rank[0]-b.rank[0] || b.value-a.value)[0];
     const top10 = ranked.filter(x => x.rank[0] <= 10).length;
     return `<div class="pp-chips"><span class="pp-chip hl">Best finish: ${ordinal(best.rank[0])} in ${esc(best.season)}</span>
@@ -434,7 +434,7 @@ function rankChips(line, isCareer){
   }
   const [r, n, pr, pn, pos] = line.rank;
   const top = Math.max(1, Math.ceil(100 * r / n));
-  return `<div class="pp-chips"><span class="pp-chip hl">${ordinal(r)} in MVR ${line.current ? "this season" : "in " + esc(line.season)} <small>of ${n} qualified</small></span>
+  return `<div class="pp-chips"><span class="pp-chip hl">${ordinal(r)} in Pulse ${line.current ? "this season" : "in " + esc(line.season)} <small>of ${n} qualified</small></span>
     <span class="pp-chip">${top <= 50 ? `Top ${top}% of qualified players` : `Better than ${Math.round(100 * (n - r) / n)}% of qualified players`}</span>
     <span class="pp-chip">${ordinal(pr)} among ${esc(POS_NAMES[pos] || pos)} <small>of ${pn}</small></span></div>`;
 }
@@ -452,14 +452,14 @@ function driversCard(tot, lg, title, sub){
     <div class="tablewrap"><table class="pp-tbl pp-drv"><thead><tr><th class="l">Piece</th><th class="l"></th><th>Them</th><th>Avg</th><th>+/−</th></tr></thead><tbody>
     ${rows.map(r => `<tr><td class="l">${esc(r.label)}</td><td class="l" style="width:38%"><div class="pp-dbar"><div class="me" style="width:${(100*Math.abs(r.me)/max).toFixed(1)}%"></div><div class="avg" style="left:${(100*Math.abs(r.avg)/max).toFixed(1)}%"></div></div></td>
       <td>${r.me.toFixed(3)}</td><td>${r.avg.toFixed(3)}</td><td class="${+r.d.toFixed(3) > 0 ? "w" : +r.d.toFixed(3) < 0 ? "lo" : ""}">${sgn3(r.d)}</td></tr>`).join("")}
-    <tr class="career"><td class="l">MVR</td><td></td><td>${meTotal.toFixed(3)}</td><td>${lgTotal.toFixed(3)}</td><td class="${meTotal>=lgTotal?"w":"lo"}">${sgn3(meTotal-lgTotal)}</td></tr>
+    <tr class="career"><td class="l">Pulse</td><td></td><td>${meTotal.toFixed(3)}</td><td>${lgTotal.toFixed(3)}</td><td class="${meTotal>=lgTotal?"w":"lo"}">${sgn3(meTotal-lgTotal)}</td></tr>
     </tbody></table></div>
-    <div class="pp-note">Each piece of the formula per minute played, next to the league-wide average (the dark tick). They add up to MVR.</div></div>`;
+    <div class="pp-note">Each piece of the formula per minute played, next to the league-wide average (the dark tick). They add up to Pulse.</div></div>`;
 }
-/* MVR every season of the career, as bars; best season in gold, dashed line = career MVR */
+/* Pulse every season of the career, as bars; best season in gold, dashed line = career Pulse */
 function peTrendCard(seasons, career){
   const list = (seasons || []).filter(x => x.value != null && (x.mp || 0) >= 100);
-  if(list.length < 2) return `<div class="pp-card c6"><h3>MVR by season</h3><div class="pp-empty">Needs at least two seasons.</div></div>`;
+  if(list.length < 2) return `<div class="pp-card c6"><h3>Pulse by season</h3><div class="pp-empty">Needs at least two seasons.</div></div>`;
   const W = 560, H = 230, padL = 34, padB = 34, padT = 14, iw = W - padL - 8, ih = H - padT - padB;
   const vals = list.map(x => x.value).concat(career != null ? [career] : []);
   const hi = Math.max(...vals) * 1.08, lo = Math.min(0, Math.min(...vals));
@@ -470,17 +470,17 @@ function peTrendCard(seasons, career){
   const every = Math.ceil(list.length / 12);
   const bars = list.map((x, i) => {
     const h = Math.max(1, y(lo) - y(x.value)), cx = padL + i * bw;
-    return `<g><title>${esc(x.season)} · ${esc(x.team || "")} · ${f3(x.value)} MVR in ${x.g} games</title>
+    return `<g><title>${esc(x.season)} · ${esc(x.team || "")} · ${f3(x.value)} Pulse in ${x.g} games</title>
       <rect x="${(cx + bw * .14).toFixed(1)}" y="${y(x.value).toFixed(1)}" width="${(bw * .72).toFixed(1)}" height="${h.toFixed(1)}" rx="2" class="${x === best ? "best" : x.current ? "now" : ""}"></rect>
       ${i % every === 0 || x === best ? `<text x="${(cx + bw / 2).toFixed(1)}" y="${H - padB + 14}" text-anchor="middle">${esc("'" + x.season.slice(-2))}</text>` : ""}</g>`;
   }).join("");
   const line = career != null ? `<line x1="${padL}" x2="${W - 8}" y1="${y(career).toFixed(1)}" y2="${y(career).toFixed(1)}" class="avg"></line>` : "";
-  return `<div class="pp-card c6"><h3>MVR by season <small>${list.length} seasons · 100+ minutes</small></h3>
+  return `<div class="pp-card c6"><h3>Pulse by season <small>${list.length} seasons · 100+ minutes</small></h3>
     <div class="sub" style="margin:0 0 6px">Best: <b>${f3(best.value)}</b> in ${esc(best.season)}${best.team ? ` (${esc(best.team)})` : ""}${career != null ? ` · Career: <b style="color:var(--nba-red,#C8102E)">${f3(career)}</b> (dashed line)` : ""}</div>
-    <svg class="pp-trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="MVR by season">
+    <svg class="pp-trend" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pulse by season">
       ${ticks.map(v => `<line x1="${padL}" x2="${W - 8}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="grid"></line><text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}</text>`).join("")}
       ${bars}${line}</svg>
-    <div class="pp-note">Gold = best season. Hover a bar for the team and games. The dashed line is their whole-career MVR.</div></div>`;
+    <div class="pp-note">Gold = best season. Hover a bar for the team and games. The dashed line is their whole-career Pulse.</div></div>`;
 }
 function careerLeague(list){
   let mp = 0; const out = {};
@@ -514,7 +514,7 @@ function formCard(G, seasonValue){
       <div class="pp-stat"><div class="k">Last 5</div><div class="v">${f3(l5)}</div></div>
       <div class="pp-stat"><div class="k">Last 10</div><div class="v">${f3(l10)}</div></div>
       <div class="pp-stat hl"><div class="k">Season</div><div class="v">${f3(base)}</div></div></div>
-    <div class="sub" style="margin:12px 0 4px">MVR, last ${last.length} games (line = season)</div>${sparkline(last, base)}
+    <div class="sub" style="margin:12px 0 4px">Pulse, last ${last.length} games (line = season)</div>${sparkline(last, base)}
     <div class="pp-note">"Heating up" = last 10 games at least 8% above the season number; "cooling off" = 8% below.</div></div>`;
 }
 
@@ -541,7 +541,7 @@ function splitsCard(G, key){
   const opts = [["place","Home / away"],["result","Wins / losses"],["role","Starter / bench"],["month","By month"],["opp","By opponent"]];
   return `<div class="pp-card c12"><h3>Splits <small>per game</small></h3>
     <div class="pp-tabs">${opts.map(([v,t])=>`<button data-split="${key}" data-v="${v}" class="${v===type?"on":""}">${t}</button>`).join("")}</div>
-    <div class="tablewrap"${type==="opp"?' style="max-height:380px;overflow-y:auto"':""}><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Split</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>MVR</th></tr></thead>
+    <div class="tablewrap"${type==="opp"?' style="max-height:380px;overflow-y:auto"':""}><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Split</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>Pulse</th></tr></thead>
     <tbody>${keys.map(row).join("")}</tbody></table></div></div></div>`;
 }
 
@@ -556,7 +556,7 @@ function highsCard(G, title, sub, cls){
   const when = g => `${esc(shortDate(g.date))} ${g.home ? "vs" : "@"} ${esc(g.opp)}`;
   return `<div class="pp-card ${cls||"c6"}"><h3>${esc(title)} <small>${esc(sub)}</small></h3>
     <div class="tablewrap"><table class="pp-tbl"><tbody>${items.map(([k,f]) => { const g = best(f); return `<tr><td class="l">${k}</td><td><b>${f(g)}</b></td><td class="l" style="color:var(--dim)">${when(g)}</td></tr>`; }).join("")}
-    ${ev ? `<tr><td class="l">MVR (${MIN_TOP_GAME_MINUTES}+ min)</td><td class="ev">${f3(ev.eval)}</td><td class="l" style="color:var(--dim)">${when(ev)}</td></tr>` : ""}
+    ${ev ? `<tr><td class="l">Pulse (${MIN_TOP_GAME_MINUTES}+ min)</td><td class="ev">${f3(ev.eval)}</td><td class="l" style="color:var(--dim)">${when(ev)}</td></tr>` : ""}
     <tr class="career"><td class="l">Double-doubles / triple-doubles</td><td>${dd} / ${td}</td><td></td></tr></tbody></table></div></div>`;
 }
 
@@ -604,7 +604,7 @@ function similarCard(title, sub, list, kind){
     ${list && list.length ? `<div class="pp-sims">${list.map(r => `<a class="pp-sim" href="#/player/${encodeURIComponent(r[0])}">
       <span class="nm">${esc(r[1])}</span><span class="tm">${esc(r[2] || "")}</span><span class="sc">${r[3]}% match</span>
       <span class="cmp" data-cmp="${esc(r[0])}" title="Compare side by side">Compare</span></a>`).join("")}</div>
-      <div class="pp-note">${kind === "season" ? "Players this season whose mix of scoring, passing, rebounding, defense and turnovers per minute is closest." : "Careers with the closest mix of MVR pieces, each season measured against its own league so eras compare fairly."}</div>`
+      <div class="pp-note">${kind === "season" ? "Players this season whose mix of scoring, passing, rebounding, defense and turnovers per minute is closest." : "Careers with the closest mix of Pulse pieces, each season measured against its own league so eras compare fairly."}</div>`
       : `<div class="pp-empty">${kind === "season" ? "Shows up once they've played a couple hundred minutes this season." : "Needs at least 1,500 career minutes."}</div>`}</div>`;
 }
 
@@ -614,7 +614,7 @@ function playoffsBlock(){
   const t = careerTotals(list);
   const series = list.length;
   return `<div class="pp-grid">${statLineCard(t, "Playoff career stat line", "per game, every playoff run",
-      `<div class="pp-note">${series} playoff run${series===1?"":"s"} · ${t.g} games · ${Math.round(t.pts).toLocaleString()} points. MVR worked out from playoff totals.</div>`)}</div>
+      `<div class="pp-note">${series} playoff run${series===1?"":"s"} · ${t.g} games · ${Math.round(t.pts).toLocaleString()} points. Pulse worked out from playoff totals.</div>`)}</div>
     <div class="pp-gap"></div><div class="pp-grid">${careerCard(list, "Playoffs, season by season", false, "per game · playoffs")}</div>`;
 }
 
@@ -655,7 +655,7 @@ function render(){
     const sim = REC.similarSeason;
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
-      + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their MVR", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
+      + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
       + (curPO ? `<div class="pp-grid">${statLineCard(curPO, `${label} playoffs`, "per game, this postseason")}</div><div class="pp-gap"></div>` : "")
       + (G ? gameBoxes(G, leagueFor(label), team, "season", false, label) : `<div class="final-note">No games yet this season. The shooting chart, passing, steals, blocks, splits, highs and game log fill in once ${esc(REC.name.split(" ")[0])} plays.</div>`);
@@ -665,7 +665,7 @@ function render(){
   if(SEL == null || (SEL !== "career" && !gs.includes(SEL))) SEL = gs.length ? "career" : null;
   const ct = careerTotals();
   const span = (REC.seasons || []).length ? `${REC.seasons[0].season} to ${REC.seasons[REC.seasons.length-1].season}` : "";
-  const extra = rankChips(null, true) + `<div class="pp-note">${ct.seasons} season${ct.seasons===1?"":"s"}${span ? " (" + esc(span) + ")" : ""} · career totals: ${Math.round(ct.pts).toLocaleString()} points, ${Math.round(ct.trb).toLocaleString()} rebounds, ${Math.round(ct.ast).toLocaleString()} assists, ${Math.round(ct.stl).toLocaleString()} steals, ${Math.round(ct.blk).toLocaleString()} blocks. MVR is worked out from career totals.</div>`;
+  const extra = rankChips(null, true) + `<div class="pp-note">${ct.seasons} season${ct.seasons===1?"":"s"}${span ? " (" + esc(span) + ")" : ""} · career totals: ${Math.round(ct.pts).toLocaleString()} points, ${Math.round(ct.trb).toLocaleString()} rebounds, ${Math.round(ct.ast).toLocaleString()} assists, ${Math.round(ct.stl).toLocaleString()} steals, ${Math.round(ct.blk).toLocaleString()} blocks. Pulse is worked out from career totals.</div>`;
   let gameCareer;
   if(gs.length){
     const G = gamesFor(SEL), L = leagueFor(SEL);
@@ -679,7 +679,7 @@ function render(){
   }
   const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.")
     + `<div class="pp-grid">${statLineCard(ct, "Career stat line", "per game, whole career", extra)}</div><div class="pp-gap"></div>`
-    + `<div class="pp-grid">${retired ? driversCard(ct, careerLeague(REC.seasons), "What drives their MVR", "whole career, per minute") : peTrendCard(REC.seasons, ct.value)}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
+    + `<div class="pp-grid">${retired ? driversCard(ct, careerLeague(REC.seasons), "What drives their Pulse", "whole career, per minute") : peTrendCard(REC.seasons, ct.value)}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
     + gameCareer + `<div class="pp-gap"></div><div class="pp-grid">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
     + sectionHead("Playoffs", "Every postseason run.") + playoffsBlock();
 
@@ -715,7 +715,7 @@ function clutchCard(){
   const v = k => r[C[k]] || 0;
   const mins = v("min"), cmin = v("c_sec") / 60;
   const base = mins ? (v("pts") + 2*v("ast") + 2*(v("dreb") + v("oreb")) + 4*v("stl") + v("blk") - 4*v("tov")) / mins : null;
-  /* Clutch MVR: the MVR formula on crunch-time stats only, per crunch-time minute (0 with no crunch-time minutes) */
+  /* Clutch Pulse: the Pulse formula on crunch-time stats only, per crunch-time minute (0 with no crunch-time minutes) */
   const cpe = cmin ? (v("c_pts") + 2*v("c_ast") + 2*v("c_reb") + 4*v("c_stl") + v("c_blk") - 4*v("c_tov")) / cmin : 0;
   const moments = (SEASONP.moments[r[C.id]] || []).slice().reverse();
   const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -723,8 +723,8 @@ function clutchCard(){
   const stat = (k, l) => `<div class="pp-cstat"><span>${l}</span><b>${k}</b></div>`;
   return box + `<h3>Crunch time <small>last 5 minutes of the 4th or overtime with the score within 5 · this season</small></h3>
     ${cmin ? `<div class="pp-cgrid">
-      <div class="pp-cpe"><div><span>MVR</span><b>${f3(base)}</b></div><div class="hot"><span>Clutch MVR</span><b>${f3(cpe)}</b></div>
-        <div class="pp-note" style="margin:6px 0 0">MVR covers all his minutes; Clutch MVR uses only his crunch-time stats and minutes. ${cpe > base ? "He's been better in crunch time." : cpe < base ? "He's been less productive in crunch time." : ""}</div></div>
+      <div class="pp-cpe"><div><span>Pulse</span><b>${f3(base)}</b></div><div class="hot"><span>Clutch Pulse</span><b>${f3(cpe)}</b></div>
+        <div class="pp-note" style="margin:6px 0 0">Pulse covers all his minutes; Clutch Pulse uses only his crunch-time stats and minutes. ${cpe > base ? "He's been better in crunch time." : cpe < base ? "He's been less productive in crunch time." : ""}</div></div>
       <div class="pp-cstats">${stat(cmin.toFixed(1), "Minutes")}${stat(v("c_pts"), "Points")}${stat(per(v("c_fgm"), v("c_fga")), "FG")}${stat(per(v("c_fg3m"), v("c_fg3a")), "3P")}${stat(per(v("c_ftm"), v("c_fta")), "FT")}
         ${stat(v("c_ast"), "Assists")}${stat(v("c_reb"), "Rebounds")}${stat(v("c_stl"), "Steals")}${stat(v("c_blk"), "Blocks")}${stat(v("c_tov"), "Turnovers")}${stat((v("c_pm") > 0 ? "+" : "") + v("c_pm"), "+/-")}</div>
     </div>
@@ -818,10 +818,10 @@ function cmpRows(A, B){
   const reb = t => t.g ? ((t.trb ?? ((t.drb||0)+(t.orb||0))) / t.g) : null;
   const P = (m, a) => (a ? m/a : null);
   return [
-    ["MVR", null],
+    ["Pulse", null],
     [`Latest season`, s => s.latest.value, f3, 1, s => s.latest.season ? ` <small>${esc(s.latest.season)}</small>` : ""],
     ["Latest season rank", s => s.latest.rank ? s.latest.rank[0] : null, v => ordinal(v), -1],
-    ["Career MVR", s => s.ct.value, f3, 1],
+    ["Career Pulse", s => s.ct.value, f3, 1],
     ["Best season", s => s.bestSeason ? s.bestSeason.value : null, f3, 1, s => s.bestSeason ? ` <small>${esc(s.bestSeason.season)}</small>` : ""],
     ["Best finish", s => s.ranked.length ? s.ranked[0].rank[0] : null, v => ordinal(v), -1],
     ["Top-10 seasons", s => s.ranked.filter(x => x.rank[0] <= 10).length, v => v, 1],
@@ -838,11 +838,11 @@ function cmpRows(A, B){
     ["FG%", s => s.ct.fga ? P(s.ct.fg, s.ct.fga) : null, v => (100*v).toFixed(1) + "%", 1],
     ["3P%", s => s.ct.fg3a ? P(s.ct.fg3, s.ct.fg3a) : null, v => (100*v).toFixed(1) + "%", 1],
     ["FT%", s => s.ct.fta ? P(s.ct.ft, s.ct.fta) : null, v => (100*v).toFixed(1) + "%", 1],
-    ["What drives MVR (per minute)", null],
+    ["What drives Pulse (per minute)", null],
     ...PARTS.map(([k,label,w]) => [label, s => s.drv[k], f3, 1]),
     ["Playoffs", null],
     ["Playoff games", s => s.po.g || 0, v => v, 1],
-    ["Playoff MVR", s => s.po.g ? s.po.value : null, f3, 1],
+    ["Playoff Pulse", s => s.po.g ? s.po.value : null, f3, 1],
     ["Playoff points per game", s => g(s.po, "pts"), f1, 1],
     ["Game by game", null],
     ["Career-high points", s => s.hi(x => x.pts), v => v, 1],

@@ -91,14 +91,14 @@ async function show(el){
   document.title = "The Locker Room · Full Court Geek Press";
   el.innerHTML = `<div class="nba-band"><div class="wrap band-in"><header>
       <div><h1>The Locker <span>Room</span></h1><div class="meta" id="plCount">Loading…</div></div>
-      <div class="formula"><b>Every player under contract</b>, grouped by team. Salary is this season's; the number on the right is their latest MVR. Search also finds past players.</div>
+      <div class="formula"><b>Every player under contract</b>, grouped by team. Salary is this season's; the number on the right is their latest Pulse. Search also finds past players.</div>
     </header></div></div>
     <div class="wrap" style="padding-top:16px">
       <div class="controls pl-controls">
         <div class="search"><label for="plQ">Search player</label><input id="plQ" type="search" placeholder="e.g. Wembanyama" value="${esc(q)}"></div>
         <div><label for="plTeam">Team</label><select id="plTeam"><option value="">All teams</option></select></div>
         <div><label for="plSort">Sort by</label><select id="plSort">
-          <option value="salary">Salary</option><option value="eval">MVR</option><option value="name">Name</option><option value="age">Age (youngest)</option></select></div>
+          <option value="salary">Salary</option><option value="eval">Pulse</option><option value="name">Name</option><option value="age">Age (youngest)</option></select></div>
       </div>
       <div id="plBody"><div class="empty">Loading players…</div></div>
     </div>`;

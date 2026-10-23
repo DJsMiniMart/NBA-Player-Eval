@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Morning Press · Full Court Geek Press</title>
-<meta name="description" content="Full Court Geek Press: last night's NBA scores, box scores, leaders, standings, headlines and transactions, plus MVR (Minute Value Rating) for every player.">
+<meta name="description" content="Full Court Geek Press: last night's NBA scores, box scores, leaders, standings, headlines and transactions, plus Pulse for every player.">
 <meta property="og:title" content="Full Court Geek Press">
-<meta property="og:description" content="Last night in the NBA, every morning: scores, box scores, MVR leaders, standings, headlines and transactions.">
+<meta property="og:description" content="Last night in the NBA, every morning: scores, box scores, Pulse leaders, standings, headlines and transactions.">
 <meta property="og:image" content="https://fullcourtgeekpress.com/img/logo-600.jpg">
 <meta property="og:url" content="https://fullcourtgeekpress.com/">
 <meta name="twitter:card" content="summary">
 <script>
-  /* old links to player pages (index.html#/player/...) now live on the MVR page */
+  /* old links to player pages (index.html#/player/...) now live on the Pulse page */
   if(/^#\/(player|players|compare)/.test(location.hash)) location.replace("pe.html" + location.hash);
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -211,7 +211,7 @@
   </section>
 
   <section class="sec" id="upSec">
-    <div class="sec-h"><h2>Coming up</h2><small id="upNote">The next 7 days · MVR picks the winner · storylines for every game</small></div>
+    <div class="sec-h"><h2>Coming up</h2><small id="upNote">The next 7 days · Pulse picks the winner · storylines for every game</small></div>
     <div class="daytabs" id="upDays"></div>
     <div class="upgrid" id="upcoming"><div class="card empty">Loading the schedule…</div></div>
   </section>
@@ -219,7 +219,7 @@
   <div class="cols">
     <div>
       <section class="sec" id="potnSec" hidden>
-        <div class="sec-h"><h2>Player of the night</h2><small>Best MVR with 24+ minutes</small></div>
+        <div class="sec-h"><h2>Player of the night</h2><small>Best Pulse with 24+ minutes</small></div>
         <div class="card potn" id="potn"></div>
       </section>
 
@@ -263,7 +263,7 @@
     </div>
   </section>
 
-  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. MVR (Minute Value Rating) = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p>
+  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. Pulse = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p>
 </main>
 
 <script src="nav.js"></script>
@@ -374,11 +374,11 @@ function renderScores(games, lines){
     const ot = min > 48 ? (min === 53 ? "OT" : (min - 48) / 5 + "OT") : "";
     const top = t => lines.filter(p => p.gid === gid && p.team === t).sort((x, y) => y.pts - x.pts || y.pe - x.pe)[0];
     const row = (t, s, win) => `<div class="tm ${win ? "win" : "lose"}">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div><div class="sc">${s}</div></div>`;
-    const tl = t => { const p = top(t); return p ? `<div><b>${esc(lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} MVR</span></div>` : ""; };
+    const tl = t => { const p = top(t); return p ? `<div><b>${esc(lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} Pulse</span></div>` : ""; };
     const rc = recaps[gid];
     return `<button class="card game" data-gid="${gid}" aria-label="${esc(nick(a))} ${al[0]}, ${esc(nick(h))} ${hl[0]}. Open box score">
       ${row(a, al[0], !hw)}${row(h, hl[0], hw)}
-      <div class="meta">Final${ot ? ` <span class="badge ot">${ot}</span>` : ""}${clutch.has(gid) ? ` <span class="badge hot" title="Close in the last 5 minutes">🔥 Crunch time</span>` : ""}${(() => { const pk = PRED && PRED.picks && PRED.picks[gid]; return pk ? ` <span class="pickres ${pk[2] ? "ok" : "no"}" title="MVR's pick before the game: ${esc(nick(pk[0]))} (${Math.round(pk[1] * 100)}%)">MVR pick ${esc(pk[0])} ${pk[2] ? "✓" : "✗"}</span>` : ""; })()}</div>
+      <div class="meta">Final${ot ? ` <span class="badge ot">${ot}</span>` : ""}${clutch.has(gid) ? ` <span class="badge hot" title="Close in the last 5 minutes">🔥 Crunch time</span>` : ""}${(() => { const pk = PRED && PRED.picks && PRED.picks[gid]; return pk ? ` <span class="pickres ${pk[2] ? "ok" : "no"}" title="Pulse's pick before the game: ${esc(nick(pk[0]))} (${Math.round(pk[1] * 100)}%)">Pulse pick ${esc(pk[0])} ${pk[2] ? "✓" : "✗"}</span>` : ""; })()}</div>
       <div class="tops">${tl(a)}${tl(h)}</div>
       ${rc ? `<div class="recap"><b>${esc(rc.h)}</b></div>` : ""}</button>`;
   }).join("") : `<div class="card empty">No games were played this night.</div>`;
@@ -390,7 +390,7 @@ function pickFact(games){
   const [w, l] = PRED.record, P = PRED.picks || {};
   const night = games.map(g => P[g[0]]).filter(Boolean), nw = night.filter(x => x[2]).length;
   if(!(w + l)) return null;
-  return [`${w}-${l}`, `MVR picks · ${Math.round(100 * w / (w + l))}%${night.length ? ` · ${nw}-${night.length - nw} this night` : ""}`];
+  return [`${w}-${l}`, `Pulse picks · ${Math.round(100 * w / (w + l))}%${night.length ? ` · ${nw}-${night.length - nw} this night` : ""}`];
 }
 function renderFacts(games, lines){
   const ots = games.filter(g => g[6] > 48).length, close = games.filter(g => Math.abs(g[4][0] - g[5][0]) <= 5).length;
@@ -414,15 +414,15 @@ function renderPotn(lines){
     <div><div class="k">${esc(TEAMS[p.team] ? TEAMS[p.team].n : p.team)} · ${p.won ? "W" : "L"} ${p.home ? "vs" : "@"} ${esc(p.opp)}</div>
       <div class="who">${plink(p)}</div>
       <div class="line">${p.pts} pts · ${p.reb} reb · ${p.ast} ast · ${p.stl} stl · ${p.blk} blk · ${p.tov} tov · ${p.fgm}-${p.fga} FG · ${p.min} min</div></div>
-    <div class="pe"><b>${p.pe.toFixed(3)}</b><span>MVR</span></div>`;
+    <div class="pe"><b>${p.pe.toFixed(3)}</b><span>Pulse</span></div>`;
 }
 
 const CATS = [
   {k:"pts", t:"Points"}, {k:"reb", t:"Rebounds"}, {k:"ast", t:"Assists"}, {k:"stl", t:"Steals"}, {k:"blk", t:"Blocks"},
   {k:"tpm", t:"3-pointers", f:p => `${p.tpm}-${p.tpa}`},
-  {k:"pe", t:"MVR", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
-  {k:"plus", t:"MVR+", min:20, f:p => p.plus.toFixed(3), note:"20+ min, missed shots count"},
-  {k:"cpe", t:"Clutch MVR", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
+  {k:"pe", t:"Pulse", min:20, f:p => p.pe.toFixed(3), note:"20+ min"},
+  {k:"plus", t:"Pulse+", min:20, f:p => p.plus.toFixed(3), note:"20+ min, missed shots count"},
+  {k:"cpe", t:"Clutch Pulse", f:p => p.cpe.toFixed(3), note:"crunch-time stats only, 1+ crunch min", only:p => p.cmin >= 1},
   {k:"pm", t:"Plus / minus", f:p => (p.pm > 0 ? "+" : "") + p.pm},
   {k:"fgm", t:"Field goals", f:p => `${p.fgm}-${p.fga}`},
 ];
@@ -489,7 +489,7 @@ function renderNews(){
     : `<div class="empty">Headlines are collected during the morning update. They'll show up after the next one.</div>`;
 }
 
-/* ---------- coming up: next 7 days with MVR picks and storylines (data/predictions.json, built by predict.py) ---------- */
+/* ---------- coming up: next 7 days with Pulse picks and storylines (data/predictions.json, built by predict.py) ---------- */
 const STORY_ICON = {rivalry:"⚔️", division:"🏟️", rematch:"🔁", streak:"📈", race:"🏁", revenge:"🔄", stars:"⭐", rookies:"🆕", rest:"😴", preview:"📰", note:"💬"};
 let upDay = null;
 function renderUpcoming(){
@@ -509,15 +509,15 @@ function renderUpcoming(){
   $("upcoming").innerHTML = list.filter(u => localDay(u.t) === upDay).map(u => {
     const time = new Date(u.t).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
     const pa = u.pick === u.away ? u.p : 1 - u.p, ph = 1 - pa;
-    const row = (t, chance) => `<div class="tm">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>${u.pick === t ? `<span class="pk" title="MVR's pick: ${Math.round(chance * 100)}% to win">MVR pick · ${Math.round(chance * 100)}%</span>` : `<span style="color:var(--dim);font-size:12px">${Math.round(chance * 100)}%</span>`}</div>`;
+    const row = (t, chance) => `<div class="tm">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>${u.pick === t ? `<span class="pk" title="Pulse's pick: ${Math.round(chance * 100)}% to win">Pulse pick · ${Math.round(chance * 100)}%</span>` : `<span style="color:var(--dim);font-size:12px">${Math.round(chance * 100)}%</span>`}</div>`;
     const stories = (u.stories || []).map(([k, txt, link]) => `<li><span>${STORY_ICON[k] || "•"}</span><div>${link ? `<a href="${esc(link)}" target="_blank" rel="noopener">${esc(txt)}</a>` : esc(txt)}</div></li>`).join("");
     return `<div class="card up"><div class="when"><span>${time}${u.arena ? " · " + esc(u.arena) : ""}</span><span>${esc((u.tv || "").split(",").slice(0, 2).join(", "))}</span></div>
       ${row(u.away, pa)}${row(u.home, ph)}
-      <div class="odds" title="MVR win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
+      <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
       <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul></div>`;
   }).join("");
   const rec = PRED.record || [0, 0];
-  $("upNote").textContent = `MVR picks the winner from each team's MVR margin plus home court · ${rec[0]}-${rec[1]} this season · tested at 68% on last season's games`;
+  $("upNote").textContent = `Pulse picks the winner from each team's Pulse margin plus home court · ${rec[0]}-${rec[1]} this season · tested at 68% on last season's games`;
 }
 
 /* ---------- transactions ---------- */

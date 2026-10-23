@@ -1,7 +1,7 @@
 {
   "name": "Full Court Geek Press",
   "short_name": "Geek Press",
-  "description": "Last night in the NBA every morning: scores, box scores, MVR leaders, shot zones, standings, picks and storylines.",
+  "description": "Last night in the NBA every morning: scores, box scores, Pulse leaders, shot zones, standings, picks and storylines.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -15,7 +15,7 @@
     {"src": "img/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ],
   "shortcuts": [
-    {"name": "The MVR Board", "url": "pe.html#/", "icons": [{"src": "img/app-192.png", "sizes": "192x192"}]},
+    {"name": "The Pulse Board", "url": "pe.html#/", "icons": [{"src": "img/app-192.png", "sizes": "192x192"}]},
     {"name": "The Stat Lab", "url": "stats.html", "icons": [{"src": "img/app-192.png", "sizes": "192x192"}]},
     {"name": "Trade Machine", "url": "trade.html", "icons": [{"src": "img/app-192.png", "sizes": "192x192"}]}
   ]

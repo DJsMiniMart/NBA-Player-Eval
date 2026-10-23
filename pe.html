@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The MVR Board · Full Court Geek Press</title>
+<title>The Pulse Board · Full Court Geek Press</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -135,7 +135,7 @@
   <div class="wrap band-in">
   <header>
     <div>
-      <h1 id="title">The MVR <span>Board</span></h1>
+      <h1 id="title">The Pulse <span>Board</span></h1>
       <div class="meta" id="meta">Loading…</div>
     </div>
   </header>
@@ -151,7 +151,7 @@
     <div><label for="minG">Min games</label><input id="minG" type="number" min="0" step="1"></div>
     <div><label for="minM">Min minutes / game</label><input id="minM" type="number" min="0" step="1"></div>
     <div id="metricBox"><label for="metric">Rank by</label><select id="metric">
-      <option value="pe">MVR</option><option value="mvrp">MVR+</option><option value="cpe">Clutch MVR</option></select></div>
+      <option value="pe">Pulse</option><option value="mvrp">Pulse+</option><option value="cpe">Clutch Pulse</option></select></div>
   </div>
 
   <div class="card">
@@ -170,7 +170,7 @@
   </div>
 
   <div class="card rookies" id="valueCard" hidden>
-    <div class="rk-head"><div><h2>MVR$ <span class="mvrd-tag">value per dollar: who's outplaying his contract</span></h2><div class="sub" id="vSub"></div></div>
+    <div class="rk-head"><div><h2>Pulse$ <span class="mvrd-tag">value per dollar: who's outplaying his contract</span></h2><div class="sub" id="vSub"></div></div>
       <div class="v-tabs" id="vTabs"><button data-v="out" class="on">Outplaying contract</button><button data-v="all">Everyone</button><select id="vTierPick" aria-label="Pay tier"></select></div></div>
     <div class="rk-tiles" id="vTiles"></div>
     <div class="tablewrap"><table class="rk-tbl"><thead><tr id="vHead"></tr></thead><tbody id="vBody"></tbody></table></div>
@@ -202,7 +202,7 @@
 
 <script>
 /* ===== Settings you can change ===== */
-const STAT_NAME = "MVR";   // what your stat is called -- shows in the title and table
+const STAT_NAME = "Pulse";   // what your stat is called -- shows in the title and table
 const DEFAULT_MIN_GAMES = 5;       // qualifying minimums for the season in progress (people can change them on the page)
 const DEFAULT_MIN_MPG = 15;
 const PAST_MIN_GAMES = 40;         // ...for a finished season
@@ -248,12 +248,12 @@ const COLS = [
   {k:"page", t:"", nosort:true},
 ];
 const isPast = () => VIEW !== "current";
-const METRIC_LABEL = {pe: STAT_NAME, mvrp: "MVR+", cpe: "Clutch MVR"};
+const METRIC_LABEL = {pe: STAT_NAME, mvrp: "Pulse+", cpe: "Clutch Pulse"};
 const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)) && (!c.base || (BASE && metric() === "pe")))
   .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
   .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
   .map(c => c.k === "team" && (VIEW === "alltime" || VIEW === "careers") ? Object.assign({}, c, {sm:true}) : c);
-/* MVR from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
+/* Pulse from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
 const playEval = t => t.mp ? (t.pts + 2*t.ast + 2*((t.drb||0) + (t.orb||0)) + 4*t.stl + t.blk - 4*(t.tov||0)) / t.mp : null;
 const CAREERS = {};
 /* A player-season counting only what he did for `team` (null if he never played for them that season).
@@ -354,9 +354,9 @@ function qualified(){
   return DATA.players.filter(p => p.g >= minG && p.mpg >= minM && p.value != null && (m !== "cpe" || (p.cmin || 0) >= CRUNCH_MIN_MINUTES));
 }
 
-/* ---------- Rank by: MVR or Clutch MVR (this season) ----------
+/* ---------- Rank by: Pulse or Clutch Pulse (this season) ----------
    Crunch time = the last 5 minutes of the 4th quarter or overtime with the score within 5 (the NBA's "clutch").
-   Clutch MVR   = the MVR formula using only crunch-time stats, divided by crunch-time minutes (0 with none). */
+   Clutch Pulse   = the Pulse formula using only crunch-time stats, divided by crunch-time minutes (0 with none). */
 const CRUNCH_MIN_MINUTES = 3;
 let METRIC = "pe", CLUTCH = null;
 const metric = () => VIEW === "current" ? METRIC : "pe";
@@ -378,7 +378,7 @@ function attachClutch(players){
     p.clutch = c || null;
     p.cmin = c ? c.sec / 60 : 0;
     p.cpe = p.cmin ? base / p.cmin : 0;
-    /* MVR+: MVR that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
+    /* Pulse+: Pulse that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
     p.mvrp = p.mp ? ((p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0) - ((p.fga||0) - (p.fg||0)) - .5*((p.fta||0) - (p.ft||0))) / p.mp : null;
   });
 }
@@ -391,11 +391,11 @@ function applyMetric(){
   if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
   const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
   note.hidden = m === "pe";
-  note.innerHTML = m === "mvrp" ? `<b>MVR+</b> is MVR with missed shots charged: (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4 − missed field goals − missed free throws×0.5) ÷ minutes. A player now breaks even on twos at 33% and on threes at 25%, so a bad shooting night costs him. Tested on every 2025-26 game, it picked the winner 87.7% of the time vs. 83.8% for MVR.` : `<b>Clutch MVR</b> is the MVR formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch MVR of 0 but still has his regular MVR. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
+  note.innerHTML = m === "mvrp" ? `<b>Pulse+</b> is Pulse with missed shots charged: (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4 − missed field goals − missed free throws×0.5) ÷ minutes. A player now breaks even on twos at 33% and on threes at 25%, so a bad shooting night costs him. Tested on every 2025-26 game, it picked the winner 87.7% of the time vs. 83.8% for Pulse.` : `<b>Clutch Pulse</b> is the Pulse formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch Pulse of 0 but still has his regular Pulse. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
 }
 
 function drawHead(){
-  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${c.k === "value" ? `<span class="long">${esc(c.t)}</span><span class="short">MVR</span>` : esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
+  $('thead').innerHTML = cols().map(c => `<th class="${c.l?"l":""} ${c.sm?"hide-sm":""} ${sortKey===c.k?"on":""}" data-k="${c.k}">${c.k === "value" ? `<span class="long">${esc(c.t)}</span><span class="short">Pulse</span>` : esc(c.t)}${sortKey===c.k?(sortDir<0?" ▾":" ▴"):""}</th>`).join("");
   $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
     const k = th.dataset.k; if(k==="page") return;
     if(k==="rank"){ sortKey="value"; sortDir=-1; }
@@ -446,7 +446,7 @@ function draw(){
       <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
       <td class="hide-sm">${f1(p.ppg)}</td><td class="hide-sm">${f1(p.apg)}</td><td class="hide-sm">${f1(p.dpg)}</td>
       <td class="hide-sm">${f1(p.opg)}</td><td class="hide-sm">${f1(p.spg)}</td><td class="hide-sm">${f1(p.bpg)}</td>
-      <td class="score"${p.clutch && metric() === "cpe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. MVR ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
+      <td class="score"${p.clutch && metric() === "cpe" ? ` title="Crunch time: ${f1(p.cmin)} min, ${p.clutch.pts} pts, ${p.clutch.fgm}-${p.clutch.fga} FG, ${p.clutch.ast} ast, ${p.clutch.reb} reb, ${p.clutch.stl} stl, ${p.clutch.blk} blk, ${p.clutch.tov} tov, ${p.clutch.pm > 0 ? "+" : ""}${p.clutch.pm}. Pulse ${f3(p.pe0)}"` : ""}><span class="bar" style="width:${top>low ? Math.round(6 + 54*(p.value-low)/(top-low)) : 30}px"></span>${f3(p.value)}</td>${(VIEW==="current" && BASE && metric() === "pe") ? `<td class="base hide-sm">${p.base>=0 ? `${f3(p.base)} <span class="${p.value>=p.base?"up":"down"}">${p.value>=p.base?"▲":"▼"}${Math.abs(p.value-p.base).toFixed(3)}</span>` : "—"}</td>` : ""}<td class="pagecell"><button class="pagebtn" data-open="${esc(p.id)}"><span class="long">Player page</span><span class="short">Page</span></button></td></tr>`;
     return row + (openKey===p.key ? detailRow(p) : "");
   }).join("");
   const word = VIEW==="alltime" ? "seasons" : VIEW==="careers" ? "careers" : "players";
@@ -488,7 +488,7 @@ function detailRow(p){
   return `<tr class="detail"><td colspan="${cols().length}">
     <div class="parts">
       ${parts.map(([k,v,m])=>`<div class="part"><div class="k">${k}</div><div class="v">${(v*m).toLocaleString()}</div><div class="s">${m < 0 ? (p.season && p.season < "1977-78" ? "not tracked yet" : "subtracted") : (total ? Math.round(100*v*m/total) + "% of total" : "")}</div></div>`).join("")}
-      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.pe0 != null ? p.pe0 : p.value)}${p.pe0 != null && metric() !== "pe" ? ` MVR · ${METRIC_LABEL[metric()]} ${f3(p.value)}` : ""}</div></div>
+      <div class="part"><div class="k">Total ÷ minutes</div><div class="v">${total.toLocaleString()} ÷ ${p.mp.toLocaleString()}</div><div class="s">= ${f3(p.pe0 != null ? p.pe0 : p.value)}${p.pe0 != null && metric() !== "pe" ? ` Pulse · ${METRIC_LABEL[metric()]} ${f3(p.value)}` : ""}</div></div>
     </div>
     ${compareHtml(p)}
     <div class="chartbox"><canvas id="pChart"></canvas></div>
@@ -503,8 +503,8 @@ function compareHtml(p){
   const now = CUR && CUR.players.find(x=>x.id===p.id);
   const career = (CAREER && CAREER.get(p.id)) || [];
   const best = career.slice().sort((a,b)=>b.value-a.value)[0];
-  if(VIEW==="careers") return `<div class="sub" style="margin:0 0 8px;">${p.nSeasons} season${p.nSeasons===1?"":"s"} (${esc(p.season)}), ${esc(p.teams.join(", "))}.${best ? ` Best season: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b>.` : ""} Line below: MVR each season of their career.</div>`;
-  return `<div class="sub" style="margin:0 0 8px;">${esc(p.season)} final numbers.${best && career.length>1 ? ` Career best: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b> in ${now.g} games.` : ""} Line below: MVR each season of their career.</div>`;
+  if(VIEW==="careers") return `<div class="sub" style="margin:0 0 8px;">${p.nSeasons} season${p.nSeasons===1?"":"s"} (${esc(p.season)}), ${esc(p.teams.join(", "))}.${best ? ` Best season: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b>.` : ""} Line below: Pulse each season of their career.</div>`;
+  return `<div class="sub" style="margin:0 0 8px;">${esc(p.season)} final numbers.${best && career.length>1 ? ` Career best: <b>${f3(best.value)}</b> (${esc(best.season)}).` : ""}${now ? ` This season so far: <b>${f3(now.value)}</b> in ${now.g} games.` : ""} Line below: Pulse each season of their career.</div>`;
 }
 
 function seriesFor(id){
@@ -610,9 +610,9 @@ async function showSeason(file){
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
 
   $('finalNote').hidden = VIEW==="current";
-  if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their MVR across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
-  if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by MVR, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
-  if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by MVR since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
+  if(VIEW==="past") $('finalNote').innerHTML = `You're looking at the finished <b>${esc(DATA.season)}</b> season. Minimums default to ${PAST_MIN_GAMES} games and ${PAST_MIN_MPG} minutes for a full season. Click a player to see their Pulse across their whole career.${DATA.season < "1977-78" ? " <b>Note:</b> the NBA didn't track turnovers until 1977-78, so nothing is subtracted this season." : ""}`;
+  if(VIEW==="careers") $('finalNote').innerHTML = `The best whole careers by Pulse, worked out from each player's career totals (every season since 1973-74, plus this season so far). Minimums default to ${CAREER_MIN_GAMES} career games and ${CAREER_MIN_MPG} minutes a game. *Careers that include seasons before 1977-78 have no turnovers subtracted for those seasons.`;
+  if(VIEW==="alltime") $('finalNote').innerHTML = `The best single seasons by Pulse since <b>1973-74</b>, the first season the NBA tracked steals, blocks, and offensive/defensive rebounds. Minimums default to ${ALLTIME_MIN_GAMES} games and ${ALLTIME_MIN_MPG} minutes a game. Search a name to see a player's seasons (lower the minimums to include short ones).`;
   $('team').innerHTML = `<option value="">All teams</option>` + franchiseOptions().map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("");
   // early in the season nobody has 5 games yet: ask for half the most games anyone has played (at least 1)
   const most = VIEW==="current" ? Math.max(0, ...DATA.players.map(p => p.g || 0)) : 0;
@@ -626,9 +626,9 @@ async function showSeason(file){
   if(typeof syncLogoStrip === "function") syncLogoStrip();
 }
 
-/* ---------- MVR$: who's outplaying his contract ----------
-   Production = the MVR formula's top line (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4), season to date.
-   MVR$       = production per $1M of salary earned so far (salary × team games ÷ 82).
+/* ---------- Pulse$: who's outplaying his contract ----------
+   Production = the Pulse formula's top line (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4), season to date.
+   Pulse$       = production per $1M of salary earned so far (salary × team games ÷ 82).
    Plays like = the median salary of the 15 qualified players whose production per team game is closest to his:
                 what the league actually pays for that level of play. Outplaying by = plays like − salary.
    Pay tiers compare players with others paid about the same, so stars are measured against stars. */
@@ -670,7 +670,7 @@ function drawValue(){
   const {q, rate, minG, minM} = valueRows();
   if(!q.length){ card.hidden = true; return; }
   card.hidden = false;
-  $('vSub').textContent = `Who's playing above his contract · league average ${rate.toFixed(1)} MVR points per $1M of salary · ${q.length} qualified players with a listed salary`;
+  $('vSub').textContent = `Who's playing above his contract · league average ${rate.toFixed(1)} Pulse points per $1M of salary · ${q.length} qualified players with a listed salary`;
   const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
   const logoOf = t => { const c = BBR2NBA[t] || t; return T[c] ? `https://cdn.nba.com/logos/nba/${T[c].id}/primary/L/logo.svg` : ""; };
   // best outperformer in each pay tier
@@ -678,9 +678,9 @@ function drawValue(){
     return r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">Best value · ${t[1]}</div><div class="n">${esc(r.name)}</div><div class="v">${money(r.sal)}<small>plays like ${money(r.like)}</small></div></button>` : ""; }).join("");
   document.querySelectorAll('#vTabs button').forEach(b => b.classList.toggle("on", b.dataset.v === vView));
   $('vTierPick').innerHTML = `<option value="all">All pay tiers</option>` + TIERS.map(t => `<option value="${t[0]}"${vTier === t[0] ? " selected" : ""}>${t[1]}</option>`).join("");
-  const H = [[null,"#"],["name","Player"],["sal","Salary"],["g","G"],["mpg","MIN"],["mvr","MVR"],["vpd","MVR$"],["vsTier","vs pay tier"],["like","Plays like"],["over","Outplaying by"]];
+  const H = [[null,"#"],["name","Player"],["sal","Salary"],["g","G"],["mpg","MIN"],["mvr","Pulse"],["vpd","Pulse$"],["vsTier","vs pay tier"],["like","Plays like"],["over","Outplaying by"]];
   const S = vSort || (vView === "out" ? {k:"over", d:-1} : {k:"vpd", d:-1});
-  const tips = {vpd:"MVR production per $1M of salary earned so far", vsTier:"His production per team game ÷ the typical player in his pay tier. 1.00× = typical for what he's paid",
+  const tips = {vpd:"Pulse production per $1M of salary earned so far", vsTier:"His production per team game ÷ the typical player in his pay tier. 1.00× = typical for what he's paid",
     like:"What the league pays players with production like his (median salary of the 15 closest)", over:"Plays like − salary. Positive = outplaying his contract"};
   $('vHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${S.k === k ? " on" : ""}" data-k="${k || ""}"${tips[k] ? ` title="${tips[k]}"` : ""}>${t}${S.k === k ? (S.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
   $('vHead').querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; if(!k) return;
@@ -695,7 +695,7 @@ function drawValue(){
     || `<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--dim)">No players here yet.</td></tr>`;
   $('vMore').innerHTML = list.length > vShown ? `<button id="vMoreBtn">Show more (${list.length - vShown} more)</button>` : "";
   if($('vMoreBtn')) $('vMoreBtn').onclick = () => { vShown += 50; drawValue(); };
-  $('vNote').textContent = `MVR$ = MVR production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far. "Plays like" is what the league pays for production like his: the median salary of the 15 qualified players closest to him in production per team game. "Outplaying by" is how far that is above his salary. Pay tiers compare a player with others paid about the same, so a max player is judged against other max players. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
+  $('vNote').textContent = `Pulse$ = Pulse production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far. "Plays like" is what the league pays for production like his: the median salary of the 15 qualified players closest to him in production per team game. "Outplaying by" is how far that is above his salary. Pay tiers compare a player with others paid about the same, so a max player is judged against other max players. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
   card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 
@@ -731,10 +731,10 @@ function drawRookies(){
   const q = rows.filter(r => r.q);
   $('rkSub').textContent = `${rows.length} rookies have played this season · ${q.length} qualify (${minG}+ game${minG === 1 ? "" : "s"}, ${minM}+ minutes a game)`;
   const best = (k, f) => q.slice().sort((a, b) => (b[k] ?? -1e9) - (a[k] ?? -1e9))[0];
-  const tiles = [["mvr","MVR leader",r => f3(r.mvr),""],["ppg","Points",r => r.ppg.toFixed(1),"per game"],["rpg","Rebounds",r => r.rpg.toFixed(1),"per game"],
+  const tiles = [["mvr","Pulse leader",r => f3(r.mvr),""],["ppg","Points",r => r.ppg.toFixed(1),"per game"],["rpg","Rebounds",r => r.rpg.toFixed(1),"per game"],
     ["apg","Assists",r => r.apg.toFixed(1),"per game"],["spg","Steals",r => r.spg.toFixed(1),"per game"],["bpg","Blocks",r => r.bpg.toFixed(1),"per game"]];
   $('rkTiles').innerHTML = q.length ? tiles.map(([k, label, f, unit]) => { const r = best(k); return r ? `<button class="rk-tile" data-id="${esc(r.id)}"><div class="k">${label}</div><div class="n">${esc(r.name)}</div><div class="v">${f(r)}<small>${unit}</small></div></button>` : ""; }).join("") : "";
-  const H = [[null,"#"],["name","Rookie"],["pick","Draft"],["g","G"],["mpg","MIN"],["ppg","PTS"],["rpg","REB"],["apg","AST"],["spg","STL"],["bpg","BLK"],["tpg","TOV"],["fgp","FG%"],["fg3p","3P%"],["mvr","MVR"],["lg","League rank"]];
+  const H = [[null,"#"],["name","Rookie"],["pick","Draft"],["g","G"],["mpg","MIN"],["ppg","PTS"],["rpg","REB"],["apg","AST"],["spg","STL"],["bpg","BLK"],["tpg","TOV"],["fgp","FG%"],["fg3p","3P%"],["mvr","Pulse"],["lg","League rank"]];
   $('rkHead').innerHTML = H.map(([k, t]) => `<th class="${k === "name" ? "l" : ""}${rkSort.k === k ? " on" : ""}" data-k="${k || ""}">${t}${rkSort.k === k ? (rkSort.d < 0 ? " ▾" : " ▴") : ""}</th>`).join("");
   $('rkHead').querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { const k = th.dataset.k; if(!k) return;
     rkSort = rkSort.k === k ? {k, d: -rkSort.d} : {k, d: ["name","pick","lg","tpg"].includes(k) ? 1 : -1}; drawRookies(); });
@@ -753,7 +753,7 @@ function drawRookies(){
       <td>${r.spg.toFixed(1)}</td><td>${r.bpg.toFixed(1)}</td><td>${r.tpg.toFixed(1)}</td><td>${pc(r.fgp)}</td><td>${pc(r.fg3p)}</td>
       <td class="mvr">${r.mvr != null ? f3(r.mvr) : "—"}</td><td>${r.lg ? `${r.lg} <span style="color:var(--dim);font-size:11.5px">of ${r.nLg}</span>` : "—"}</td></tr>`).join("")
     : `<tr><td colspan="15" style="text-align:center;padding:18px;color:var(--dim)">No rookie qualifies yet. Tick "Show every rookie" to see them all.</td></tr>`;
-  $('rkNote').textContent = "Rookie = first season in the NBA (never appeared in an earlier season). League rank = where his MVR ranks among every qualified player, not just rookies. Gray rows don't meet the minimums yet. Click a name for the player page.";
+  $('rkNote').textContent = "Rookie = first season in the NBA (never appeared in an earlier season). League rank = where his Pulse ranks among every qualified player, not just rookies. Gray rows don't meet the minimums yet. Click a name for the player page.";
   card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 

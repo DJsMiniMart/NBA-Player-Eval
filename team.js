@@ -91,7 +91,7 @@ function summarize(games){
 }
 /* stat, label, format, higher is better? */
 const GROUPS = [
-  ["Overall", [["winp","Win %",pct,1],["diff","Point margin",sgn,1],["net","Net rating",sgn,1],["pace","Pace",f1,null],["pe","Team MVR",f3n,1]]],
+  ["Overall", [["winp","Win %",pct,1],["diff","Point margin",sgn,1],["net","Net rating",sgn,1],["pace","Pace",f1,null],["pe","Team Pulse",f3n,1]]],
   ["Offense", [["ortg","Offensive rating",f1,1],["pts","Points",f1,1],["efg","Effective FG%",pct,1],["ts","True shooting %",pct,1],["ast","Assists",f1,1],["tovp","Turnover %",f1,0],["orbp","Off. rebound %",pct,1]]],
   ["Defense", [["drtg","Defensive rating",f1,0],["opp","Points allowed",f1,0],["oefg","Opp. effective FG%",pct,0],["otovp","Opp. turnover %",f1,1],["drbp","Def. rebound %",pct,1],["stl","Steals",f1,1],["blk","Blocks",f1,1]]],
   ["Shooting", [["fgp","FG%",pct,1],["fg3p","3P%",pct,1],["fg3a","3PA",f1,null],["tpar","3PA rate",pct,null],["ftp","FT%",pct,1],["ftr","FT rate",pct,1],["ofg3p","Opp. 3P%",pct,0]]],
@@ -170,7 +170,7 @@ function drawStats(){
   const badge = k => rk[k] ? `<span class="rk ${rk[k] <= 10 ? "top" : rk[k] > 20 ? "bot" : ""}" title="${ord(rk[k])} of ${R.teams}">${ord(rk[k])}</span>` : `<span class="rk">—</span>`;
   const tile = (k, label, fmt, tip) => `<div class="card tile"${tip ? ` title="${esc(tip)}"` : ""}><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ord(rk[k])} in the NBA` : ""}</div></div>`;
   $('statsBody').innerHTML = `
-    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team MVR",f3n,"Points, assists×2, rebounds×2, steals×4, blocks, minus turnovers×4, per 48 minutes")}</div>
+    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team Pulse",f3n,"Points, assists×2, rebounds×2, steals×4, blocks, minus turnovers×4, per 48 minutes")}</div>
     <div class="groups">${GROUPS.map(([name, rows]) => `<div class="card grp"><h3>${name}</h3>${rows.map(([k, label, fmt]) => `<div class="srow"><span class="k">${label}</span><span class="v">${fmt(s[k])}</span>${badge(k)}</div>`).join("")}</div>`).join("")}</div>
     <div class="card" style="margin-top:12px"><div class="tw"><table>
       <thead><tr><th class="l">Date</th><th class="l">Opponent</th><th class="l">Result</th><th>Pts</th><th>Opp</th><th>Off rtg</th><th>Def rtg</th><th>eFG%</th><th>3P</th><th>TOV</th><th>Reb</th><th>Ast</th></tr></thead>
@@ -301,7 +301,7 @@ function drawRoster(){
   rows.forEach(r => { r.sal = r.c ? r.c.salary : 0; r.age = r.c ? age(r.c.born) : ""; r.pos = r.c ? r.c.pos || "" : ""; });
   const k = rosterSort.k, d = rosterSort.d;
   rows.sort((a,b) => (k === "name" ? a.name.localeCompare(b.name) : ((a[k] ?? -1e9) - (b[k] ?? -1e9))) * d);
-  const H = [["name","Player","l"],["pos","Pos",""],["age","Age",""],["sal","Salary",""],["gp","GP",""],["gs","GS",""],["mp","MIN",""],["pts","PTS",""],["reb","REB",""],["ast","AST",""],["stl","STL",""],["blk","BLK",""],["tov","TOV",""],["fgp","FG%",""],["fg3p","3P%",""],["ftp","FT%",""],["pm","+/-",""],["ev","MVR",""]];
+  const H = [["name","Player","l"],["pos","Pos",""],["age","Age",""],["sal","Salary",""],["gp","GP",""],["gs","GS",""],["mp","MIN",""],["pts","PTS",""],["reb","REB",""],["ast","AST",""],["stl","STL",""],["blk","BLK",""],["tov","TOV",""],["fgp","FG%",""],["fg3p","3P%",""],["ftp","FT%",""],["pm","+/-",""],["ev","Pulse",""]];
   if(!rows.length){ $('rosterBody').innerHTML = `<div class="empty">No roster found yet.</div>`; return; }
   $('rosterBody').innerHTML = `<table><thead><tr>${H.map(([k2, t, cls]) => `<th class="s ${cls} ${k2 === k ? "on" : ""}" data-k="${k2}">${t}${k2 === k ? (d < 0 ? " ▾" : " ▴") : ""}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr><td class="l nm">${r.id ? `<a href="pe.html#/player/${encodeURIComponent(r.id)}">${esc(r.name)}</a>` : esc(r.name)}${r.c && r.c.opt ? `<span class="tag">${r.c.opt === "player option" ? "PO" : r.c.opt === "team option" ? "TO" : "ETO"}</span>` : ""}${!r.c ? `<span class="tag" title="No contract listed for this season: waived, traded away, two-way or 10-day">no contract</span>` : ""}</td>
