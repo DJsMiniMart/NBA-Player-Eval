@@ -1,7 +1,7 @@
 /* Service worker: makes the site installable as an app and keeps it working offline.
    Network first for everything (so updates show up right away); the saved copy is only used
    when there's no connection. Bump VERSION to clear old saved copies. */
-const VERSION = "fcgp-v2";
+const VERSION = "fcgp-v3";
 self.addEventListener("install", e => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil((async () => {
   for(const k of await caches.keys()) if(k !== VERSION) await caches.delete(k);
