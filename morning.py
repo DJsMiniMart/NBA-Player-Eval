@@ -184,6 +184,17 @@ def update(now, current_year):
     save(OUT, out)
 
 
+def refresh_lines():
+    """Quick refresh between full updates: just the betting lines and ESPN previews for the next week's games."""
+    now = dt.datetime.now(dt.timezone.utc)
+    m = load(OUT, {}) or {}
+    odds = {}
+    m["previews"] = previews(m.get("previews") or {}, now, odds)
+    if odds:
+        m["odds"], m["oddsAt"] = odds, now.isoformat(timespec="seconds")
+    save(OUT, m)
+
+
 if __name__ == "__main__":
     n = dt.datetime.now(dt.timezone.utc)
     update(n, n.year + (1 if n.month >= 8 else 0))

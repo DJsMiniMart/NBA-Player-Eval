@@ -5,8 +5,9 @@ name: Update clock
 # starts a fresh copy of itself for the next one. A job can only wait about 6 hours, so long gaps are
 # covered by a chain of waits. The schedule below only restarts the clock if the chain ever breaks.
 #
-# Update times (UTC): 05:15 (~12:15 AM Central, early games final), 08:15 (~3:15 AM, West Coast games
-# final), 11:15 (~6:15 AM, backup). Subtract 5 hours for Central (6 in winter).
+# Full updates (UTC): 05:15 (~12:15 AM Central, early games final), 08:15 (~3:15 AM, West Coast games
+# final), 11:15 (~6:15 AM, backup). Betting lines refresh every hour at :05 from 15:05 to 04:05 UTC
+# (~10 AM to 11 PM Central). Subtract 5 hours for Central (6 in winter).
 
 on:
   workflow_dispatch: {}
@@ -34,22 +35,22 @@ jobs:
         run: |
           set -u
           now=$(date -u +%s)
-          today=$(date -u +%F)
-          next=""
-          for d in "$today" "$(date -u -d tomorrow +%F)"; do
-            for t in 05:15 08:15 11:15; do
-              s=$(date -u -d "$d $t" +%s)
-              if [ "$s" -gt $((now + 60)) ]; then next=$s; break 2; fi
-            done
+          # events: full updates, plus a quick lines refresh every hour 15:05-04:05 UTC (~10 AM-11 PM Central)
+          events=""
+          for d in "$(date -u +%F)" "$(date -u -d tomorrow +%F)" "$(date -u -d '2 days' +%F)"; do
+            for t in 05:15 08:15 11:15; do events="$events $(date -u -d "$d $t" +%s):update-stats.yml"; done
+            for h in 15 16 17 18 19 20 21 22 23 00 01 02 03 04; do events="$events $(date -u -d "$d $h:05" +%s):lines.yml"; done
           done
+          pick=$(for e in $events; do echo "$e"; done | sort -n | awk -F: -v n=$((now + 60)) '$1 > n {print; exit}')
+          next=${pick%%:*}; job=${pick##*:}
           wait=$((next - now))
-          echo "Next update: $(date -u -d @$next) (in $((wait / 60)) minutes)"
+          echo "Next: $job at $(date -u -d @$next) (in $((wait / 60)) minutes)"
           dispatch() { curl -sf -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/actions/workflows/$1/dispatches" -d "{\"ref\":\"$REF\"}" && echo "Started $1"; }
           if [ "$wait" -gt 19800 ]; then
             sleep 19800                       # 5.5 hours, then hand over to a fresh clock
           else
             sleep "$wait"
-            dispatch update-stats.yml || dispatch update-stats.yml
+            dispatch "$job" || dispatch "$job"
           fi
           dispatch wake.yml || dispatch wake.yml
