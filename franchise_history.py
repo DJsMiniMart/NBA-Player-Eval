@@ -433,6 +433,30 @@ def update(now, current_year):
           f"{int(time.time() - started)}s")
 
 
+def write_league_history(now, cache, awards):
+    """data/league_history.json for the NBA History page: every champion and every league award, all seasons.
+    rows: [year, award key, tier, person id, name, team (that season's code), franchise (today's team)]"""
+    labels = {k: v for k, v in SINGLE}
+    labels.update({k: v for k, v in EXTRA})
+    labels.update({"fmvp": "Finals MVP", "all_nba": "All-NBA", "all_defense": "All-Defensive", "all_rookie": "All-Rookie",
+                   "all_star": "All-Star"})
+    rows, seen = [], set()
+    for year, key, label, pid, name, team, tier in awards:
+        k = (year, key, pid or name, tier)
+        if k in seen or not name:
+            continue
+        seen.add(k)
+        labels.setdefault(key, label)
+        rows.append([year, key, tier or "", pid or "", name, team or "", HIST.get(team or "", "")])
+    rows.sort(key=lambda r: (-r[0], ORDER.index(r[1]) if r[1] in ORDER else 99, r[2], r[4]))
+    champs = [[year, lg, code, name, HIST.get(code, "")] for year, lg, code, name in cache.get("champions", [])]
+    champs.sort(key=lambda r: -r[0])
+    save(os.path.join(DATA_DIR, "league_history.json"), {
+        "at": now.isoformat(timespec="seconds"), "source": "basketball-reference.com",
+        "cols": ["year", "key", "tier", "id", "name", "team", "franchise"], "order": ORDER, "labels": labels,
+        "champions": champs, "rows": rows})
+
+
 def write_player_awards(now, cache, awards):
     """data/player_awards.json: {player id: {"awards": [[year, key, tier, team], ...], "titles": [[year, team], ...]}}
     for the player pages. Championships come from the champion's roster that season."""
@@ -491,6 +515,7 @@ def build(now, cache):
             seen.add(key)
             teams[code]["awards"].append([a[0], season_label(a[0]), a[1], a[2], a[3], a[4], a[6], a[5]])
     write_player_awards(now, cache, awards)
+    write_league_history(now, cache, awards)
     for code, t in cache.get("teams", {}).items():
         if code in teams:
             teams[code].update({k: v for k, v in t.items() if v})

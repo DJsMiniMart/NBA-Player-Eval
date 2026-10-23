@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NBA History · Full Court Geek Press</title>
+<meta name="description" content="Every NBA champion, Finals MVP, MVP, Coach of the Year, All-NBA, All-Defensive and All-Rookie team, All-Star and league award winner since 1947.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --accent-soft:#fbe7ea; --court:#1D428A; --gold:#b7791f; --gold-soft:#fdf3dc; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --accent-soft:#3a1720; --court:#7aa2ff; --gold:#f2b84b; --gold-soft:#3a2c10; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  button,select,input{font:inherit;padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);}
+  button{cursor:pointer;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px;}
+  .nba-band{color:#fff;}
+  .band-in{padding-top:24px;padding-bottom:24px;}
+  h1{font:700 44px/1 "Barlow Condensed",sans-serif;letter-spacing:.5px;margin:0;text-transform:uppercase;}
+  h1 span{background:#C8102E;padding:0 8px;border-radius:4px;margin-left:4px;}
+  .meta{opacity:.85;margin-top:6px;font-size:13px;}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:18px 0 8px;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tabs button{font-weight:700;border-radius:999px;}
+  .tabs button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
+  .chips{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 12px;}
+  .chips button{font-size:12.5px;font-weight:600;border-radius:999px;padding:5px 11px;}
+  .chips button.on{background:var(--court);border-color:var(--court);color:#fff;}
+  #q{flex:1;min-width:200px;max-width:340px;margin-left:auto;}
+  h2{font:700 22px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px;}
+  .note{color:var(--dim);font-size:12.5px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start;}
+  @media (max-width:900px){ .cols{grid-template-columns:1fr;} }
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top;}
+  td.yr{font-weight:700;white-space:nowrap;width:80px;}
+  td.n{text-align:right;font-weight:700;}
+  .tm{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .tm img{width:20px;height:20px;}
+  .who a{color:inherit;font-weight:600;text-decoration:none;} .who a:hover{color:var(--court);text-decoration:underline;}
+  .tier{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--row);color:var(--dim);margin-right:6px;}
+  .tier.t1{background:var(--gold-soft);color:var(--gold);}
+  .names{display:flex;flex-wrap:wrap;gap:4px 12px;}
+  .names span{white-space:nowrap;}
+  .lead li{display:flex;justify-content:space-between;gap:10px;padding:6px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+  .lead ol{list-style:none;margin:0;padding:0;}
+  .lead h3{margin:0;padding:10px 12px;font:700 15px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);border-bottom:1px solid var(--line);}
+  .trophy{color:#d4a017;margin-right:4px;}
+  mark{background:var(--gold-soft);color:inherit;border-radius:3px;padding:0 2px;}
+  .more{display:block;width:100%;border:0;border-top:1px solid var(--line);border-radius:0 0 12px 12px;padding:10px;color:var(--court);font-weight:600;background:transparent;}
+  .more[hidden]{display:none;}
+  .season-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;}
+  .season-grid .card{padding:12px 14px;}
+  .season-grid h4{margin:0 0 6px;font:700 15px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);}
+  .tw{overflow-x:auto;}
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="wrap band-in">
+  <h1>NBA <span>History</span></h1>
+  <div class="meta" id="meta">Loading…</div>
+</div></div>
+<main class="wrap">
+  <div class="bar">
+    <div class="tabs" id="tabs">
+      <button data-t="champs" class="on">Champions</button><button data-t="awards">Awards</button>
+      <button data-t="teams">All-League Teams</button><button data-t="stars">All-Stars</button><button data-t="season">By season</button>
+    </div>
+    <input id="q" type="search" placeholder="Find a player, coach or team…" aria-label="Search">
+  </div>
+  <div id="body"></div>
+  <p class="note" style="margin:24px 0 40px">Awards, teams and champions from Basketball-Reference, refreshed weekly. Includes the BAA seasons (1947-49), which the NBA counts as its own. Click a player for his page.</p>
+</main>
+<script src="nav.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const season = y => `${y - 1}-${String(y).slice(2)}`;
+const store = {get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(_){} }};
+async function getJSON(p){ try{ const r = await fetch(p + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
+
+let H = null, ROWS = [], TAB = store.get("hist.tab") || "champs", AWARD = store.get("hist.award") || "mvp", TEAMK = store.get("hist.teams") || "all_nba", YEAR = null, Q = "", SHOWN = 40;
+const MAIN_AWARDS = ["mvp", "fmvp", "dpoy", "roy", "smoy", "mip", "clutch_poy", "coy", "all_star_mvp", "ist_mvp", "ecf_mvp", "wcf_mvp", "cpoy", "hustle", "tmoy", "sportsmanship", "citizenship", "social_justice"];
+const label = k => (H.labels && H.labels[k]) || k;
+const hit = s => Q && fold(s).includes(Q);
+const mark = s => { if(!Q) return esc(s); const f = fold(s), i = f.indexOf(Q); return i < 0 ? esc(s) : esc(s.slice(0, i)) + "<mark>" + esc(s.slice(i, i + Q.length)) + "</mark>" + esc(s.slice(i + Q.length)); };
+const person = r => { const coach = /c$/.test(r.id) || r.key === "coy"; return `<span class="who">${!coach && r.id ? `<a href="pe.html#/player/${encodeURIComponent(r.id)}">${mark(r.name)}</a>` : mark(r.name)}</span>`; };
+const team = (code, fr) => code ? `<span class="tm">${fr ? `<img src="${teamBadge(fr)}" alt="">` : ""}${esc(code)}</span>` : "";
+const byYear = list => { const m = new Map(); list.forEach(r => { if(!m.has(r.year)) m.set(r.year, []); m.get(r.year).push(r); }); return [...m.entries()].sort((a, b) => b[0] - a[0]); };
+const leaders = (list, title, keyFn = r => r.id || r.name) => {
+  const m = new Map(); list.forEach(r => { const k = keyFn(r); const x = m.get(k) || {r, n: 0, years: []}; x.n++; x.years.push(r.year); m.set(k, x); });
+  const top = [...m.values()].sort((a, b) => b.n - a.n || a.r.name.localeCompare(b.r.name)).slice(0, 15);
+  return `<div class="card lead"><h3>${esc(title)}</h3><ol>${top.map(x => `<li><span>${person(x.r)}</span><b title="${esc(x.years.sort().map(season).join(", "))}">${x.n}</b></li>`).join("")}</ol></div>`;
+};
+const moreBtn = (n) => n > SHOWN ? `<button class="more" id="more">Show more (${n - SHOWN} more)</button>` : "";
+function wireMore(){ const m = $("more"); if(m) m.onclick = () => { SHOWN += 60; draw(); }; }
+
+function drawChamps(){
+  const fm = new Map(ROWS.filter(r => r.key === "fmvp").map(r => [r.year, r]));
+  let list = H.champions.map(c => ({year:c[0], lg:c[1], code:c[2], name:c[3], fr:c[4], fmvp: fm.get(c[0])}));
+  if(Q) list = list.filter(c => hit(c.name) || hit(c.code) || (c.fmvp && hit(c.fmvp.name)));
+  const counts = new Map(); H.champions.forEach(c => { const k = c[4] || c[2]; const x = counts.get(k) || {code:k, n:0, names:new Set(), years:[]}; x.n++; x.names.add(c[3]); x.years.push(c[0]); counts.set(k, x); });
+  const top = [...counts.values()].sort((a, b) => b.n - a.n || a.code.localeCompare(b.code));
+  $("body").innerHTML = `<div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>Champion</th><th>Finals MVP</th></tr></thead><tbody>${
+    list.slice(0, SHOWN).map(c => `<tr><td class="yr">${season(c.year)}</td><td><span class="trophy">🏆</span><span class="tm">${c.fr ? `<img src="${teamBadge(c.fr)}" alt="">` : ""}<b>${mark(c.name)}</b></span>${c.lg === "BAA" ? ` <span class="tier">BAA</span>` : ""}</td>
+      <td>${c.fmvp ? `${person(c.fmvp)} <span class="note">${esc(c.fmvp.team)}</span>` : `<span class="note">${c.year < 1969 ? "Award began in 1969" : "—"}</span>`}</td></tr>`).join("")
+  }</tbody></table>${moreBtn(list.length)}</div>
+  <div><div class="card lead"><h3>Titles by franchise</h3><ol>${top.map(x => `<li><span class="tm">${window.teamBadge && x.code.length === 3 ? `<img src="${teamBadge(x.code)}" alt="">` : ""}<span title="${esc([...x.names].join(" / "))}">${esc([...x.names][0])}</span></span><b title="${esc(x.years.sort().map(season).join(", "))}">${x.n}</b></li>`).join("")}</ol></div>
+  ${leaders(ROWS.filter(r => r.key === "fmvp"), "Most Finals MVPs")}</div></div>`;
+  wireMore();
+}
+
+function drawAwards(){
+  const have = new Set(ROWS.map(r => r.key));
+  const keys = MAIN_AWARDS.filter(k => have.has(k));
+  if(!keys.includes(AWARD)) AWARD = keys[0];
+  let list = ROWS.filter(r => r.key === AWARD);
+  const all = list;
+  if(Q) list = list.filter(r => hit(r.name) || hit(r.team));
+  const first = all.length ? Math.min(...all.map(r => r.year)) : null;
+  $("body").innerHTML = `<div class="chips" id="chips">${keys.map(k => `<button data-k="${k}" class="${k === AWARD ? "on" : ""}">${esc(label(k))}</button>`).join("")}</div>
+    <div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>${AWARD === "coy" ? "Coach" : "Winner"}</th><th>Team</th></tr></thead><tbody>${
+      list.slice(0, SHOWN).map(r => `<tr><td class="yr">${season(r.year)}</td><td>${person(r)}</td><td>${team(r.team, r.fr)}</td></tr>`).join("") || `<tr><td colspan="3" class="note">No matches.</td></tr>`
+    }</tbody></table>${moreBtn(list.length)}</div>
+    <div>${leaders(all, `Most ${label(AWARD)} awards`)}<p class="note">${esc(label(AWARD))}: ${all.length} winners${first ? ` since ${season(first)}` : ""}. Hover a number for the seasons.</p></div></div>`;
+  document.querySelectorAll("#chips button").forEach(b => b.onclick = () => { AWARD = b.dataset.k; store.set("hist.award", AWARD); SHOWN = 40; draw(); });
+  wireMore();
+}
+
+function drawTeams(){
+  const kinds = [["all_nba", "All-NBA"], ["all_defense", "All-Defensive"], ["all_rookie", "All-Rookie"]];
+  const all = ROWS.filter(r => r.key === TEAMK);
+  let years = byYear(all);
+  if(Q) years = years.map(([y, l]) => [y, l.filter(r => hit(r.name))]).filter(([, l]) => l.length);
+  const tiers = l => { const m = {}; l.forEach(r => (m[r.tier || "—"] = m[r.tier || "—"] || []).push(r)); return Object.entries(m).sort(); };
+  $("body").innerHTML = `<div class="chips" id="chips">${kinds.map(([k, t]) => `<button data-k="${k}" class="${k === TEAMK ? "on" : ""}">${t} teams</button>`).join("")}</div>
+    <div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>Teams</th></tr></thead><tbody>${
+      years.slice(0, SHOWN).map(([y, l]) => `<tr><td class="yr">${season(y)}</td><td>${tiers(l).map(([t, rs]) => `<div style="margin:2px 0"><span class="tier ${t === "1st" ? "t1" : ""}">${esc(t)}</span><span class="names">${rs.map(r => `<span>${person(r)}</span>`).join("")}</span></div>`).join("")}</td></tr>`).join("")
+    }</tbody></table>${moreBtn(years.length)}</div>
+    <div>${leaders(all, `Most ${kinds.find(k => k[0] === TEAMK)[1]} selections`)}${leaders(all.filter(r => r.tier === "1st"), "Most 1st-team selections")}</div></div>`;
+  document.querySelectorAll("#chips button").forEach(b => b.onclick = () => { TEAMK = b.dataset.k; store.set("hist.teams", TEAMK); SHOWN = 40; draw(); });
+  wireMore();
+}
+
+function drawStars(){
+  const all = ROWS.filter(r => r.key === "all_star"), mvp = new Map();
+  ROWS.filter(r => r.key === "all_star_mvp").forEach(r => { (mvp.get(r.year) || mvp.set(r.year, []).get(r.year)).push(r); });
+  let years = byYear(all);
+  if(Q) years = years.map(([y, l]) => [y, l.filter(r => hit(r.name))]).filter(([, l]) => l.length);
+  $("body").innerHTML = `<div class="cols"><div class="card tw"><table><thead><tr><th>Season</th><th>All-Stars</th><th>Game MVP</th></tr></thead><tbody>${
+      years.slice(0, SHOWN).map(([y, l]) => `<tr><td class="yr">${season(y)}</td><td><span class="names">${l.sort((a, b) => a.name.localeCompare(b.name)).map(r => `<span>${person(r)}</span>`).join("")}</span></td>
+        <td>${(mvp.get(y) || []).map(person).join(", ") || "—"}</td></tr>`).join("")
+    }</tbody></table>${moreBtn(years.length)}</div>
+    <div>${leaders(all, "Most All-Star selections")}${leaders(ROWS.filter(r => r.key === "all_star_mvp"), "Most All-Star MVPs")}</div></div>`;
+  wireMore();
+}
+
+function drawSeason(){
+  const ys = [...new Set(ROWS.map(r => r.year).concat(H.champions.map(c => c[0])))].sort((a, b) => b - a);
+  if(!ys.includes(YEAR)) YEAR = ys[0];
+  const l = ROWS.filter(r => r.year === YEAR), c = H.champions.find(x => x[0] === YEAR);
+  const block = (t, rs) => rs.length ? `<div class="card"><h4>${esc(t)}</h4>${rs.map(r => `<div>${r.tier ? `<span class="tier ${r.tier === "1st" ? "t1" : ""}">${esc(r.tier)}</span>` : ""}${person(r)} <span class="note">${esc(r.team)}</span></div>`).join("")}</div>` : "";
+  const singles = MAIN_AWARDS.map(k => block(label(k), l.filter(r => r.key === k))).join("");
+  $("body").innerHTML = `<div class="bar" style="margin-top:0"><select id="yr">${ys.map(y => `<option value="${y}"${y === YEAR ? " selected" : ""}>${season(y)}</option>`).join("")}</select>
+      <button id="older">‹ Earlier</button><button id="newer">Later ›</button></div>
+    ${c ? `<div class="card" style="padding:14px 16px;margin-bottom:10px"><span class="trophy">🏆</span><b style="font-size:16px">${esc(c[3])}</b> won the ${season(YEAR)} ${c[1] === "BAA" ? "BAA" : "NBA"} title</div>` : ""}
+    <div class="season-grid">${singles}${block("All-NBA", l.filter(r => r.key === "all_nba"))}${block("All-Defensive", l.filter(r => r.key === "all_defense"))}${block("All-Rookie", l.filter(r => r.key === "all_rookie"))}${block("All-Stars", l.filter(r => r.key === "all_star").sort((a, b) => a.name.localeCompare(b.name)))}</div>`;
+  $("yr").onchange = e => { YEAR = +e.target.value; draw(); };
+  $("older").onclick = () => { const i = ys.indexOf(YEAR); if(i < ys.length - 1){ YEAR = ys[i + 1]; draw(); } };
+  $("newer").onclick = () => { const i = ys.indexOf(YEAR); if(i > 0){ YEAR = ys[i - 1]; draw(); } };
+}
+
+function draw(){
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === TAB));
+  $("q").hidden = TAB === "season";
+  ({champs: drawChamps, awards: drawAwards, teams: drawTeams, stars: drawStars, season: drawSeason})[TAB]();
+}
+async function init(){
+  H = await getJSON("data/league_history.json");
+  if(!H){ $("body").innerHTML = `<div class="card" style="padding:24px;text-align:center" class="note">League history is added during the next update.</div>`; return; }
+  ROWS = H.rows.map(r => ({year:r[0], key:r[1], tier:r[2], id:r[3], name:r[4], team:r[5], fr:r[6]}));
+  const first = Math.min(...H.champions.map(c => c[0]));
+  $("meta").textContent = `${H.champions.length} champions and ${ROWS.length.toLocaleString()} award honors, ${season(first)} to ${season(H.champions[0][0])}`;
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { TAB = b.dataset.t; store.set("hist.tab", TAB); SHOWN = 40; draw(); });
+  $("q").oninput = e => { Q = fold(e.target.value.trim()); SHOWN = Q ? 400 : 40; draw(); };
+  const m = location.hash.match(/^#(champs|awards|teams|stars|season)(?:\/(\w+))?/);
+  if(m){ TAB = m[1]; if(m[2] && TAB === "awards") AWARD = m[2]; }
+  draw();
+}
+init();
+})();
+</script>
+</body>
+</html>
