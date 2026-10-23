@@ -68,9 +68,13 @@ function where(){ return {path: location.pathname, hash: location.hash || ""}; }
 function build(){
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
   if(!document.querySelector('link[rel="icon"]')){
-    [["icon", "img/icon-64.png"], ["apple-touch-icon", "img/icon-256.png"]].forEach(([rel, href]) => {
-      const l = document.createElement("link"); l.rel = rel; l.href = href; l.type = "image/png"; document.head.appendChild(l); });
+    [["icon", "img/icon-64.png"], ["apple-touch-icon", "img/apple-touch-icon.png"], ["manifest", "manifest.webmanifest"]].forEach(([rel, href]) => {
+      const l = document.createElement("link"); l.rel = rel; l.href = href; document.head.appendChild(l); });
+    [["theme-color", "#0b0b0d"], ["apple-mobile-web-app-capable", "yes"], ["mobile-web-app-capable", "yes"],
+     ["apple-mobile-web-app-status-bar-style", "black-translucent"], ["apple-mobile-web-app-title", "Geek Press"]].forEach(([name, content]) => {
+      const m = document.createElement("meta"); m.name = name; m.content = content; document.head.appendChild(m); });
   }
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   const nav = document.createElement("nav");
   nav.className = "sitenav"; nav.setAttribute("aria-label", "Site");
   nav.innerHTML = `<div class="sitenav-in">
@@ -81,6 +85,7 @@ function build(){
       </button>
       <div class="sitenav-list" id="sitenavList" role="menu">
         ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
+        <a role="menuitem" href="#" id="sitenavApp" hidden><b>📲 Get the app</b><small>Add Full Court Geek Press to your home screen</small></a>
         <div class="sitenav-teams"><small>Team pages</small><div class="sitenav-grid">
           ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="https://cdn.nba.com/logos/nba/${id}/primary/L/logo.svg" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
         </div></div>
@@ -100,8 +105,41 @@ function build(){
     }
   });
   list.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
+  setupApp();
   mark();
   window.addEventListener("hashchange", mark);
+}
+/* ---------- install as an app ---------- */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; const a = document.getElementById("sitenavApp"); if(a) a.hidden = false; });
+function setupApp(){
+  const a = document.getElementById("sitenavApp");
+  if(!a) return;
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if(standalone) return;                     // already running as the app
+  if(ios || installEvt) a.hidden = false;
+  a.onclick = async e => {
+    e.preventDefault();
+    if(installEvt){ installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; a.hidden = true; return; }
+    appHelp(ios);
+  };
+}
+function appHelp(ios){
+  let d = document.getElementById("sitenavHelp");
+  if(!d){
+    d = document.createElement("div"); d.id = "sitenavHelp";
+    d.style.cssText = "position:fixed;inset:0;z-index:200;background:rgba(5,10,25,.6);display:flex;align-items:flex-end;justify-content:center;padding:16px;";
+    d.onclick = e => { if(e.target === d || e.target.dataset.x) d.remove(); };
+    document.body.appendChild(d);
+  }
+  const steps = ios
+    ? `<li>Tap the <b>Share</b> button <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#1D428A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v9h12v-9"/></svg> at the bottom of Safari (top right on iPad).</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. The Geek Press icon shows up with your other apps.</li>`
+    : `<li>Open the browser menu (<b>⋮</b> in Chrome, <b>…</b> in Edge).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm. The Geek Press icon shows up with your other apps.</li>`;
+  d.innerHTML = `<div style="background:#fff;color:#0f172a;border-radius:16px;max-width:420px;width:100%;padding:18px 18px 14px;font:14px/1.45 Inter,system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><img src="img/app-192.png" alt="" style="width:48px;height:48px;border-radius:12px"><div><b style="font-size:16px">Get the Full Court Geek Press app</b><div style="color:#5b6475;font-size:12.5px">Free · no app store needed</div></div></div>
+    <ol style="margin:8px 0 12px;padding-left:20px;display:grid;gap:6px">${steps}</ol>
+    <button data-x="1" style="width:100%;padding:10px;border-radius:10px;border:0;background:#0b0b0d;color:#fff;font:600 14px Inter,system-ui,sans-serif;cursor:pointer">Got it</button></div>`;
 }
 function mark(){
   const w = where();
