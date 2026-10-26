@@ -531,7 +531,14 @@ function injHtml(u){
       const cls = st === "out" ? "out" : st === "doubtful" ? "dbt" : "q";
       return `<i class="${cls}" title="${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}">${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b></i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
   };
-  return `<div class="inj">${side(u.away)}${side(u.home)}</div>`;
+  return `<div class="inj">${side(u.away)}${side(u.home)}</div>${lineupHtml(u)}`;
+}
+/* how much the Pulse pick moved for players sitting (predict.py: lineup adjustment) */
+function lineupHtml(u){
+  const L = u.lineup; if(!L) return "";
+  const bits = [u.away, u.home].flatMap(t => ((L[t] && L[t][1]) || []).map(([nm, q, pts]) =>
+    `${esc(lastName(nm))}${q < 1 ? ` (${Math.round(q * 100)}% likely out)` : ""} −${pts.toFixed(1)} pts`));
+  return bits.length ? `<div class="vegas" title="Pulse moves each team's rating for regulars expected to sit, using the injury report. Points are how much each absence costs on Pulse's line.">🩹 Pulse adjusted for: ${bits.join(" · ")}</div>` : "";
 }
 
 /* ---------- live scores: straight from ESPN in the visitor's browser, every 30 seconds while games are on ---------- */
@@ -630,7 +637,7 @@ function renderUpcoming(){
   const rec = PRED.record || [0, 0];
   const book = Object.values((MORNING && MORNING.odds) || {})[0];
   $("upLines").innerHTML = book ? `Lines from ${esc(book.book || "the sportsbook")} via ESPN${MORNING.oddsAt ? `, as of ${new Date(MORNING.oddsAt).toLocaleString("en-US", {weekday:"short", hour:"numeric", minute:"2-digit"})}` : ""}; they move, so check your book before betting. For information only, 21+. Gambling problem? Call 1-800-GAMBLER.` : "";
-  $("upNote").textContent = `Pulse picks the winner from each team's Pulse margin plus home court · ${rec[0]}-${rec[1]} this season · tested at 68% on last season's games`;
+  $("upNote").textContent = `Pulse picks the winner from each team's Pulse margin plus home court, adjusted for who's sitting · ${rec[0]}-${rec[1]} this season · tested at 70% on last season's games`;
 }
 
 /* ---------- transactions ---------- */

@@ -5,6 +5,15 @@ minus the same for its opponents. Early in the season each team's rating leans o
 (PRIOR_GAMES games' worth). Win chance for the home team = 1 / (1 + e^(-SCALE * (home - away + HOME_EDGE))).
 Fit on every 2025-26 game, using only what was known before each game: it picked 68.0% of winners.
 
+Lineups: the team rating is an average over games a player may or may not have played, so it's moved to match
+who's actually playing. Every player averaging LINEUP_MIN+ minutes for the team is worth
+v = LINEUP_ALPHA * (his Pulse production per game - LINEUP_BETA * his minutes per game). If he played a share f of
+the games behind the rating, the team gets +(1-f)*v when he plays and -f*v when he sits. For past games that's who
+actually played; for upcoming games it's ESPN's injury report (Out = sitting, Doubtful = 75%, Questionable or
+Day-To-Day = 50%) and players traded away count as sitting. It starts once a team has played LINEUP_START games.
+Fit on 2018-19 to 2023-24, then checked on 2024-25 and 2025-26 (held out): winners 65.8% -> 67.6% on the held-out
+seasons (2025-26 alone: 68.0% -> 70.0%), spread misses 11.35 -> 11.08 points; all 8 seasons 63.1% -> 64.7%.
+
 Every pick is made from the games before it, so the season record is honest (no hindsight).
 Storylines are worked out from the data: rivalries, division games, earlier meetings, streaks, the playoff race,
 players facing their old team, star match-ups, top rookies, back-to-backs, plus ESPN's preview when there is one
@@ -24,6 +33,8 @@ SPREAD_K, SPREAD_B = 0.2414, -0.39
 def pulse_margin(rh, ra):
     return SPREAD_K * (rh - ra + HOME_EDGE) + SPREAD_B
 DAYS_AHEAD = 7
+LINEUP_ALPHA, LINEUP_BETA, LINEUP_MIN, LINEUP_GONE, LINEUP_START = 0.5, 0.55, 18, 40, 8
+SIT_CHANCE = {"out": 1.0, "doubtful": 0.75, "questionable": 0.5, "day-to-day": 0.5}
 BBR2NBA = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
 NAMES = {"ATL": "Hawks", "BOS": "Celtics", "BKN": "Nets", "CHA": "Hornets", "CHI": "Bulls", "CLE": "Cavaliers",
          "DAL": "Mavericks", "DEN": "Nuggets", "DET": "Pistons", "GSW": "Warriors", "HOU": "Rockets", "IND": "Pacers",
@@ -86,6 +97,70 @@ def final_ratings(tgames):
     return {t: x[0] / x[1] for t, x in r.items() if x[1]}
 
 
+def pprod(lg):
+    """Pulse production for one player game log row."""
+    return lg[5] + 2 * lg[6] + 2 * (lg[7] + lg[8]) + 4 * lg[9] + lg[10] - 4 * lg[11]
+
+
+def name_key(n):
+    return "".join(ch for ch in str(n).lower() if ch.isalnum())
+
+
+class Lineups:
+    """Tracks every player's games for each team, in order, to adjust team ratings for who's playing."""
+
+    def __init__(self, cur):
+        tg = cur.get("tgames") or {}
+        self.played, self.names, self.last_team = {}, {}, {}
+        for pid, p in (cur.get("players") or {}).items():
+            self.names[pid] = p.get("n") or (cur.get("names") or {}).get(pid, pid)
+            latest = None
+            for lg in p.get("logs") or []:
+                g = tg.get(lg[0])
+                if not g or lg[4] <= 0:
+                    continue
+                team = g[1] if lg[3] == 1 else g[2]
+                self.played.setdefault(lg[0], {}).setdefault(team, {})[pid] = (lg[4], pprod(lg))
+                if team in CONF_OF and (latest is None or (lg[1], lg[0]) > latest[0]):
+                    latest = ((lg[1], lg[0]), team)
+            if latest:
+                self.last_team[pid] = latest[1]
+        self.games, self.stat = {}, {}   # team -> games counted; team -> {pid: [gp, min, prod, game # last played]}
+
+    def adjust(self, team, sit):
+        """Rating change for team; sit(pid) = chance he sits. Returns (change, [(name, -impact)])."""
+        n = self.games.get(team, 0)
+        if n < max(1, LINEUP_START):   # too few games to know who matters: in testing it only added noise
+            return 0.0, []
+        tot, missing = 0.0, []
+        for pid, (gp, mn, pr, last) in self.stat.get(team, {}).items():
+            if mn / gp < LINEUP_MIN:
+                continue
+            q = sit(pid)
+            if q > 0 and n - last > LINEUP_GONE:
+                continue
+            v = LINEUP_ALPHA * (pr / gp - LINEUP_BETA * mn / gp)
+            f = gp / (n + PRIOR_GAMES)
+            tot += (1 - q) * (1 - f) * v - q * f * v
+            if q > 0 and v > 0:
+                missing.append((pid, self.names.get(pid, pid), q, v))
+        missing.sort(key=lambda m: -m[2] * m[3])
+        return tot, missing
+
+    def for_game(self, gid, team):
+        here = self.played.get(gid, {}).get(team, {})
+        return self.adjust(team, lambda pid: 0.0 if pid in here else 1.0)[0]
+
+    def add(self, gid, team):
+        n = self.games[team] = self.games.get(team, 0) + 1
+        for pid, (mn, pr) in self.played.get(gid, {}).get(team, {}).items():
+            q = self.stat.setdefault(team, {}).setdefault(pid, [0, 0.0, 0.0, 0])
+            q[0] += 1
+            q[1] += mn
+            q[2] += pr
+            q[3] = n
+
+
 def win_chance(rh, ra):
     return 1 / (1 + math.exp(-SCALE * (rh - ra + HOME_EDGE)))
 
@@ -109,8 +184,10 @@ def update(now, year):
     lines = load(os.path.join(DATA, "lines_log.json"), {}) or {}
     ats, aw, al_, ap = {}, 0, 0, 0
     results = []   # [date, home, away, home pts, away pts]
+    lu = Lineups(cur)
     for gid, date, h, a, hl, al, _ in games:
-        p = win_chance(rating(h), rating(a))
+        rh, ra = rating(h) + lu.for_game(gid, h), rating(a) + lu.for_game(gid, a)
+        p = win_chance(rh, ra)
         pick = h if p >= .5 else a
         won = h if hl[0] > al[0] else a
         ok = pick == won
@@ -119,7 +196,7 @@ def update(now, year):
         picks[gid] = [pick, round(max(p, 1 - p), 3), 1 if ok else 0]
         ln = lines.get(gid)
         if ln and ln.get("spread") is not None:      # against the spread: home spread, negative = home favored
-            pm = pulse_margin(rating(h), rating(a))
+            pm = pulse_margin(rh, ra)
             side = h if pm + ln["spread"] > 0 else a
             res = (hl[0] - al[0]) + ln["spread"]
             covered = h if res > 0 else a if res < 0 else None
@@ -133,7 +210,24 @@ def update(now, year):
             x = sums.setdefault(t, [0.0, 0])
             x[0] += prod(me) - prod(op)
             x[1] += 1
+            lu.add(gid, t)
     ratings = {t: round(rating(t), 2) for t in CONF_OF}
+    inj = (load(os.path.join(DATA, "morning.json"), {}) or {}).get("inj") or {}
+    by_name = {}
+    for pid, nm in lu.names.items():
+        by_name.setdefault(name_key(nm), pid)
+
+    def tonight(gid, t):
+        report = {}
+        for r in (inj.get(gid) or {}).get(t) or []:
+            pid = by_name.get(name_key(r[0]))
+            st = str(r[1]).lower()
+            if pid and st in SIT_CHANCE:
+                report[pid] = 1.0 if str(r[3] if len(r) > 3 else "").upper() in ("OUT", "OFS") else SIT_CHANCE[st]
+        sit = lambda pid: 1.0 if lu.last_team.get(pid) != t else report.get(pid, 0.0)  # noqa: E731
+        change, missing = lu.adjust(t, sit)
+        return change, [[nm, round(q, 2), round(SPREAD_K * q * v, 1)] for pid, nm, q, v in missing
+                        if SPREAD_K * q * v >= 0.3 and lu.last_team.get(pid) == t][:4]
 
     # upcoming games
     sched = (load(os.path.join(DATA, "schedule.json"), {}) or {}).get("games", [])
@@ -147,15 +241,20 @@ def update(now, year):
             continue
         if state == 3 or t > soon or t < now - dt.timedelta(hours=6) or h not in CONF_OF or a not in CONF_OF:
             continue
-        p = win_chance(ratings[h], ratings[a])
+        ch, mh = tonight(gid, h)
+        ca, ma = tonight(gid, a)
+        rh, ra = ratings[h] + ch, ratings[a] + ca
+        p = win_chance(rh, ra)
         upcoming.append({"id": gid, "t": when, "home": h, "away": a, "tv": g[8], "arena": g[7],
                          "pick": h if p >= .5 else a, "p": round(max(p, 1 - p), 3),
-                         "margin": round(pulse_margin(ratings[h], ratings[a]), 1),
+                         "margin": round(pulse_margin(rh, ra), 1),
+                         "lineup": {h: [round(SPREAD_K * ch, 1), mh], a: [round(SPREAD_K * ca, 1), ma]},
                          "stories": stories(gid, h, a, when, results, sched, now, year)})
     upcoming.sort(key=lambda u: u["t"])
     out = {"at": now.isoformat(timespec="seconds"), "season": label(year),
            "model": {"scale": SCALE, "homeEdge": HOME_EDGE, "priorGames": PRIOR_GAMES, "priorShrink": PRIOR_SHRINK,
-                     "tested": "picked 68.0% of 2025-26 winners using only games played before each one"},
+                     "tested": "picked 70.0% of 2025-26 winners using only games played before each one, adjusted for who played",
+                     "lineup": {"alpha": LINEUP_ALPHA, "beta": LINEUP_BETA, "minMin": LINEUP_MIN, "gone": LINEUP_GONE, "start": LINEUP_START}},
            "record": [w, l], "picks": picks, "ats": ats, "atsRecord": [aw, al_, ap], "ratings": ratings, "upcoming": upcoming}
     with open(os.path.join(DATA, "predictions.json"), "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"))

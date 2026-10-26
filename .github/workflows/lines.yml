@@ -1,7 +1,7 @@
 name: Refresh betting lines
 
-# Quick in-between refresh (under a minute): the sportsbook lines and ESPN previews for the next
-# week's games. Started every hour from about 10 AM to 11 PM Central by the "Update clock" workflow.
+# Quick in-between refresh (under a minute): the sportsbook lines, ESPN previews and injury reports for the next
+# week's games, then the Pulse picks again so they follow who's sitting. Started every hour from about 10 AM to 11 PM Central by the "Update clock" workflow.
 on:
   workflow_dispatch: {}
 
@@ -23,5 +23,7 @@ jobs:
           python-version: "3.12"
       - name: Get the latest lines
         run: python -c "import morning; morning.refresh_lines()"
+      - name: Re-pick with the new injury report
+        run: python predict.py || echo "Picks not refreshed this time"
       - name: Save them
         run: .github/scripts/save.sh "Lines update"

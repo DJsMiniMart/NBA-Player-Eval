@@ -78,10 +78,20 @@
   <h2>Does it work?</h2>
   <p>Every test below uses only what was known <i>before</i> each game, the same way the picks on The Morning Press are made. There's no hindsight.</p>
   <div class="grid">
-    <div class="card"><div class="big">68%</div><h3>Game winners</h3><p>Team Pulse ratings plus home court picked the winner of 68% of 2025-26 games. Sportsbook favorites typically win about 67–70%.</p></div>
+    <div class="card"><div class="big">70%</div><h3>Game winners</h3><p>Team Pulse ratings, adjusted for who's sitting, plus home court picked the winner of 70% of 2025-26 games. Sportsbook favorites typically win about 67–70%.</p></div>
     <div class="card"><div class="big">87.7%</div><h3>Pulse+ in the box score</h3><p>The team with the higher Pulse+ in a game won 87.7% of 2025-26 games (Pulse: 83.8%). Missed shots matter.</p></div>
     <div class="card"><div class="big">0.84</div><h3>Season win %</h3><p>Over a season, a team's Pulse margin tracks its winning percentage with a 0.84 correlation (1.00 would be perfect).</p></div>
   </div>
+  <h2>Who's sitting out</h2>
+  <p>A team's rating is an average of its games, but the lineup changes from night to night. So before every pick, Pulse adjusts the rating for who's actually playing:</p>
+  <ul>
+    <li>Every player averaging 18+ minutes for the team gets a value based on his Pulse production per game, compared with what a replacement would produce in his minutes.</li>
+    <li>If a player is listed as <b>Out</b> on the injury report, the team loses the part of its rating he built. <b>Doubtful</b> counts 75%, <b>Questionable</b> or <b>Day-To-Day</b> 50%. Players traded away count as gone.</li>
+    <li>It works both ways: when a star returns after missing weeks, the team gets credit for having him back.</li>
+    <li>It starts once a team has played 8 games. Before that, we don't know enough about who matters, and in testing it only added noise.</li>
+  </ul>
+  <p>Tested on 2024-25 and 2025-26 (left out while tuning it), the adjustment raised the share of winners picked from 65.8% to 67.6% and cut the average miss on the spread from 11.4 to 11.1 points. Injury reports update every hour, so picks can move as players are ruled in or out. The game cards show who Pulse adjusted for and what each absence costs.</p>
+  <p class="note">In the season record, past games use who actually played as a stand-in for that night's injury report.</p>
   <p class="note">This season's pick record, and Pulse's record against the spread, are tracked live on <a href="index.html">The Morning Press</a>.</p>
 
   <h2>What Pulse doesn't see</h2>
