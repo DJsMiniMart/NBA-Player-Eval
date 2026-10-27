@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Picks · Full Court Geek Press</title>
+<meta name="description" content="Make your own NBA picks (moneyline, spread, over/under) and see how you do against Pulse and the Vegas favorites.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --court:#1D428A; --good:#2f9e44; --bad:#d6336c; --push:#8a6d1d; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --court:#7aa2ff; --good:#51cf66; --bad:#ff6b9a; --push:#e0b54a; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  .nba-band{color:#fff;}
+  .band-in{max-width:1000px;margin:0 auto;padding:28px 16px 24px;}
+  .band-in .eyebrow{font:700 13px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#ff4d63;margin-bottom:10px;}
+  h1{font:700 46px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:0;}
+  .lede{font-size:16px;opacity:.9;margin:10px 0 0;max-width:640px;}
+  main{max-width:1000px;margin:0 auto;padding:16px 16px 60px;}
+  h2{font:700 24px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:28px 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
+  .tabs button{font:600 13px Inter,sans-serif;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .tabs button.on{background:var(--court);border-color:var(--court);color:#fff;}
+  .vs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .vs .card{margin:0;text-align:center;}
+  .vs .card.me{border:2px solid var(--accent);}
+  .vs h3{margin:0;font:700 15px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  .vs .rec{font:700 40px/1.1 "Barlow Condensed",sans-serif;margin:4px 0 2px;}
+  .vs .u{font-weight:700;} .pos{color:var(--good);} .neg{color:var(--bad);}
+  .vs small{display:block;color:var(--dim);font-size:12px;}
+  .note{color:var(--dim);font-size:12.5px;}
+  .tw{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);}
+  .r{display:inline-block;min-width:22px;text-align:center;font-weight:700;font-size:11.5px;padding:1px 6px;border-radius:5px;}
+  .r.W{background:rgba(47,158,68,.15);color:var(--good);} .r.L{background:rgba(214,51,108,.13);color:var(--bad);} .r.P{background:rgba(224,181,74,.18);color:var(--push);}
+  .r.none{color:var(--dim);}
+  .x{border:0;background:none;color:var(--dim);cursor:pointer;font-size:15px;padding:0 4px;}
+  .btn{font:600 13px Inter,sans-serif;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .empty{color:var(--dim);padding:6px 0;}
+  @media (max-width:640px){ h1{font-size:38px;} .vs{grid-template-columns:1fr;} .vs .rec{font-size:34px;} }
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="band-in">
+  <div class="eyebrow">Your bets</div>
+  <h1>My Picks</h1>
+  <p class="lede">Pick the winner, the spread or the over/under on any upcoming game from the game cards on <a href="index.html" style="color:#fff">The Morning Press</a>, then see how you stack up against Pulse and the Vegas favorites.</p>
+</div></div>
+<main>
+  <div class="tabs" id="tabs"></div>
+  <div class="vs" id="vs"></div>
+  <p class="note" id="vsNote"></p>
+
+  <h2>Waiting on the game</h2>
+  <div class="card"><div class="tw" id="pending"></div></div>
+
+  <h2>Settled</h2>
+  <div class="card"><div class="tw" id="settled"></div></div>
+
+  <h2>Your picks are saved in this browser</h2>
+  <div class="card">
+    <p style="margin:0 0 10px">Picks stay on this device and browser only (no account needed). To move them to another phone or computer, or keep a copy, download a backup and restore it there.</p>
+    <button class="btn primary" id="dl">Download backup</button>
+    <label class="btn" style="display:inline-block">Restore from backup<input type="file" id="ul" accept="application/json,.json" hidden></label>
+    <span class="note" id="bkNote"></span>
+  </div>
+  <p class="note">For fun and information only. You must be 21+ and in a state where sports betting is legal to bet for real. Gambling problem? Call 1-800-GAMBLER.</p>
+</main>
+<script src="nav.js"></script>
+<script src="mypicks.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const TYPES = [["all","All bets"],["ml","Winner (moneyline)"],["spread","Spread"],["total","Over/under"]];
+let TAB = "all", FINALS = {}, SCHED = null;
+const units = u => `<span class="u ${u > 0.004 ? "pos" : u < -0.004 ? "neg" : ""}">${u > 0 ? "+" : u < 0 ? "−" : ""}${Math.abs(u).toFixed(2)}u</span>`;
+const recTxt = r => `${r.w}-${r.l}${r.p ? "-" + r.p : ""}`;
+const pctTxt = r => r.w + r.l ? Math.round(1000 * r.w / (r.w + r.l)) / 10 + "%" : "—";
+const day = t => new Date(t).toLocaleDateString("en-US", {month:"short", day:"numeric"});
+const time = t => new Date(t).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
+const res = r => r ? `<span class="r ${r}">${r}</span>` : `<span class="r none">—</span>`;
+
+function draw(){
+  const all = MyPicks.graded(FINALS), list = all.filter(p => TAB === "all" || p.type === TAB);
+  $("tabs").innerHTML = TYPES.map(([k, t]) => `<button data-t="${k}" class="${k === TAB ? "on" : ""}">${t} (${all.filter(p => k === "all" || p.type === k).length})</button>`).join("");
+  $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { TAB = b.dataset.t; draw(); });
+  const done = list.filter(p => p.res);
+  const me = MyPicks.record(done, "you"), pu = MyPicks.record(done, "pulse"), ve = MyPicks.record(done, "vegas");
+  const box = (title, r, sub, cls) => `<div class="card ${cls || ""}"><h3>${title}</h3><div class="rec">${r.n ? recTxt(r) : "—"}</div><div>${r.n ? units(r.units) + " · " + pctTxt(r) : ""}</div><small>${sub}</small></div>`;
+  $("vs").innerHTML = box("You", me, `${done.length} settled pick${done.length === 1 ? "" : "s"}`, "me")
+    + box("Pulse", pu, pu.n ? "same games, same bet type" : TAB === "total" ? "Pulse doesn't pick totals yet" : "same games, same bet type")
+    + box("Vegas favorites", ve, ve.n ? "always taking the favorite" : TAB === "total" ? "no favorite on an over/under" : "always taking the favorite");
+  $("vsNote").innerHTML = `Each bet risks 1 unit (u). Moneyline bets pay at the odds when you picked; spread and over/under bets at the usual −110, where you need to win 52.4% to break even. Pulse and the favorite are graded on the same games and bet types you picked, at the same lines.`;
+
+  const pend = list.filter(p => !p.res);
+  $("pending").innerHTML = pend.length ? `<table><thead><tr><th>Game</th><th>When</th><th>Your bet</th><th>Pulse</th><th></th></tr></thead><tbody>${pend.map(p => `<tr>
+      <td><b>${esc(p.away)} @ ${esc(p.home)}</b></td><td>${day(p.t)} · ${time(p.t)}</td><td><b>${esc(MyPicks.betText(p))}</b></td>
+      <td>${p.pulse ? esc(MyPicks.betText(p, p.pulse)) : "—"}</td>
+      <td>${MyPicks.started(p.t) ? `<span class="note">in progress</span>` : `<button class="x" title="Take back this pick" data-rm="${esc(p.gid + ":" + p.type)}">✕</button>`}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">No open picks. Head to <a href="index.html#upSec">Coming up</a> on The Morning Press and tap a bet on any game card.</div>`;
+  $("pending").querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { MyPicks.remove(b.dataset.rm); draw(); });
+
+  $("settled").innerHTML = done.length ? `<table><thead><tr><th>Date</th><th>Game</th><th>Final</th><th>Your bet</th><th>You</th><th>Pulse</th><th>Favorite</th></tr></thead><tbody>${done.map(p => `<tr>
+      <td>${day(p.t)}</td><td>${esc(p.away)} @ ${esc(p.home)}</td><td>${p.score[1]}-${p.score[0]}</td>
+      <td>${esc(MyPicks.betText(p))}</td><td>${res(p.res.you)} ${units(MyPicks.profit(p.odds, p.res.you))}</td>
+      <td>${p.pulse ? res(p.res.pulse) + ` <span class="note">${esc(MyPicks.betText(p, p.pulse))}</span>` : "—"}</td>
+      <td>${p.vegas ? res(p.res.vegas) + ` <span class="note">${esc(MyPicks.betText(p, p.vegas))}</span>` : "—"}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">Nothing settled yet. Picks are graded as soon as the game ends.</div>`;
+}
+
+async function refresh(){
+  try{ SCHED = await fetch("data/schedule.json?t=" + Date.now()).then(r => r.ok ? r.json() : null); }catch(_){ SCHED = null; }
+  FINALS = await MyPicks.finals(SCHED);
+  draw();
+}
+$("dl").onclick = () => {
+  const blob = new Blob([MyPicks.exportData()], {type:"application/json"}), a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `my-picks-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+};
+$("ul").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ const n = MyPicks.importData(await f.text()); $("bkNote").textContent = `Restored ${n} pick${n === 1 ? "" : "s"}.`; refresh(); }
+  catch(err){ $("bkNote").textContent = err.message || "Couldn't read that file."; }
+  e.target.value = "";
+};
+MyPicks.onChange(draw);
+draw(); refresh();
+setInterval(() => { if(MyPicks.graded(FINALS).some(p => !p.res && MyPicks.started(p.t))) refresh(); }, 5 * 6e4);
+})();
+</script>
+</body>
+</html>

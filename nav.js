@@ -25,6 +25,7 @@ const PAGES = [
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
   {label:"Playoff Picture", sub:"Bracket, play-in and the 2027 lottery", href:"playoffs.html", match:p => /playoffs\.html$/.test(p.path)},
   {label:"NBA History",     sub:"Champions, MVPs, Coach of the Year, All-NBA", href:"history.html", match:p => /history\.html$/.test(p.path)},
+  {label:"My Picks",        sub:"Make your own picks, track your record vs Pulse and Vegas", href:"picks.html", match:p => /picks\.html$/.test(p.path)},
   {label:"About Pulse",     sub:"What Pulse measures and how it's tested", href:"about.html",  match:p => /about\.html$/.test(p.path)},
 ];
 /* [code, NBA logo id, name] for the team grid in the menu */

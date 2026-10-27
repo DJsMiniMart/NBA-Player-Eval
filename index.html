@@ -183,6 +183,14 @@
   .up .live small.on{color:#ff4d63;} .up .live small.on::before{content:"●";margin-right:5px;animation:blink 1.4s infinite;}
   .up .live em{font-style:normal;font-size:11px;opacity:.8;}
   @keyframes blink{50%{opacity:.25;}}
+  .up .mp{margin:0 14px 8px;padding:7px 9px;border-radius:8px;border:1px solid var(--line);}
+  .up .mp .h{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--dim);letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px;}
+  .up .mp .h a{text-transform:none;letter-spacing:0;font-weight:600;}
+  .up .mp .r{display:grid;grid-template-columns:62px 1fr 1fr;gap:5px;align-items:center;margin-top:4px;font-size:12px;}
+  .up .mp .r > span{color:var(--dim);font-size:11px;font-weight:600;}
+  .up .mp button{font:600 12px Inter,sans-serif;padding:5px 4px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
+  .up .mp button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .up .mp button:disabled{cursor:default;opacity:.55;} .up .mp button.on:disabled{opacity:1;}
   .up ul{list-style:none;margin:0;padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--row);display:grid;gap:5px;flex:1;}
   .up li{display:flex;gap:8px;font-size:12.5px;line-height:1.35;}
   .up li span{flex:none;width:18px;text-align:center;}
@@ -290,6 +298,7 @@
 <script src="nav.js"></script>
 <script src="player.js"></script>
 <script src="box.js"></script>
+<script src="mypicks.js"></script>
 <script>
 (function(){
 "use strict";
@@ -605,6 +614,30 @@ function linesHtml(u){
       <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}${ats}`;
 }
 
+/* ---------- My Picks: tap a bet to make your own pick (mypicks.js keeps them in this browser) ---------- */
+function myPicksHtml(u){
+  const o = MORNING && MORNING.odds && MORNING.odds[u.id];
+  if(!window.MyPicks || !o) return "";
+  const opts = MyPicks.options(u, o); if(!opts.length) return "";
+  const locked = MyPicks.started(u.t);
+  const btn = x => { const cur = MyPicks.pickOf(u.id, x.type), on = cur && cur.side === x.side;
+    const txt = x.type === "ml" ? `${esc(x.side)} ${sgnNum(x.odds)}` : x.type === "spread" ? `${esc(x.side)} ${x.line === 0 ? "PK" : sgnNum(x.line)}` : `${x.side === "over" ? "O" : "U"} ${x.line}`;
+    return `<button class="${on ? "on" : ""}" data-mp="${esc(u.id)}|${x.type}|${esc(x.side)}"${locked ? " disabled" : ""} title="${on ? "Your pick. Tap again to take it back" : "Pick this"}">${txt}</button>`; };
+  const row = (type, label) => { const r = opts.filter(x => x.type === type); return r.length ? `<div class="r"><span>${label}</span>${r.map(btn).join("")}</div>` : ""; };
+  const mine = ["ml", "spread", "total"].filter(t => MyPicks.pickOf(u.id, t)).length;
+  return `<div class="mp"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${mine ? `${mine} pick${mine === 1 ? "" : "s"} · ` : ""}My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}</div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-mp]"); if(!b || !window.MyPicks) return;
+  const [gid, type, side] = b.dataset.mp.split("|");
+  const u = ((PRED && PRED.upcoming) || []).find(x => x.id === gid), o = MORNING && MORNING.odds && MORNING.odds[gid];
+  if(!u || !o) return;
+  const r = MyPicks.toggle(u, o, type, side);
+  if(!r.ok){ alertNote(r.why); return; }
+  const y = window.scrollY; renderUpcoming(); paintLive(); window.scrollTo(0, y);
+});
+function alertNote(msg){ const n = $("upLines"); if(n){ n.textContent = msg; n.style.color = "var(--bad)"; setTimeout(() => { n.style.color = ""; renderUpcoming(); }, 4000); } }
+
 /* ---------- coming up: next 7 days with Pulse picks and storylines (data/predictions.json, built by predict.py) ---------- */
 const STORY_ICON = {rivalry:"⚔️", division:"🏟️", rematch:"🔁", streak:"📈", race:"🏁", revenge:"🔄", stars:"⭐", rookies:"🆕", rest:"😴", preview:"📰", note:"💬"};
 let upDay = null;
@@ -631,6 +664,7 @@ function renderUpcoming(){
       ${row(u.away, pa)}${row(u.home, ph)}
       ${injHtml(u)}
       ${linesHtml(u)}
+      ${myPicksHtml(u)}
       <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
       <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul></div>`;
   }).join("");
