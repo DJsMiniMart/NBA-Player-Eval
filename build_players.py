@@ -23,44 +23,6 @@ from update_stats import DATA_DIR, load_json, stat_value
 
 PLAYERS_DIR = os.path.join(DATA_DIR, "players")
 PBP_DIR = os.path.join(DATA_DIR, "pbp")
-FATIGUE_DIR = os.path.join(DATA_DIR, "fatigue")
-FATIGUE_MIN_SEC = 500 * 60   # players with 500+ minutes in the study shape the league-wide fatigue curve
-
-
-def fatigue_pulse(b):
-    """Pulse production in one fatigue bucket: [sec, poss, pts, ast, reb, stl, blk, tov, ...]"""
-    return b[2] + 2 * b[3] + 2 * b[4] + 4 * b[5] + b[6] - 4 * b[7]
-
-
-def load_fatigue():
-    """({season: {espn id: {"g": rows, "s": rows}}}, league curve). The league curve is, for each bucket, how far
-    players' Pulse per minute there sits from their own overall Pulse per minute (as a share), weighted by time."""
-    seasons, sums = {}, {"g": {}, "s": {}}
-    for path in sorted(glob.glob(os.path.join(FATIGUE_DIR, "*.json"))):
-        d = load_json(path, {})
-        if not d.get("season") or "players" not in d:
-            continue
-        seasons[d["season"]] = {}
-        for pid, p in d["players"].items():
-            seasons[d["season"]][pid] = {k: [[round(x) for x in row[:8]] for row in p[k]] for k in ("g", "s")}
-            for k in ("g", "s"):
-                rows = p[k]
-                sec = sum(r[0] for r in rows)
-                if sec < FATIGUE_MIN_SEC:
-                    continue
-                rate = sum(fatigue_pulse(r) for r in rows) / sec
-                if rate <= 0:
-                    continue
-                for i, r in enumerate(rows):
-                    if r[0] < 60:
-                        continue
-                    t = sums[k].setdefault(i, [0.0, 0.0])
-                    t[0] += (fatigue_pulse(r) / r[0] / rate - 1) * r[0]
-                    t[1] += r[0]
-    league = {k: [round(v[i][0] / v[i][1], 4) if i in v and v[i][1] else 0.0 for i in range(max(v) + 1)] if v else []
-              for k, v in sums.items()}
-    return seasons, league
-
 # Basketball-Reference team codes -> today's NBA franchise code (for colors and logos)
 BBR_TO_NBA = {"BRK": "BKN", "NJN": "BKN", "NYN": "BKN", "CHO": "CHA", "CHA": "CHA", "CHH": "NOP", "NOH": "NOP",
               "NOK": "NOP", "PHO": "PHX", "SEA": "OKC", "VAN": "MEM", "WSB": "WAS", "CAP": "WAS", "KCK": "SAC",
@@ -379,7 +341,6 @@ def build(now=None, current_year=None):
                 hz_est.add(acc["season"])
         acc["_map"] = m
 
-    fatigue, fatigue_league = load_fatigue()
     names_all = {}
     for acc in accs.values():
         names_all.update(acc.get("names", {}))
@@ -401,9 +362,6 @@ def build(now=None, current_year=None):
                                 "orb": g["orb"], "stl": g["stl"], "blk": g["blk"], "tov": g["tov"]})
                 r[len(LOG_COLS):] = []
                 r.append(round(v, 4) if v is not None else None)
-            fz = fatigue.get(label, {}).get(nid)
-            if fz:
-                rec.setdefault("fatigue", {})[label] = fz
             rec["games"][label] = {
                 "teams": pl.get("t", []),
                 "logs": logs,
@@ -441,8 +399,6 @@ def build(now=None, current_year=None):
         rec["league"] = {s: league[s] for s in rec["games"] if s in league}
         rec["leagueHz"] = {s: league_hz[s] for s in rec["games"] if s in league_hz}
         rec["hzEst"] = sorted(s for s in rec["games"] if s in hz_est)
-        if rec.get("fatigue"):
-            rec["fatigueLeague"] = fatigue_league
         if not rec["bio"] and last:
             rec["bio"] = {"pos": last.get("pos")}
         with open(os.path.join(PLAYERS_DIR, f"{pid}.json"), "w", encoding="utf-8") as f:
