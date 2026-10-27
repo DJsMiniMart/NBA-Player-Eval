@@ -165,3 +165,25 @@
 .pp-moments .t{color:var(--dim,#5b6475);}
 .pp-moments .sc{font-weight:700;font-variant-numeric:tabular-nums;}
 @media (max-width:720px){ .pp-cgrid{grid-template-columns:1fr;} .pp-moments li{grid-template-columns:70px 1fr auto;} .pp-moments .t{grid-column:1/-1;} }
+
+/* minutes dial */
+.pp-dialrow{display:flex;align-items:center;gap:10px;margin:4px 0 12px;}
+.pp-dialrow input[type=range]{flex:1;accent-color:var(--tc1,#1D428A);height:28px;}
+.pp-dialrow b{font:700 22px/1 "Barlow Condensed",sans-serif;min-width:64px;text-align:right;}
+.pp-dial{width:100%;height:auto;display:block;margin-top:10px;}
+.pp-dial .grid{stroke:var(--line,#dde2ea);stroke-width:1;}
+.pp-dial text{font:12.5px Inter,system-ui,sans-serif;fill:var(--dim,#5b6475);}
+.pp-dial .cnt{fill:var(--tc1,#1D428A);opacity:.14;}
+.pp-dial .curve{fill:none;stroke:var(--tc1,#1D428A);stroke-width:3;stroke-linejoin:round;}
+.pp-dial .best{fill:#d9a72e;stroke:var(--panel,#fff);stroke-width:2;}
+.pp-dial .avg{stroke:var(--dim,#5b6475);stroke-width:1;stroke-dasharray:4 4;}
+.pp-dial .avgt{fill:var(--dim,#5b6475);font-weight:600;}
+.pp-dial .mark{stroke:var(--nba-red,#C8102E);stroke-width:1.5;}
+.pp-dial .markdot{fill:var(--nba-red,#C8102E);stroke:var(--panel,#fff);stroke-width:2;}
+@media (max-width:560px){ .pp-dialrow .sub{display:none;} }
+.pp-dialchk{font-weight:500;font-size:12px;color:var(--dim);margin-left:10px;white-space:nowrap;}
+.pp-dialchk input{vertical-align:-2px;margin-right:3px;}
+.pp-dialctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 4px;margin:0 0 8px;}
+.pp-dialctl select{width:auto;max-width:100%;}
+.pp-dialctl .pp-dialchk input{width:auto;margin:0 4px 0 0;padding:0;}
+.pp-dialrow input[type=range]{border:0;padding:0;background:none;box-shadow:none;}

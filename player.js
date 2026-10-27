@@ -87,7 +87,7 @@ const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*rebOf(s) + 4*s.stl + s.blk - 4*(
 const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds ×2",2],["stl","Steals ×4",4],["blk","Blocks",1],["tov","Turnovers (×4, subtracted)",-4]];
 const POS_NAMES = {PG:"point guards",SG:"shooting guards",SF:"small forwards",PF:"power forwards",C:"centers",G:"guards",F:"forwards"};
 
-let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {};
+let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {}, DIAL = {span: "3", min: null, close: true};
 
 function lum(hex){
   const c = hex.replace("#","").match(/../g).map(h => parseInt(h,16)/255).map(v => v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4));
@@ -627,6 +627,115 @@ function gameBoxes(G, L, team, key, withOnOff, sel){
     ${stealsCard(G, team, c)}${blocksCard(G, team, c)}
     ${splitsCard(G, key)}${gameLogCard(G, key)}</div>`;
 }
+/* ---------- minutes dial: what he's produced at each minute total, from his past game logs ----------
+   For each minute total m, every game counts with a weight that fades with distance from m (bell curve, 2.5-minute
+   spread), and his per-minute rates there are pulled toward his overall rates when there are few games nearby
+   (DIAL_PRIOR minutes of his normal rate are blended in). Projected stat at m = rate at m x m. */
+const DIAL_BW = 2.5, DIAL_PRIOR = 60, DIAL_MIN_GAMES = 6, DIAL_BLOWOUT = 20;
+const DIAL_KEYS = [["pts","PTS"],["reb","REB"],["ast","AST"],["stl","STL"],["blk","BLK"],["tov","TOV"]];
+function dialGames(span){
+  const g = REC.games || {}, seasons = Object.keys(g).sort();
+  const use = span === "career" ? seasons : /^\d+$/.test(span) ? seasons.slice(-(+span)) : seasons.filter(x => x === span);
+  const out = [];
+  use.forEach(x => logObjs(g[x].logs || []).forEach(l => { if((l.min || 0) >= 4 && !(DIAL.close && Math.abs(l.tm || 0) >= DIAL_BLOWOUT)) out.push(l); }));
+  return {games: out, seasons: use};
+}
+function dialModel(list){
+  if(list.length < 15) return null;
+  const val = l => ({pts:l.pts, reb:l.drb + l.orb, ast:l.ast, stl:l.stl, blk:l.blk, tov:l.tov});
+  const rows = list.map(l => [l.min, val(l)]);
+  const totMin = rows.reduce((t, r) => t + r[0], 0), base = {};
+  DIAL_KEYS.forEach(([k]) => base[k] = rows.reduce((t, r) => t + r[1][k], 0) / totMin);
+  const mins = rows.map(r => r[0]).sort((a, b) => a - b), q = f => mins[Math.min(mins.length - 1, Math.floor(f * mins.length))];
+  const avg = totMin / rows.length, pts = [];
+  for(let m = Math.max(4, Math.floor(q(.05)) - 2); m <= Math.min(53, Math.ceil(q(.95)) + 2); m++){
+    let w = 0, wm = 0; const ws = {};
+    DIAL_KEYS.forEach(([k]) => ws[k] = 0);
+    rows.forEach(([mn, v]) => { const x = Math.exp(-.5 * ((mn - m) / DIAL_BW) ** 2); w += x; wm += x * mn; DIAL_KEYS.forEach(([k]) => ws[k] += x * v[k]); });
+    if(w < DIAL_MIN_GAMES) continue;
+    const rate = {};
+    DIAL_KEYS.forEach(([k]) => rate[k] = (ws[k] + DIAL_PRIOR * base[k]) / (wm + DIAL_PRIOR));
+    const pulse = rate.pts + 2 * rate.ast + 2 * rate.reb + 4 * rate.stl + rate.blk - 4 * rate.tov;
+    pts.push({m, n: w, rate, pulse});
+  }
+  if(pts.length < 3) return null;
+  const best = pts.filter(p => p.n >= 10).reduce((a, b) => !a || b.pulse > a.pulse ? b : a, null) || pts[0];
+  return {pts, best, avg, base, games: rows.length, hist: mins};
+}
+function dialAt(M, m){ return M.pts.reduce((a, b) => Math.abs(b.m - m) < Math.abs(a.m - m) ? b : a); }
+function dialReadout(M, m){
+  const p = dialAt(M, m), at = dialAt(M, Math.round(M.avg));
+  const prod = p.pulse * p.m, prodAvg = at.pulse * at.m, d = prod - prodAvg;
+  const cells = DIAL_KEYS.map(([k, t]) => `<div class="pp-stat"><div class="k">${t}</div><div class="v">${f1(p.rate[k] * p.m)}</div></div>`).join("");
+  const near = Math.round(p.n);
+  return `<div class="pp-line">${cells}<div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(p.pulse)}</div></div>
+      <div class="pp-stat"><div class="k">Production</div><div class="v">${f1(prod)}</div></div></div>
+    <div class="pp-note">At <b>${p.m} minutes</b>: based on about ${near} game${near === 1 ? "" : "s"} near that total.
+      Production is Pulse × minutes (his whole game's output). ${p.m === at.m ? "That's his usual workload." : `vs his usual ${at.m} minutes: <b>${d >= 0 ? "+" : "−"}${f1(Math.abs(d))}</b> production, Pulse ${p.pulse >= at.pulse ? "up" : "down"} ${f1(Math.abs(p.pulse / at.pulse - 1) * 100)}%.`}</div>`;
+}
+function dialChart(M, m){
+  const W = 640, H = 220, padL = 40, padB = 30, padT = 14, padR = 10, iw = W - padL - padR, ih = H - padT - padB;
+  const x0 = M.pts[0].m, x1 = M.pts[M.pts.length - 1].m;
+  const lo = Math.min(...M.pts.map(p => p.pulse)), hi = Math.max(...M.pts.map(p => p.pulse)), pad = Math.max(.02, (hi - lo) * .25);
+  const mid = (lo + hi) / 2, half = Math.max((hi - lo) / 2 + pad, Math.abs(mid) * .12);   // keep small wiggles from looking huge
+  const yl = mid - half, yh = mid + half;
+  const x = v => padL + (v - x0) / Math.max(1, x1 - x0) * iw, y = v => padT + ih - (v - yl) / (yh - yl) * ih;
+  const counts = {}; M.hist.forEach(v => { const k = Math.round(v); if(k >= x0 && k <= x1) counts[k] = (counts[k] || 0) + 1; });
+  const cmax = Math.max(1, ...Object.values(counts)), bw = iw / Math.max(1, x1 - x0 + 1);
+  const bars = Object.entries(counts).map(([k, c]) => `<rect class="cnt" x="${(x(+k) - bw * .4).toFixed(1)}" width="${(bw * .8).toFixed(1)}" y="${(padT + ih - c / cmax * ih * .35).toFixed(1)}" height="${(c / cmax * ih * .35).toFixed(1)}"><title>${c} game${c === 1 ? "" : "s"} at ${k} minutes</title></rect>`).join("");
+  const step = (yh - yl) > .3 ? .1 : (yh - yl) > .12 ? .05 : .02, ticks = [];
+  for(let v = Math.ceil(yl / step) * step; v <= yh; v += step) ticks.push(+v.toFixed(3));
+  const xt = []; for(let v = Math.ceil(x0 / 4) * 4; v <= x1; v += 4) xt.push(v);
+  const path = M.pts.map((p, i) => `${i ? "L" : "M"}${x(p.m).toFixed(1)},${y(p.pulse).toFixed(1)}`).join("");
+  const avgM = Math.min(x1, Math.max(x0, M.avg));
+  return `<svg class="pp-dial" viewBox="0 0 ${W} ${H}" role="img" aria-label="Pulse by minutes played">
+    ${ticks.map(v => `<line x1="${padL}" x2="${W - padR}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="grid"/><text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(2)}</text>`).join("")}
+    ${xt.map(v => `<text x="${x(v).toFixed(1)}" y="${H - padB + 16}" text-anchor="middle">${v}</text>`).join("")}
+    <text x="${(padL + iw / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" class="ax">minutes played</text>
+    ${bars}
+    <line class="avg" x1="${x(avgM).toFixed(1)}" x2="${x(avgM).toFixed(1)}" y1="${padT}" y2="${padT + ih}"/><text class="avgt" x="${(x(avgM) + 4).toFixed(1)}" y="${padT + 10}">usual ${f1(M.avg)}</text>
+    <path d="${path}" class="curve"/>
+    <circle class="best" cx="${x(M.best.m).toFixed(1)}" cy="${y(M.best.pulse).toFixed(1)}" r="5"><title>Best Pulse: ${f3(M.best.pulse)} at ${M.best.m} minutes</title></circle>
+    <g id="dialMark"><line class="mark" x1="${x(m).toFixed(1)}" x2="${x(m).toFixed(1)}" y1="${padT}" y2="${padT + ih}"/><circle class="markdot" cx="${x(m).toFixed(1)}" cy="${y(dialAt(M, m).pulse).toFixed(1)}" r="4"/></g>
+  </svg>`;
+}
+function dialVerdict(M){
+  const b = M.best, last = M.pts[M.pts.length - 1], first = M.pts[0];
+  const drop = (b.pulse - last.pulse) / b.pulse;
+  if(b.m < last.m - 2 && drop >= .03)
+    return `His Pulse peaks around <b>${b.m} minutes</b> (${f3(b.pulse)}) and is ${f1(drop * 100)}% lower by ${last.m}. Past about ${b.m} minutes he's been less productive per minute.`;
+  if(b.m > first.m + 2 && (b.pulse - first.pulse) / b.pulse >= .03)
+    return `No drop-off in his range: his Pulse has been highest in his bigger-minute games (around <b>${b.m} minutes</b>, ${f3(b.pulse)}).`;
+  return `His Pulse has held steady across his minutes (best around <b>${b.m}</b>, ${f3(b.pulse)}): no clear sweet spot.`;
+}
+function minutesDialCard(){
+  const seasons = Object.keys(REC.games || {}).sort();
+  if(!seasons.length) return "";
+  const D = dialGames(DIAL.span), M = dialModel(D.games);
+  const opts = [["3", "Last 3 seasons"], ["career", "Whole career"]].concat(seasons.slice().reverse().map(x => [x, x + " only"]));
+  const pick = `<select id="dialSpan">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === DIAL.span ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`
+    + ` <label class="pp-dialchk"><input type="checkbox" id="dialClose"${DIAL.close ? " checked" : ""}> Leave out blowouts (${DIAL_BLOWOUT}+ pts)</label>`;
+  if(!M) return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial</h3><div class="pp-dialctl">${pick}</div><div class="pp-empty">Needs at least 15 games with 4+ minutes for this selection.</div></div>`;
+  const lo = M.pts[0].m, hi = M.pts[M.pts.length - 1].m;
+  if(DIAL.min == null || DIAL.min < lo || DIAL.min > hi) DIAL.min = Math.min(hi, Math.max(lo, Math.round(M.avg)));
+  return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial <small>slide to a minute total</small></h3><div class="pp-dialctl">${pick}</div>
+    <div class="sub" style="margin:0 0 8px">What ${esc(REC.name.split(" ").slice(-1)[0])} has produced at different minute totals (${M.games} games, ${esc(D.seasons.length > 1 ? D.seasons[0] + " to " + D.seasons[D.seasons.length - 1] : D.seasons[0])}). ${dialVerdict(M)}</div>
+    <div class="pp-dialrow"><span class="sub">${lo} min</span><input type="range" id="dialMin" min="${lo}" max="${hi}" step="1" value="${DIAL.min}" aria-label="Minutes played"><span class="sub">${hi} min</span><b id="dialVal">${DIAL.min} min</b></div>
+    <div id="dialOut">${dialReadout(M, DIAL.min)}</div>
+    <div id="dialSvg">${dialChart(M, DIAL.min)}</div>
+    <div class="pp-note">The line is his Pulse at each minute total; the gold dot is where it's been highest; bars show how many games he played at each total. Only minute totals with enough games are shown.
+      Blowouts are left out by default because stars often sit the 4th quarter of a lopsided game after big nights, which makes short games look better than they are.
+      Keep in mind that minutes and production feed each other: coaches leave a player in when he's rolling and sit him for foul trouble, injuries or blowouts, so this shows what happened in those games, not a guarantee of what more or fewer minutes would do.</div></div>`;
+}
+function wireDial(){
+  const sp = EL.querySelector("#dialSpan"); if(!sp) return;
+  sp.onchange = () => { DIAL.span = sp.value; DIAL.min = null; const box = EL.querySelector("#ppDial"); box.outerHTML = minutesDialCard(); wireDial(); };
+  const ck = EL.querySelector("#dialClose");
+  if(ck) ck.onchange = () => { DIAL.close = ck.checked; const box = EL.querySelector("#ppDial"); box.outerHTML = minutesDialCard(); wireDial(); };
+  const r = EL.querySelector("#dialMin"); if(!r) return;
+  const M = dialModel(dialGames(DIAL.span).games);
+  r.oninput = () => { DIAL.min = +r.value; EL.querySelector("#dialVal").textContent = r.value + " min"; EL.querySelector("#dialOut").innerHTML = dialReadout(M, DIAL.min); EL.querySelector("#dialSvg").innerHTML = dialChart(M, DIAL.min); };
+}
 function sectionHead(title, sub){
   return `<div class="pp-section"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
 }
@@ -680,6 +789,7 @@ function render(){
   const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.")
     + `<div class="pp-grid">${statLineCard(ct, "Career stat line", "per game, whole career", extra)}</div><div class="pp-gap"></div>`
     + `<div class="pp-grid">${retired ? driversCard(ct, careerLeague(REC.seasons), "What drives their Pulse", "whole career, per minute") : peTrendCard(REC.seasons, ct.value)}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
+    + `<div class="pp-grid">${minutesDialCard()}</div><div class="pp-gap"></div>`
     + gameCareer + `<div class="pp-gap"></div><div class="pp-grid">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
     + sectionHead("Playoffs", "Every postseason run.") + playoffsBlock();
 
@@ -694,6 +804,7 @@ function render(){
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
   EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
+  wireDial();
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
 }
 
@@ -777,7 +888,7 @@ async function show(id, el){
       el.querySelector("#ppBack2").onclick = () => { location.hash = window.PE_BACK || ""; };
       return;
     }
-    REC = rec; SEL = null; LOGS_ALL = {};
+    REC = rec; SEL = null; LOGS_ALL = {}; DIAL = {span: "3", min: null, close: true};
   }
   render();
 }
