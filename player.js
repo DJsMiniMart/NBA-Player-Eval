@@ -87,7 +87,7 @@ const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*rebOf(s) + 4*s.stl + s.blk - 4*(
 const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds ×2",2],["stl","Steals ×4",4],["blk","Blocks",1],["tov","Turnovers (×4, subtracted)",-4]];
 const POS_NAMES = {PG:"point guards",SG:"shooting guards",SF:"small forwards",PF:"power forwards",C:"centers",G:"guards",F:"forwards"};
 
-let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {}, DIAL = {span: "3", min: null, close: true};
+let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {}, DIAL = {span: "3", min: null, close: true, mode: null};
 
 function lum(hex){
   const c = hex.replace("#","").match(/../g).map(h => parseInt(h,16)/255).map(v => v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055, 2.4));
@@ -708,33 +708,138 @@ function dialVerdict(M){
     return `No drop-off in his range: his Pulse has been highest in his bigger-minute games (around <b>${b.m} minutes</b>, ${f3(b.pulse)}).`;
   return `His Pulse has held steady across his minutes (best around <b>${b.m}</b>, ${f3(b.pulse)}): no clear sweet spot.`;
 }
+/* ---------- fatigue (play-by-play, fatigue.py): production by minutes already played that night ----------
+   Each bucket's per-minute rates are pulled toward his overall rates bent by the league-wide fatigue curve
+   (FZ_PRIOR minutes' worth), so thin buckets don't swing wildly. Production for an M-minute game = the sum, bucket
+   by bucket, of his per-minute rate there x the minutes of that bucket he'd play. */
+const FZ_G_EDGES = [0, 6, 12, 18, 24, 30, 36, 42, 48, 53], FZ_S_EDGES = [0, 2, 4, 6, 8, 10, 12, 16];
+const FZ_PRIOR = 120, FZ_MIN_BUCKET = 30, FZ_FADE = .92;
+const FZ_STATS = [["pts","PTS",2],["reb","REB",4],["ast","AST",3],["stl","STL",5],["blk","BLK",6],["tov","TOV",7]];
+const fzPulse = r => r.pts + 2 * r.ast + 2 * r.reb + 4 * r.stl + r.blk - 4 * r.tov;
+function fatigueSeasons(span){
+  const all = Object.keys(REC.fatigue || {}).sort();
+  return span === "career" ? all : /^\d+$/.test(span) ? all.slice(-(+span)) : all.filter(x => x === span);
+}
+function fatigueModel(span){
+  const seasons = fatigueSeasons(span);
+  if(!seasons.length) return null;
+  const L = REC.fatigueLeague || {};
+  const sum = k => { const out = []; seasons.forEach(x => (REC.fatigue[x][k] || []).forEach((r, i) => { out[i] = out[i] || [0,0,0,0,0,0,0,0]; r.forEach((v, j) => out[i][j] += v); })); return out; };
+  const G = sum("g"), S = sum("s");
+  const sec = G.reduce((t, r) => t + r[0], 0);
+  if(sec < 300 * 60) return null;
+  const base = {}; FZ_STATS.forEach(([k,,j]) => base[k] = G.reduce((t, r) => t + r[j], 0) / sec * 60);
+  const shape = (rows, curve, edges) => rows.map((r, i) => {
+    const mins = r[0] / 60, bend = 1 + ((curve || [])[i] || 0), rate = {};
+    FZ_STATS.forEach(([k,,j]) => rate[k] = (r[j] + FZ_PRIOR * base[k] * bend) / (mins + FZ_PRIOR));
+    return {i, lo: edges[i], hi: edges[i + 1] ?? edges[i] + 4, mins, rate, pulse: fzPulse(rate)};
+  });
+  const g = shape(G, L.g, FZ_G_EDGES), st = shape(S, L.s, FZ_S_EDGES);
+  let n = 0; while(n < g.length && g[n].mins >= FZ_MIN_BUCKET) n++;      // only the stretch of minutes he actually plays
+  const gs = g.slice(0, n), ss = st.filter(b => b.mins >= FZ_MIN_BUCKET);
+  if(gs.length < 2) return null;
+  return {seasons, g: gs, s: ss, base, pulse: fzPulse(base), hours: sec / 3600, max: Math.min(48, gs[gs.length - 1].hi)};
+}
+function fzAt(F, M){
+  const out = {}; FZ_STATS.forEach(([k]) => out[k] = 0);
+  F.g.forEach(b => { const m = Math.max(0, Math.min(M, b.hi) - b.lo); FZ_STATS.forEach(([k]) => out[k] += b.rate[k] * m); });
+  return out;
+}
+function fzFade(list){
+  if(list.length < 2) return null;
+  const peak = list.reduce((a, b) => b.pulse > a.pulse ? b : a);
+  const fade = list.find(b => b.lo > peak.lo && b.pulse <= peak.pulse * FZ_FADE);
+  return {peak, fade};
+}
+function fatigueVerdict(F){
+  const v = fzFade(F.g), last = F.g[F.g.length - 1];
+  const t = v.fade
+    ? `His best stretch is minutes <b>${v.peak.lo}–${v.peak.hi}</b>. From about <b>minute ${v.fade.lo}</b> on, each extra minute is worth ${Math.round((1 - v.fade.pulse / v.peak.pulse) * 100)}% less than his best. That's his sweet spot: past it you're paying in production for the extra minutes.`
+    : `No real fade: his production per minute holds up through minute ${last.hi} (his last ${last.lo}–${last.hi} minutes are within ${Math.max(0, Math.round((1 - last.pulse / v.peak.pulse) * 100))}% of his best stretch).`;
+  const s = fzFade(F.s);
+  const st = s && s.fade ? ` In a single stint he's ${Math.round((1 - s.fade.pulse / s.peak.pulse) * 100)}% less productive once he's been out there <b>${s.fade.lo}+ minutes</b> straight, so that's about when to give him a breather.`
+    : s ? ` Long stints don't wear on him much: no drop through ${F.s[F.s.length - 1].lo}+ minutes in a row.` : "";
+  return t + st;
+}
+function fatigueReadout(F, M){
+  const at = fzAt(F, M), prod = fzPulse(at), usual = Math.round(dialUsual());
+  const atU = fzAt(F, Math.min(F.max, usual)), prodU = fzPulse(atU), d = prod - prodU;
+  const cells = FZ_STATS.map(([k, t]) => `<div class="pp-stat"><div class="k">${t}</div><div class="v">${f1(at[k])}</div></div>`).join("");
+  const next = F.g.find(b => M >= b.lo && M < b.hi) || F.g[F.g.length - 1];
+  return `<div class="pp-line">${cells}<div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(M ? prod / M : 0)}</div></div>
+      <div class="pp-stat"><div class="k">Production</div><div class="v">${f1(prod)}</div></div></div>
+    <div class="pp-note">A <b>${M}-minute</b> night, built minute by minute from how he plays at each point in a game.
+      The next minute after ${M} is worth about <b>${f3(next.pulse)}</b> Pulse (his overall: ${f3(F.pulse)}).
+      ${M === usual || !usual ? "" : `vs his usual ${usual} minutes: <b>${d >= 0 ? "+" : "−"}${f1(Math.abs(d))}</b> production.`}</div>`;
+}
+function dialUsual(){ const D = dialGames(DIAL.span).games; return D.length ? D.reduce((t, l) => t + l.min, 0) / D.length : 0; }
+function fzBars(list, M, label, unit){
+  const W = 640, H = 200, padL = 40, padB = 32, padT = 14, padR = 10, iw = W - padL - padR, ih = H - padT - padB;
+  const vals = list.map(b => b.pulse), mid = (Math.min(...vals) + Math.max(...vals)) / 2;
+  const half = Math.max((Math.max(...vals) - Math.min(...vals)) / 2 * 1.4, Math.abs(mid) * .15), yl = Math.max(0, mid - half), yh = mid + half;
+  const y = v => padT + ih - (v - yl) / (yh - yl) * ih, bw = iw / list.length;
+  const v = fzFade(list);
+  const step = (yh - yl) > .6 ? .2 : (yh - yl) > .3 ? .1 : .05, ticks = [];
+  for(let t = Math.ceil(yl / step) * step; t <= yh; t += step) ticks.push(+t.toFixed(2));
+  return `<svg class="pp-dial" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
+    ${ticks.map(t => `<line x1="${padL}" x2="${W - padR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" class="grid"/><text x="${padL - 5}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${t.toFixed(2)}</text>`).join("")}
+    ${list.map((b, i) => { const on = M != null && M > b.lo, cls = v && b === v.peak ? "fzbest" : v && v.fade && b.lo >= v.fade.lo ? "fzfade" : on ? "fzon" : "fzoff";
+      const x = padL + i * bw;
+      return `<g><title>${b.lo}–${b.hi} ${unit}: ${f3(b.pulse)} Pulse per minute (${Math.round(b.mins)} minutes of data)</title><rect class="${cls}" x="${(x + bw * .12).toFixed(1)}" width="${(bw * .76).toFixed(1)}" y="${y(b.pulse).toFixed(1)}" height="${(padT + ih - y(b.pulse)).toFixed(1)}" rx="3"/>
+        <text x="${(x + bw / 2).toFixed(1)}" y="${H - padB + 16}" text-anchor="middle">${b.lo}–${b.hi === 53 ? "48+" : b.hi}</text></g>`; }).join("")}
+    <text x="${(padL + iw / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" class="ax">${esc(label)}</text></svg>`;
+}
 function minutesDialCard(){
   const seasons = Object.keys(REC.games || {}).sort();
   if(!seasons.length) return "";
-  const D = dialGames(DIAL.span), M = dialModel(D.games);
+  const F = fatigueModel(DIAL.span);
+  if(DIAL.mode == null) DIAL.mode = F ? "fatigue" : "games";
+  const mode = DIAL.mode === "fatigue" && F ? "fatigue" : "games";
   const opts = [["3", "Last 3 seasons"], ["career", "Whole career"]].concat(seasons.slice().reverse().map(x => [x, x + " only"]));
-  const pick = `<select id="dialSpan">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === DIAL.span ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`
-    + ` <label class="pp-dialchk"><input type="checkbox" id="dialClose"${DIAL.close ? " checked" : ""}> Leave out blowouts (${DIAL_BLOWOUT}+ pts)</label>`;
+  const tabs = `<div class="pp-tabs" style="margin:0"><button data-dialmode="fatigue" class="${mode === "fatigue" ? "on" : ""}"${F ? "" : " disabled title=\"Play-by-play fatigue data isn't in yet for this selection\""}>Fatigue (play by play)</button><button data-dialmode="games" class="${mode === "games" ? "on" : ""}">Past games</button></div>`;
+  const pick = tabs + `<select id="dialSpan">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === DIAL.span ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`
+    + (mode === "games" ? ` <label class="pp-dialchk"><input type="checkbox" id="dialClose"${DIAL.close ? " checked" : ""}> Leave out blowouts (${DIAL_BLOWOUT}+ pts)</label>` : "");
+  const last = esc(REC.name.split(" ").slice(-1)[0]);
+  if(mode === "fatigue"){
+    const lo = 6, hi = F.max;
+    if(DIAL.min == null || DIAL.min < lo || DIAL.min > hi) DIAL.min = Math.min(hi, Math.max(lo, Math.round(dialUsual()) || 24));
+    return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial <small>slide to a minute total</small></h3><div class="pp-dialctl">${pick}</div>
+      <div class="sub" style="margin:0 0 8px">How ${last} plays at each point in a game, from every play he was on the floor for (${Math.round(F.hours)} hours, ${esc(F.seasons.length > 1 ? F.seasons[0] + " to " + F.seasons[F.seasons.length - 1] : F.seasons[0])}). ${fatigueVerdict(F)}</div>
+      <div class="pp-dialrow"><span class="sub">${lo} min</span><input type="range" id="dialMin" min="${lo}" max="${hi}" step="1" value="${DIAL.min}" aria-label="Minutes played"><span class="sub">${hi} min</span><b id="dialVal">${DIAL.min} min</b></div>
+      <div id="dialOut">${fatigueReadout(F, DIAL.min)}</div>
+      <div class="pp-fzgrid"><div><div class="sub" style="font-weight:600">Pulse per minute, by minutes already played that night</div><div id="dialSvg">${fzBars(F.g, DIAL.min, "minutes already played", "minutes in")}</div></div>
+        ${F.s.length >= 2 ? `<div><div class="sub" style="font-weight:600">Pulse per minute, by minutes into a stint (since he last checked in)</div>${fzBars(F.s, null, "minutes in a row on the floor", "minutes into a stint")}</div>` : ""}</div>
+      <div class="pp-note">Gold = his best stretch; red = where he's faded to ${Math.round((1 - FZ_FADE) * 100)}%+ below it; darker bars are the minutes your dial setting includes. Garbage time (4th quarter, 20+ point margin) is left out, and each quarter starts a new stint.
+        Because this compares him with himself at different points in the same games, a hot or cold night doesn't skew it the way it does with "Past games". Thin stretches lean on how players around the league fade.</div></div>`;
+  }
+  const D = dialGames(DIAL.span), M = dialModel(D.games);
   if(!M) return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial</h3><div class="pp-dialctl">${pick}</div><div class="pp-empty">Needs at least 15 games with 4+ minutes for this selection.</div></div>`;
   const lo = M.pts[0].m, hi = M.pts[M.pts.length - 1].m;
   if(DIAL.min == null || DIAL.min < lo || DIAL.min > hi) DIAL.min = Math.min(hi, Math.max(lo, Math.round(M.avg)));
   return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial <small>slide to a minute total</small></h3><div class="pp-dialctl">${pick}</div>
-    <div class="sub" style="margin:0 0 8px">What ${esc(REC.name.split(" ").slice(-1)[0])} has produced at different minute totals (${M.games} games, ${esc(D.seasons.length > 1 ? D.seasons[0] + " to " + D.seasons[D.seasons.length - 1] : D.seasons[0])}). ${dialVerdict(M)}</div>
+    <div class="sub" style="margin:0 0 8px">What ${last} has produced at different minute totals (${M.games} games, ${esc(D.seasons.length > 1 ? D.seasons[0] + " to " + D.seasons[D.seasons.length - 1] : D.seasons[0])}). ${dialVerdict(M)}</div>
     <div class="pp-dialrow"><span class="sub">${lo} min</span><input type="range" id="dialMin" min="${lo}" max="${hi}" step="1" value="${DIAL.min}" aria-label="Minutes played"><span class="sub">${hi} min</span><b id="dialVal">${DIAL.min} min</b></div>
     <div id="dialOut">${dialReadout(M, DIAL.min)}</div>
     <div id="dialSvg">${dialChart(M, DIAL.min)}</div>
     <div class="pp-note">The line is his Pulse at each minute total; the gold dot is where it's been highest; bars show how many games he played at each total. Only minute totals with enough games are shown.
       Blowouts are left out by default because stars often sit the 4th quarter of a lopsided game after big nights, which makes short games look better than they are.
-      Keep in mind that minutes and production feed each other: coaches leave a player in when he's rolling and sit him for foul trouble, injuries or blowouts, so this shows what happened in those games, not a guarantee of what more or fewer minutes would do.</div></div>`;
+      Keep in mind that minutes and production feed each other: coaches leave a player in when he's rolling and sit him for foul trouble, injuries or blowouts, so this shows what happened in those games, not a guarantee of what more or fewer minutes would do.${REC.fatigue ? "" : " The play-by-play fatigue view shows up once his games are in the fatigue study."}</div></div>`;
 }
 function wireDial(){
+  const redo = () => { const box = EL.querySelector("#ppDial"); box.outerHTML = minutesDialCard(); wireDial(); };
   const sp = EL.querySelector("#dialSpan"); if(!sp) return;
-  sp.onchange = () => { DIAL.span = sp.value; DIAL.min = null; const box = EL.querySelector("#ppDial"); box.outerHTML = minutesDialCard(); wireDial(); };
+  sp.onchange = () => { DIAL.span = sp.value; DIAL.min = null; redo(); };
+  EL.querySelectorAll("[data-dialmode]").forEach(b => b.onclick = () => { DIAL.mode = b.dataset.dialmode; DIAL.min = null; redo(); });
   const ck = EL.querySelector("#dialClose");
-  if(ck) ck.onchange = () => { DIAL.close = ck.checked; const box = EL.querySelector("#ppDial"); box.outerHTML = minutesDialCard(); wireDial(); };
+  if(ck) ck.onchange = () => { DIAL.close = ck.checked; redo(); };
   const r = EL.querySelector("#dialMin"); if(!r) return;
-  const M = dialModel(dialGames(DIAL.span).games);
-  r.oninput = () => { DIAL.min = +r.value; EL.querySelector("#dialVal").textContent = r.value + " min"; EL.querySelector("#dialOut").innerHTML = dialReadout(M, DIAL.min); EL.querySelector("#dialSvg").innerHTML = dialChart(M, DIAL.min); };
+  const F = fatigueModel(DIAL.span), fz = DIAL.mode === "fatigue" && F;
+  const M = fz ? null : dialModel(dialGames(DIAL.span).games);
+  r.oninput = () => {
+    DIAL.min = +r.value; EL.querySelector("#dialVal").textContent = r.value + " min";
+    EL.querySelector("#dialOut").innerHTML = fz ? fatigueReadout(F, DIAL.min) : dialReadout(M, DIAL.min);
+    EL.querySelector("#dialSvg").innerHTML = fz ? fzBars(F.g, DIAL.min, "minutes already played", "minutes in") : dialChart(M, DIAL.min);
+  };
 }
 function sectionHead(title, sub){
   return `<div class="pp-section"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
@@ -888,7 +993,7 @@ async function show(id, el){
       el.querySelector("#ppBack2").onclick = () => { location.hash = window.PE_BACK || ""; };
       return;
     }
-    REC = rec; SEL = null; LOGS_ALL = {}; DIAL = {span: "3", min: null, close: true};
+    REC = rec; SEL = null; LOGS_ALL = {}; DIAL = {span: "3", min: null, close: true, mode: null};
   }
   render();
 }

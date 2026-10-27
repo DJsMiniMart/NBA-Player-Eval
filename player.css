@@ -187,3 +187,8 @@
 .pp-dialctl select{width:auto;max-width:100%;}
 .pp-dialctl .pp-dialchk input{width:auto;margin:0 4px 0 0;padding:0;}
 .pp-dialrow input[type=range]{border:0;padding:0;background:none;box-shadow:none;}
+.pp-fzgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px;}
+@media (max-width:760px){ .pp-fzgrid{grid-template-columns:1fr;} }
+.pp-dial .fzon{fill:var(--tc1,#1D428A);opacity:.85;} .pp-dial .fzoff{fill:var(--tc1,#1D428A);opacity:.3;}
+.pp-dial .fzbest{fill:#d9a72e;} .pp-dial .fzfade{fill:var(--nba-red,#C8102E);opacity:.8;}
+.pp-dial .ax{font-weight:600;}
