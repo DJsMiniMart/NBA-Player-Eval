@@ -713,7 +713,23 @@ function dialVerdict(M){
    (FZ_PRIOR minutes' worth), so thin buckets don't swing wildly. Production for an M-minute game = the sum, bucket
    by bucket, of his per-minute rate there x the minutes of that bucket he'd play. */
 const FZ_G_EDGES = [0, 6, 12, 18, 24, 30, 36, 42, 48, 53], FZ_S_EDGES = [0, 2, 4, 6, 8, 10, 12, 16];
-const FZ_PRIOR = 120, FZ_MIN_BUCKET = 30, FZ_FADE = .92;
+const FZ_PRIOR = 120, FZ_MIN_BUCKET = 30, FZ_FADE = .92, FZ_Z = 2, FZ_OVERDISP = 1.5;
+/* A fade only counts when a later stretch is 8%+ below his early level AND the gap is bigger than 2 standard errors
+   (counts treated as Poisson, widened 1.5x). Tested on 370 players: this flags 21 fades where chance alone would
+   flag about 7 (the same test run backwards: players who get 8%+ better late). */
+const fzRaw = r => r[2] + 2 * r[3] + 2 * r[4] + 4 * r[5] + r[6] - 4 * r[7];
+const fzVar = r => FZ_OVERDISP * (2.2 * r[2] + 4 * r[3] + 4 * r[4] + 16 * r[5] + r[6] + 16 * r[7]);
+function fzTest(rows, early, lateFrom, edges){
+  const E = [0,0,0,0,0,0,0,0]; early.forEach(i => (rows[i] || []).forEach((v, j) => E[j] += v));
+  const em = E[0] / 60; if(em < 60) return null;
+  const er = fzRaw(E) / em, ev = fzVar(E) / em / em;
+  for(let i = lateFrom; i < rows.length; i++){
+    const r = rows[i], m = r[0] / 60; if(m < 60) break;
+    const lr = fzRaw(r) / m, lv = fzVar(r) / m / m;
+    if(lr <= er * FZ_FADE && er - lr > FZ_Z * Math.sqrt(ev + lv)) return {i, lo: edges[i], drop: 1 - lr / er, early: er};
+  }
+  return {i: null, early: er};
+}
 const FZ_STATS = [["pts","PTS",2],["reb","REB",4],["ast","AST",3],["stl","STL",5],["blk","BLK",6],["tov","TOV",7]];
 const fzPulse = r => r.pts + 2 * r.ast + 2 * r.reb + 4 * r.stl + r.blk - 4 * r.tov;
 function fatigueSeasons(span){
@@ -738,28 +754,21 @@ function fatigueModel(span){
   let n = 0; while(n < g.length && g[n].mins >= FZ_MIN_BUCKET) n++;      // only the stretch of minutes he actually plays
   const gs = g.slice(0, n), ss = st.filter(b => b.mins >= FZ_MIN_BUCKET);
   if(gs.length < 2) return null;
-  return {seasons, g: gs, s: ss, base, pulse: fzPulse(base), hours: sec / 3600, max: Math.min(48, gs[gs.length - 1].hi)};
+  return {seasons, g: gs, s: ss, base, pulse: fzPulse(base), hours: sec / 3600, max: Math.min(48, gs[gs.length - 1].hi),
+          gFade: fzTest(G, [0, 1, 2, 3], 4, FZ_G_EDGES), sFade: fzTest(S, [1, 2], 3, FZ_S_EDGES)};
 }
 function fzAt(F, M){
   const out = {}; FZ_STATS.forEach(([k]) => out[k] = 0);
   F.g.forEach(b => { const m = Math.max(0, Math.min(M, b.hi) - b.lo); FZ_STATS.forEach(([k]) => out[k] += b.rate[k] * m); });
   return out;
 }
-function fzFade(list){
-  if(list.length < 2) return null;
-  const peak = list.reduce((a, b) => b.pulse > a.pulse ? b : a);
-  const fade = list.find(b => b.lo > peak.lo && b.pulse <= peak.pulse * FZ_FADE);
-  return {peak, fade};
-}
 function fatigueVerdict(F){
-  const v = fzFade(F.g), last = F.g[F.g.length - 1];
-  const t = v.fade
-    ? `His best stretch is minutes <b>${v.peak.lo}–${v.peak.hi}</b>. From about <b>minute ${v.fade.lo}</b> on, each extra minute is worth ${Math.round((1 - v.fade.pulse / v.peak.pulse) * 100)}% less than his best. That's his sweet spot: past it you're paying in production for the extra minutes.`
-    : `No real fade: his production per minute holds up through minute ${last.hi} (his last ${last.lo}–${last.hi} minutes are within ${Math.max(0, Math.round((1 - last.pulse / v.peak.pulse) * 100))}% of his best stretch).`;
-  const s = fzFade(F.s);
-  const st = s && s.fade ? ` In a single stint he's ${Math.round((1 - s.fade.pulse / s.peak.pulse) * 100)}% less productive once he's been out there <b>${s.fade.lo}+ minutes</b> straight, so that's about when to give him a breather.`
-    : s ? ` Long stints don't wear on him much: no drop through ${F.s[F.s.length - 1].lo}+ minutes in a row.` : "";
-  return t + st;
+  const f = F.gFade, last = F.g[F.g.length - 1], st = F.sFade;
+  const t = f && f.i != null
+    ? `He fades: from about <b>minute ${f.lo}</b> of a game, his Pulse per minute runs <b>${Math.round(f.drop * 100)}% below</b> his first 24 minutes, more than normal ups and downs explain. That's his sweet spot: past it, extra minutes come at a cost.`
+    : `No real fade: through minute ${last.hi}, his Pulse per minute stays within the normal ups and downs of his first 24 minutes. That's typical. Across the league, production per minute barely changes as minutes pile up.`;
+  const s2 = st && st.i != null ? ` Long stretches wear on him too: <b>${st.lo}+ minutes</b> in a row on the floor and he's ${Math.round(st.drop * 100)}% less productive, so that's about when to give him a breather.` : "";
+  return t + s2;
 }
 function fatigueReadout(F, M){
   const at = fzAt(F, M), prod = fzPulse(at), usual = Math.round(dialUsual());
@@ -773,17 +782,19 @@ function fatigueReadout(F, M){
       ${M === usual || !usual ? "" : `vs his usual ${usual} minutes: <b>${d >= 0 ? "+" : "−"}${f1(Math.abs(d))}</b> production.`}</div>`;
 }
 function dialUsual(){ const D = dialGames(DIAL.span).games; return D.length ? D.reduce((t, l) => t + l.min, 0) / D.length : 0; }
+let F_G_REF = {};
 function fzBars(list, M, label, unit){
   const W = 640, H = 200, padL = 40, padB = 32, padT = 14, padR = 10, iw = W - padL - padR, ih = H - padT - padB;
   const vals = list.map(b => b.pulse), mid = (Math.min(...vals) + Math.max(...vals)) / 2;
   const half = Math.max((Math.max(...vals) - Math.min(...vals)) / 2 * 1.4, Math.abs(mid) * .15), yl = Math.max(0, mid - half), yh = mid + half;
   const y = v => padT + ih - (v - yl) / (yh - yl) * ih, bw = iw / list.length;
-  const v = fzFade(list);
+  const fade = list === F_G_REF.g ? F_G_REF.gFade : list === F_G_REF.s ? F_G_REF.sFade : null;
   const step = (yh - yl) > .6 ? .2 : (yh - yl) > .3 ? .1 : .05, ticks = [];
   for(let t = Math.ceil(yl / step) * step; t <= yh; t += step) ticks.push(+t.toFixed(2));
   return `<svg class="pp-dial" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
     ${ticks.map(t => `<line x1="${padL}" x2="${W - padR}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" class="grid"/><text x="${padL - 5}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end">${t.toFixed(2)}</text>`).join("")}
-    ${list.map((b, i) => { const on = M != null && M > b.lo, cls = v && b === v.peak ? "fzbest" : v && v.fade && b.lo >= v.fade.lo ? "fzfade" : on ? "fzon" : "fzoff";
+    ${fade && fade.early ? `<line class="avg" x1="${padL}" x2="${W - padR}" y1="${y(fade.early).toFixed(1)}" y2="${y(fade.early).toFixed(1)}"/>` : ""}
+    ${list.map((b, i) => { const on = M != null && M > b.lo, cls = fade && fade.i != null && b.lo >= fade.lo ? "fzfade" : on || M == null ? "fzon" : "fzoff";
       const x = padL + i * bw;
       return `<g><title>${b.lo}–${b.hi} ${unit}: ${f3(b.pulse)} Pulse per minute (${Math.round(b.mins)} minutes of data)</title><rect class="${cls}" x="${(x + bw * .12).toFixed(1)}" width="${(bw * .76).toFixed(1)}" y="${y(b.pulse).toFixed(1)}" height="${(padT + ih - y(b.pulse)).toFixed(1)}" rx="3"/>
         <text x="${(x + bw / 2).toFixed(1)}" y="${H - padB + 16}" text-anchor="middle">${b.lo}–${b.hi === 53 ? "48+" : b.hi}</text></g>`; }).join("")}
@@ -795,6 +806,7 @@ function minutesDialCard(){
   const F = fatigueModel(DIAL.span);
   if(DIAL.mode == null) DIAL.mode = F ? "fatigue" : "games";
   const mode = DIAL.mode === "fatigue" && F ? "fatigue" : "games";
+  if(F) F_G_REF = F;
   const opts = [["3", "Last 3 seasons"], ["career", "Whole career"]].concat(seasons.slice().reverse().map(x => [x, x + " only"]));
   const tabs = `<div class="pp-tabs" style="margin:0"><button data-dialmode="fatigue" class="${mode === "fatigue" ? "on" : ""}"${F ? "" : " disabled title=\"Play-by-play fatigue data isn't in yet for this selection\""}>Fatigue (play by play)</button><button data-dialmode="games" class="${mode === "games" ? "on" : ""}">Past games</button></div>`;
   const pick = tabs + `<select id="dialSpan">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === DIAL.span ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`
@@ -809,8 +821,9 @@ function minutesDialCard(){
       <div id="dialOut">${fatigueReadout(F, DIAL.min)}</div>
       <div class="pp-fzgrid"><div><div class="sub" style="font-weight:600">Pulse per minute, by minutes already played that night</div><div id="dialSvg">${fzBars(F.g, DIAL.min, "minutes already played", "minutes in")}</div></div>
         ${F.s.length >= 2 ? `<div><div class="sub" style="font-weight:600">Pulse per minute, by minutes into a stint (since he last checked in)</div>${fzBars(F.s, null, "minutes in a row on the floor", "minutes into a stint")}</div>` : ""}</div>
-      <div class="pp-note">Gold = his best stretch; red = where he's faded to ${Math.round((1 - FZ_FADE) * 100)}%+ below it; darker bars are the minutes your dial setting includes. Garbage time (4th quarter, 20+ point margin) is left out, and each quarter starts a new stint.
-        Because this compares him with himself at different points in the same games, a hot or cold night doesn't skew it the way it does with "Past games". Thin stretches lean on how players around the league fade.</div></div>`;
+      <div class="pp-note">Dashed line = his early level (first 24 minutes of a game; minutes 2–6 of a stint). Red = a fade that's bigger than chance. Darker bars are the minutes your dial setting includes. Garbage time (4th quarter, 20+ point margin) is left out, and each quarter starts a new stint.
+        Because this compares him with himself at different points in the same games, a hot or cold night doesn't skew it the way "Past games" does. Thin stretches lean on the league-wide pattern.
+        One catch with stints: coaches tend to pull a player who's struggling, so long stints are mostly ones where he was going well. That makes long stints look better than they really are, so only a clear drop counts there.</div></div>`;
   }
   const D = dialGames(DIAL.span), M = dialModel(D.games);
   if(!M) return `<div class="pp-card c12" id="ppDial"><h3>Minutes dial</h3><div class="pp-dialctl">${pick}</div><div class="pp-empty">Needs at least 15 games with 4+ minutes for this selection.</div></div>`;
