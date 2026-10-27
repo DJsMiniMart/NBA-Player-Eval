@@ -165,3 +165,11 @@
 .pp-moments .t{color:var(--dim,#5b6475);}
 .pp-moments .sc{font-weight:700;font-variant-numeric:tabular-nums;}
 @media (max-width:720px){ .pp-cgrid{grid-template-columns:1fr;} .pp-moments li{grid-template-columns:70px 1fr auto;} .pp-moments .t{grid-column:1/-1;} }
+
+/* Pulse insights */
+.pp-isub{font-size:11px;color:var(--dim);margin-top:2px;}
+.pp-stat.hl .pp-isub{color:rgba(255,255,255,.8);}
+.pp-racechip{display:inline-block;margin:0 6px 6px 0;padding:4px 10px;border-radius:999px;background:var(--row);font-size:12.5px;font-weight:600;color:var(--ink);text-decoration:none;border:1px solid var(--line);}
+.pp-grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+@media (max-width:760px){ .pp-grid2{grid-template-columns:1fr;} }
+.pp-up{color:var(--good,#2f9e44);font-weight:700;} .pp-down{color:var(--bad,#d6336c);font-weight:700;}

@@ -160,6 +160,7 @@
       <tbody id="tbody"></tbody>
     </table></div>
     <div class="more" id="more"></div>
+    <div class="sub hs-legend" style="padding:6px 16px 12px">Hot start check, this season: 🔥 real jump · 🧊 real drop · ♨️ hot start, likely to cool off · 🌱 slow start, likely to bounce back. Hover a badge, or open the player's page, for the numbers.</div>
   </div>
 
   <div class="final-note" id="finalNote" hidden></div>
@@ -176,6 +177,13 @@
     <div class="tablewrap"><table class="rk-tbl"><thead><tr id="vHead"></tr></thead><tbody id="vBody"></tbody></table></div>
     <div class="more" id="vMore"></div>
     <div class="sub" style="padding:8px 16px 14px" id="vNote"></div>
+  </div>
+
+  <div class="card rookies" id="racesCard" hidden>
+    <div class="rk-head" id="races"><div><h2>Award races <span class="mvrd-tag">who Pulse says is winning</span></h2><div class="sub" id="raceSub"></div></div>
+      <div class="v-tabs" id="raceTabs"><button data-r="mvp" class="on">MVP</button><button data-r="roy">Rookie of the Year</button><button data-r="smoy">Sixth Man</button></div></div>
+    <div class="tablewrap"><table class="rk-tbl"><thead><tr id="raceHead"></tr></thead><tbody id="raceBody"></tbody></table></div>
+    <div class="sub" style="padding:8px 16px 14px" id="raceNote"></div>
   </div>
 
   <div class="card rookies" id="rookieCard" hidden>
@@ -197,6 +205,7 @@
 <div id="playersView" hidden></div>
 <script src="nav.js"></script>
 <script src="zones.js"></script>
+<script src="hotstart.js"></script>
 <script src="player.js"></script>
 <script src="players.js"></script>
 
@@ -423,7 +432,7 @@ function draw(){
   $('podium').innerHTML = pool.slice(0,3).map((p,i)=>`
     <div class="pod" style="--c:var(--${["gold","silver","bronze"][i]})" data-key="${esc(p.key)}">
       <div class="rk">${["1st","2nd","3rd"][i]}</div>
-      <div class="nm">${esc(p.name)}</div>
+      <div class="nm">${esc(p.name)}${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</div>
       <div class="tm">${VIEW==="alltime" || VIEW==="careers" ? esc(p.season)+" · " : ""}${esc(p.team)} · ${p.g.toLocaleString()} games · ${f1(p.mpg)} min</div>
       <div class="val">${f3(p.value)}</div>
     </div>`).join("");
@@ -440,7 +449,7 @@ function draw(){
   $('tbody').innerHTML = shown.map(p => {
     const row = `<tr class="p" data-key="${esc(p.key)}">
       <td class="l rank">${p.rank}</td>
-      <td class="l name">${esc(p.name)}</td>
+      <td class="l name">${esc(p.name)}${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</td>
       ${VIEW==="alltime" ? `<td class="l">${esc(p.season)}</td>` : VIEW==="careers" ? `<td class="l yrs"><span class="long">${esc(p.season)}</span><span class="short">${esc(shortYears(p))}</span>${p.noTov ? "*" : ""}</td>` : ""}
       ${teamCell(p)}
       <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
@@ -604,7 +613,7 @@ async function showSeason(file){
   DATA.players.forEach(p => enrich(p, VIEW === "careers" ? p.season : DATA.season));
   if(VIEW === "current") attachClutch(DATA.players);
   applyMetric();
-  drawRookies(); drawValue();
+  drawRookies(); drawValue(); drawRaces();
   openKey = null; showAll = false; sortKey = "value"; sortDir = -1;
   setMeta();
   $('checked').textContent = (VIEW==="current" && DATA.checkedAt) ? `Last checked ${fmtWhen(DATA.checkedAt)}.` : "";
@@ -757,12 +766,44 @@ function drawRookies(){
   card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 
+/* ---------- Award races (data/awards_race.json, built by insights.py) ----------
+   MVP: Pulse Wins on a full-season pace x (0.3 + team win %)^2 -- picked 18 of 23 MVPs since 2003-04.
+   Rookie of the Year: Pulse Wins per 82 games + points per game / 4 -- 17 of 23. Sixth Man: points per game off the
+   bench (voters pick scorers) -- 13 of 23. */
+let RACES = null, RACE = "mvp";
+function drawRaces(){
+  const card = $('racesCard');
+  if(!RACES || VIEW !== "current" || !RACES.mvp || !RACES.mvp.length){ card.hidden = true; return; }
+  card.hidden = false;
+  const C = RACES.cols, rows = (RACES[RACE] || []).map(r => Object.fromEntries(C.map((c, i) => [c, r[i]])));
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const logo = t => T[t] ? `<img src="${teamBadge(T[t].id)}" alt="" loading="lazy" onerror="this.remove()">` : "";
+  $('raceTabs').querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.r === RACE); b.onclick = () => { RACE = b.dataset.r; drawRaces(); }; });
+  const g = RACES.teamGames || 0;
+  $('raceSub').textContent = `${RACES.season} · after about ${g} team game${g === 1 ? "" : "s"}${g < 20 ? " · early: these move a lot until about 20 games" : ""}`;
+  const H = RACE === "mvp" ? ["#", "Player", "Pulse Wins so far", "Pace for 82", "Team win %", "PTS", "G"]
+    : RACE === "roy" ? ["#", "Rookie", "Pulse Wins so far", "Pulse Wins per 82", "PTS", "G"] : ["#", "Player", "PTS", "Pulse Wins so far", "G", "Starts"];
+  $('raceHead').innerHTML = H.map((t, i) => `<th class="${i === 1 ? "l" : ""}">${t}</th>`).join("");
+  const name = r => `<td class="l nm" data-id="${esc(r.id)}">${logo(r.team)}${esc(r.name)}${window.HotStart ? HotStart.chip(r.id, {small: true}) : ""} <span style="color:var(--dim);font-weight:400;font-size:12px">${esc(r.team)}</span></td>`;
+  $('raceBody').innerHTML = rows.length ? rows.map((r, i) => RACE === "mvp"
+      ? `<tr><td>${i + 1}</td>${name(r)}<td class="mvr">${r.pw.toFixed(1)}</td><td>${r.pace.toFixed(1)}</td><td>${(r.winPct * 100).toFixed(0)}%</td><td>${r.ppg.toFixed(1)}</td><td>${r.g}</td></tr>`
+      : RACE === "roy"
+      ? `<tr><td>${i + 1}</td>${name(r)}<td class="mvr">${r.pw.toFixed(1)}</td><td>${(r.pw / Math.max(1, r.g) * 82).toFixed(1)}</td><td>${r.ppg.toFixed(1)}</td><td>${r.g}</td></tr>`
+      : `<tr><td>${i + 1}</td>${name(r)}<td class="mvr">${r.ppg.toFixed(1)}</td><td>${r.pw.toFixed(1)}</td><td>${r.g}</td><td>${r.gs}</td></tr>`).join("")
+    : `<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--dim)">Nobody qualifies yet.</td></tr>`;
+  $('raceNote').innerHTML = {
+    mvp: "Ranked by Pulse Wins (wins added above a replacement player) on a full-season pace, weighted toward players on winning teams the way voters do. Early on, the pace leans on last season's numbers. Tested on every season since 2003-04: this ranking had the actual MVP first in <b>18 of 23</b> seasons and in the top 3 in 20. Players must be on track to play enough games to qualify.",
+    roy: "Ranked by Pulse Wins per 82 games plus a bump for scoring (voters love points). Tested since 2003-04: the actual Rookie of the Year was first in <b>17 of 23</b> seasons and top 3 in 22.",
+    smoy: "Sixth Man voters mostly pick the bench player who scores the most, so this ranks by points per game for players who come off the bench in most of their games. Pulse Wins are shown for comparison. Tested since 2003-04: the winner was first in <b>13 of 23</b> seasons. Pulse alone did worse, because voters reward scoring over all-around play."}[RACE];
+  card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
+}
 async function load(){
   if(STAT_NAME !== "Leaderboard"){ $('title').innerHTML = `The ${esc(STAT_NAME)} <span>Board</span>`; document.title = "The " + STAT_NAME + " Board · Full Court Geek Press"; }
   CUR = normSeason(await getJSON("data/stats.json")) || {players:[], note:"Couldn't load the stats file."};
   CUR.players = CUR.players || [];
   await loadClutch();
   getJSON("data/rookies.json").then(r => { ROOK = r; drawRookies(); });
+  getJSON("data/awards_race.json").then(r => { RACES = r; drawRaces(); if(location.hash === "#races") setTimeout(() => { const el = $('racesCard'); if(el && !el.hidden) el.scrollIntoView({behavior:"smooth"}); }, 300); });
   Promise.all([getJSON("data/contracts.json"), getJSON("data/teams/league.json")]).then(([c, lg]) => {
     CONTRACTS = (c && c.players) || null;
     TEAMG = {}; ((lg && lg.games) || []).forEach(g => { TEAMG[g[2]] = (TEAMG[g[2]] || 0) + 1; TEAMG[g[3]] = (TEAMG[g[3]] || 0) + 1; });
@@ -790,6 +831,7 @@ async function load(){
   const saved = store.get("pickedSeason");   // only a season the viewer picked themselves
   const fallback = (!CUR.players.length && index.length) ? index[0].file : "stats.json";
   showSeason(SEASONS.some(s=>s.file===saved) ? saved : fallback);
+  if(window.HotStart) HotStart.ready.then(() => { try{ if(DATA && VIEW === "current") draw(); }catch(_){} });
 }
 const NBA_TO_BBR = {BKN:"BRK", CHA:"CHO", PHX:"PHO"};
 function buildLogoStrip(){
@@ -836,7 +878,7 @@ function route(){
   } else {
     $('playerView').hidden = true; $('boardView').hidden = false;
     document.title = "The " + STAT_NAME + " Board · Full Court Geek Press";
-    requestAnimationFrame(() => window.scrollTo(0, boardScroll));
+    requestAnimationFrame(() => { const rc = $('racesCard'); if(location.hash === "#races" && rc && !rc.hidden) rc.scrollIntoView(); else window.scrollTo(0, boardScroll); });
   }
 }
 window.addEventListener("hashchange", route);

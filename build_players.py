@@ -375,6 +375,10 @@ def build(now=None, current_year=None):
                 "blocks": pl.get("bk", {}),
             }
 
+    try:
+        __import__("insights").enrich(players, accs, current_label, contracts)
+    except Exception as e:  # noqa: BLE001 -- extras shouldn't stop the player pages
+        print(f"Insights skipped: {e}")
     names = {pid: rec["name"] for pid, rec in players.items()}
     season_sims, career_sims = similar_players(seasons, current_label, names)
 

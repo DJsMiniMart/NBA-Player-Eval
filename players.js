@@ -74,13 +74,13 @@ function render(el){
       <div class="pl-rows">${g.list.map(row).join("")}</div></section>`;
   }).join("") : `<div class="empty">No current players match.</div>`)
   + (others.length ? `<section class="pl-team pl-past"><header><div><h3>Other players since 1973-74</h3><small>Matching "${esc(q.trim())}"</small></div></header>
-      <div class="pl-rows">${others.map(p => `<button class="pl-row" data-open="${esc(p.id)}"><span class="pl-name">${esc(p.name)}</span><span class="pl-meta">${esc(p.pos || "")}</span><span class="pl-meta">${p.from ? esc(p.from) + "–" + esc(p.to) : ""}</span><span class="pl-go">Page →</span></button>`).join("")}</div></section>` : "");
+      <div class="pl-rows">${others.map(p => `<button class="pl-row" data-open="${esc(p.id)}"><span class="pl-name">${esc(p.name)}${window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</span><span class="pl-meta">${esc(p.pos || "")}</span><span class="pl-meta">${p.from ? esc(p.from) + "–" + esc(p.to) : ""}</span><span class="pl-go">Page →</span></button>`).join("")}</div></section>` : "");
   el.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { location.hash = "#/player/" + encodeURIComponent(b.dataset.open); });
   el.querySelector("#plCount").textContent = `${rows.length} current player${rows.length===1?"":"s"}`;
 }
 function row(r){
   return `<button class="pl-row" data-open="${esc(r.id)}">
-    <span class="pl-name">${esc(r.name)}</span>
+    <span class="pl-name">${esc(r.name)}${window.HotStart ? HotStart.chip(r.id, {small: true}) : ""}</span>
     <span class="pl-meta">${esc(r.pos)}${r.age ? " · " + r.age : ""}</span>
     <span class="pl-sal" title="${esc(DB.season)} salary${r.opt ? " (" + esc(r.opt) + ")" : ""}">${money(r.salary)}${r.opt ? `<i>${r.opt === "player option" ? "PO" : r.opt === "team option" ? "TO" : "ET"}</i>` : ""}</span>
     <span class="pl-eval" title="${esc(r.evalWhen)}">${r.eval != null ? r.eval.toFixed(3) : "—"}</span>
@@ -88,10 +88,11 @@ function row(r){
 }
 
 async function show(el){
+  if(window.HotStart) await HotStart.ready;
   document.title = "The Locker Room · Full Court Geek Press";
   el.innerHTML = `<div class="nba-band"><div class="wrap band-in"><header>
       <div><h1>The Locker <span>Room</span></h1><div class="meta" id="plCount">Loading…</div></div>
-      <div class="formula"><b>Every player under contract</b>, grouped by team. Salary is this season's; the number on the right is their latest Pulse. Search also finds past players.</div>
+      <div class="formula"><b>Every player under contract</b>, grouped by team. Salary is this season's; the number on the right is their latest Pulse. Search also finds past players. Badges: 🔥 real jump · 🧊 real drop · ♨️ hot start, likely to cool off · 🌱 slow start, likely to bounce back.</div>
     </header></div></div>
     <div class="wrap" style="padding-top:16px">
       <div class="controls pl-controls">

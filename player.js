@@ -180,7 +180,7 @@ function heroHtml(team){
         : team.id ? `<img src="${teamBadge(team.id)}" alt="${esc(team.n)} logo" onerror="this.style.display='none'">` : ""}</div>
       <div>
         <div id="ppAwards">${awardsHtml(REC.id)}</div>
-        <h1 class="pp-name">${esc(REC.name)}</h1>
+        <h1 class="pp-name">${esc(REC.name)}${!retired && window.HotStart ? HotStart.chip(REC.id) : ""}</h1>
         <div class="pp-teamline">${retired ? `Retired · played ${esc(seasons[0].season)} to ${esc(last.season)} · ${careerTeams().length} team${careerTeams().length===1?"":"s"}` : esc(team.n || "")}${facts ? " · " + esc(facts) : ""}</div>
       </div>
       <div class="pp-eval">
@@ -627,6 +627,74 @@ function gameBoxes(G, L, team, key, withOnOff, sel){
     ${stealsCard(G, team, c)}${blocksCard(G, team, c)}
     ${splitsCard(G, key)}${gameLogCard(G, key)}</div>`;
 }
+/* ---------- Pulse insights (insights.py; each one was tested on past seasons before it went on the page) ---------- */
+const pctS = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v * 100)) + "%";
+const mShort = n => n == null ? "—" : "$" + (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : Math.round(n / 1e3) + "K");
+function insightTile(k, v, sub, hl){ return `<div class="pp-stat${hl ? " hl" : ""}"><div class="k">${k}</div><div class="v">${v}</div>${sub ? `<div class="pp-isub">${sub}</div>` : ""}</div>`; }
+function hotCard(I){
+  const h = I.hot;
+  if(!h) return `<div class="pp-card c6"><h3>Hot start check</h3><div class="pp-empty">Needs 3+ games this season and 500+ minutes last season.</div></div>`;
+  const b = window.HotStart && HotStart.info(REC.id);
+  const verdict = {jump:"The jump is big enough to be real.", drop:"The drop is big enough to be real.",
+    cool:"A hot start, but most of it usually fades this early.", bounce:"A slow start, but most of it usually comes back this early.",
+    steady:"Right about where he was last season."}[h.badge];
+  return `<div class="pp-card c6"><h3>Hot start check ${b ? HotStart.chip(REC.id) : ""}</h3>
+    <div class="pp-line" style="grid-template-columns:repeat(3,1fr)">${insightTile("This season", f3(h.early), pctS(h.raw) + " vs last")}${insightTile("Last season", f3(h.prior))}${insightTile("Expect", f3(h.proj), pctS(h.projPct) + " the rest of the way", true)}</div>
+    <div class="pp-note"><b>${verdict}</b> After ${h.games} games (${h.mins} minutes), this season counts for ${Math.round(h.weight * 100)}% of the forecast and last season for the rest. That mix (minutes ÷ (minutes + 600)) is what best predicted the rest of the season in 20+ past seasons. The weight on this season grows every game: it's about half by 600 minutes, roughly 20 games for a starter.</div></div>`;
+}
+function winsCard(I){
+  const w = I.wins, r = I.races || {};
+  if(!w) return `<div class="pp-card c6"><h3>Pulse Wins</h3><div class="pp-empty">Shows up once he plays this season.</div></div>`;
+  const race = [["mvp","MVP"],["roy","Rookie of the Year"],["smoy","Sixth Man"]].filter(([k]) => r[k]).map(([k,t]) => `<a class="pp-racechip" href="pe.html#races">#${r[k]} in the ${t} race</a>`).join(" ");
+  return `<div class="pp-card c6"><h3>Pulse Wins <small>wins added above a replacement player</small></h3>
+    <div class="pp-line" style="grid-template-columns:repeat(3,1fr)">${insightTile("So far", f1(w.pw), `#${w.rank} in the NBA`, true)}${insightTile("Pace for 82", f1(w.per82), `${w.games} of ${w.teamGames} team games`)}${insightTile(w.last ? "Last season" : "Last season", w.last ? f1(w.last[1]) : "—", w.last ? `${w.last[2]} games` : "")}</div>
+    ${race ? `<div style="margin-top:10px">${race}</div>` : ""}
+    <div class="pp-note">His Pulse production above the league rate for his minutes, plus his share (by minutes) of how well his team defends, turned into wins. Replacement level is a 20-win team. Team totals track real wins closely (tested on 21 seasons). Pulse only sees defense through steals, blocks and the team's defense, so great individual defenders are undersold.</div></div>`;
+}
+function projCard(I){
+  const p = I.proj;
+  if(!p) return "";
+  const rows = p.rows.map(([s, age, v, err], i) => `<tr><td class="l">${esc(s)}</td><td>${age}</td><td class="ev">${f3(v)}</td><td style="color:var(--dim)">${f3(v - err)}–${f3(v + err)}</td><td class="l" style="color:var(--dim)">${i === 2 ? "lower" : i === 1 ? "medium" : "highest"}</td></tr>`).join("");
+  const money = (p.money || []).filter(m => m[1]).map(([s, sal, like, opt]) => { const d = like == null ? null : like - sal;
+    return `<tr><td class="l">${esc(s)}${opt ? ` <small style="color:var(--dim)">${esc(opt)}</small>` : ""}</td><td>${mShort(sal)}</td><td>${mShort(like)}</td><td class="${d == null ? "" : d >= 0 ? "pp-up" : "pp-down"}">${d == null ? "—" : (d >= 0 ? "+" : "−") + mShort(Math.abs(d)).slice(1)}</td></tr>`; }).join("");
+  return `<div class="pp-card c12"><h3>Where he's headed <small>aging curve, from ${esc(p.from[0])} (age ${p.from[1]}, Pulse ${f3(p.from[2])})</small></h3>
+    <div class="pp-grid2"><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th>Age</th><th>Projected Pulse</th><th>Likely range</th><th class="l">Confidence</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${money ? `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Contract year</th><th>Paid</th><th>Plays like</th><th>Value</th></tr></thead><tbody>${money}</tbody></table></div>` : `<div class="pp-empty">No contract years on file past this season.</div>`}</div>
+    <div class="pp-note">Built from every season since 1979-80: how Pulse typically changes from one season to the next at each age (young players climb, about +5% a year at 19–21; it slips about 3–6% a year after 30), starting from his last two seasons. Tested on every season since 2016-17, it beat "he'll be the same as last year" one, two and three seasons out (average miss ${f3(p.rows[0][3])}, ${f3(p.rows[1][3])} and ${f3(p.rows[2][3])} Pulse); the range is that average miss either way.
+      "Plays like" is what the league pays today for a player producing what we project (Pulse × his ${f1(p.mpg)} minutes a game), using the same method as Pulse$. Future salary caps will rise, so later years lean in the player's favor.</div></div>`;
+}
+function consCard(I){
+  const C = I.cons || {}, cur = currentLabel(), lab = C[cur] && C[cur].games >= 20 ? cur : Object.keys(C).sort().reverse().find(k => C[k].games >= 10) || Object.keys(C)[0];
+  const c = lab && C[lab];
+  if(!c) return `<div class="pp-card c6"><h3>Consistency</h3><div class="pp-empty">Needs 5+ games with 15+ minutes.</div></div>`;
+  const tag = c.steadier == null ? "" : c.steadier >= 67 ? `<span class="pp-tag even">Steady</span>` : c.steadier <= 33 ? `<span class="pp-tag hot">Boom or bust</span>` : `<span class="pp-tag">Average swing</span>`;
+  return `<div class="pp-card c6"><h3>Consistency ${tag} <small>${esc(lab)} · ${c.games} games with 15+ min</small></h3>
+    <div class="pp-line" style="grid-template-columns:repeat(3,1fr)">${insightTile("Off night", f3(c.floor), "1 in 4 games below")}${insightTile("Typical", f3(c.typical), "middle game", true)}${insightTile("Big night", f3(c.ceiling), "1 in 10 games above")}</div>
+    <div class="pp-note">${c.steadier != null ? `Steadier from game to game than <b>${c.steadier}%</b> of players with 20+ such games. ` : ""}Consistency is a real trait: it carries over from one season to the next (tested on 10 seasons). Steady players are safer bets for fantasy and player props; boom-or-bust players win you some nights and lose you others.${lab !== cur ? ` Showing ${esc(lab)} until he has 20 games this season.` : ""}</div></div>`;
+}
+function vsCard(I){
+  const v = I.vs;
+  if(!v) return `<div class="pp-card c6"><h3>Against good defenses</h3><div class="pp-empty">Needs 5+ games against both the 10 best and 10 worst defenses (this season and last).</div></div>`;
+  const drop = v.ratio - 1, lg = v.league != null ? v.league - 1 : null;
+  return `<div class="pp-card c6"><h3>Against good defenses <small>this season and last</small></h3>
+    <div class="pp-line" style="grid-template-columns:repeat(3,1fr)">${insightTile("Vs top-10 D", f3(v.top), v.gTop + " games")}${insightTile("Vs bottom-10 D", f3(v.bot), v.gBot + " games")}${insightTile("Difference", pctS(drop), lg != null ? "league typical " + pctS(lg) : "", true)}</div>
+    <div class="pp-note">Nearly everyone produces less against good defenses (the typical player: ${pctS(lg)}). ${lg != null ? (Math.abs(drop - lg) < .05 ? "His drop is about normal." : drop < lg ? "His drop has been bigger than normal." : "He's held up better than most.") : ""} One caution: in our tests, a player's gap one season told us almost nothing about the next (the year-to-year link was zero), so read this as what's happened, not who he is.</div></div>`;
+}
+function matesCard(I){
+  const M = I.mates || {}, lab = Object.keys(M).sort().reverse().find(k => M[k].rows.length);
+  if(!lab) return `<div class="pp-card c12"><h3>Teammates</h3><div class="pp-empty">Shows up once a regular teammate has missed 4+ games he played in.</div></div>`;
+  const m = M[lab];
+  const rows = m.rows.map(([id, name, gw, gwo, rw, ro, d]) => `<tr><td class="l"><a href="#/player/${encodeURIComponent(id)}">${esc(name)}</a></td><td>${gw}</td><td>${f3(rw)}</td><td>${gwo}</td><td>${f3(ro)}</td><td class="${d >= .02 ? "pp-up" : d <= -.02 ? "pp-down" : ""}">${pctS(d)}</td></tr>`).join("");
+  return `<div class="pp-card c12"><h3>Teammates <small>${esc(m.team)} · ${esc(lab)} · his Pulse with and without each regular</small></h3>
+    <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Teammate</th><th>Games with</th><th>His Pulse with</th><th>Games without</th><th>His Pulse without</th><th>When he sits</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="pp-note">"When he sits" is how ${esc(REC.name.split(" ").slice(-1)[0])}'s Pulse changes in games that teammate missed, pulled toward no change when there are only a few such games (8 games' worth). Positive means he does more without that teammate (more shots and touches); negative means he's better with him. Only teammates averaging 15+ minutes who missed 4+ games count, and the other players out those nights aren't separated, so small numbers here are noise.</div></div>`;
+}
+function insightsHtml(){
+  const I = REC.insights;
+  if(!I) return "";
+  return sectionHead("Pulse insights", "What his Pulse says about where he stands, where he's headed and what he's worth. Each one was tested on past seasons before it went on the page.")
+    + `<div class="pp-grid">${hotCard(I)}${winsCard(I)}${projCard(I)}${consCard(I)}${vsCard(I)}${matesCard(I)}</div><div class="pp-gap"></div>`;
+}
 function sectionHead(title, sub){
   return `<div class="pp-section"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
 }
@@ -655,6 +723,7 @@ function render(){
     const sim = REC.similarSeason;
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
+      + insightsHtml()
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
       + (curPO ? `<div class="pp-grid">${statLineCard(curPO, `${label} playoffs`, "per game, this postseason")}</div><div class="pp-gap"></div>` : "")
@@ -779,6 +848,7 @@ async function show(id, el){
     }
     REC = rec; SEL = null; LOGS_ALL = {};
   }
+  if(window.HotStart) await HotStart.ready;
   render();
 }
 
