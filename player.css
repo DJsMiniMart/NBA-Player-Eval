@@ -173,3 +173,11 @@
 .pp-grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
 @media (max-width:760px){ .pp-grid2{grid-template-columns:1fr;} }
 .pp-up{color:var(--good,#2f9e44);font-weight:700;} .pp-down{color:var(--bad,#d6336c);font-weight:700;}
+
+/* jump buttons */
+.pp-jumps{position:sticky;top:57px;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);}
+.pp-jumps-in{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1180px;margin:0 auto;scrollbar-width:none;}
+.pp-jumps-in::-webkit-scrollbar{display:none;}
+.pp-jumps a{white-space:nowrap;text-decoration:none;color:var(--dim);font-weight:600;font-size:13px;padding:6px 12px;border-radius:999px;}
+.pp-jumps a:hover{color:var(--ink);background:var(--panel);}
+.pp-jumps a.on{color:#fff;background:var(--tcbar,var(--tc1));}

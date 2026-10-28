@@ -206,6 +206,7 @@
 <script src="nav.js"></script>
 <script src="zones.js"></script>
 <script src="hotstart.js"></script>
+<script src="ticker.js"></script>
 <script src="player.js"></script>
 <script src="players.js"></script>
 
@@ -861,6 +862,7 @@ function route(){
   if(list) window.PE_BACK = "#/players"; else if(!m && !c) window.PE_BACK = "";
   $('playersView').hidden = !list;
   if(list){
+    if(window.Ticker) Ticker.hide();
     if(!$('boardView').hidden) boardScroll = window.scrollY;
     $('boardView').hidden = true; $('playerView').hidden = true;
     window.scrollTo(0, 0);
@@ -869,6 +871,7 @@ function route(){
     if(!$('boardView').hidden) boardScroll = window.scrollY;
     $('boardView').hidden = true; $('playerView').hidden = false;
     window.scrollTo(0, 0);
+    if(window.Ticker) Ticker.hide();
     PlayerPage.compare(decodeURIComponent(c[1]), c[2] ? decodeURIComponent(c[2]) : null, $('playerView'));
   } else if(m){
     if(!$('boardView').hidden) boardScroll = window.scrollY;
@@ -876,6 +879,7 @@ function route(){
     window.scrollTo(0, 0);
     PlayerPage.show(decodeURIComponent(m[1]), $('playerView'));
   } else {
+    if(window.Ticker) Ticker.hide();
     $('playerView').hidden = true; $('boardView').hidden = false;
     document.title = "The " + STAT_NAME + " Board · Full Court Geek Press";
     requestAnimationFrame(() => { const rc = $('racesCard'); if(location.hash === "#races" && rc && !rc.hidden) rc.scrollIntoView(); else window.scrollTo(0, boardScroll); });

@@ -407,7 +407,7 @@ function gameLogCard(G, key){
   const logs = logObjs((G && G.logs) || []).sort((a,b)=>String(b.date).localeCompare(String(a.date)) || String(b.gid).localeCompare(String(a.gid)));
   const all = !!LOGS_ALL[key];
   const shown = all ? logs : logs.slice(0, 20);
-  return `<div class="pp-card c12"><h3>Game log <small>${logs.length} game${logs.length===1?"":"s"} · newest first</small></h3>
+  return `<div class="pp-card c12"${key === "career" ? ' id="pj-log"' : ""}><h3>Game log <small>${logs.length} game${logs.length===1?"":"s"} · newest first</small></h3>
     ${logs.length ? `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Date</th><th class="l">Opp</th><th class="l">Result</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG</th><th>3P</th><th>FT</th><th>+/-</th><th>Pulse</th></tr></thead><tbody>
       ${shown.map(g => `<tr><td class="l">${esc(shortDate(g.date))}</td><td class="l">${g.home ? "vs" : "@"} ${esc(g.opp)}</td><td class="l ${g.res === "W" ? "w" : "lo"}">${esc(g.res)}</td>
         <td>${Math.round(g.min)}</td><td>${g.pts}</td><td>${g.drb + g.orb}</td><td>${g.ast}</td><td>${g.stl}</td><td>${g.blk}</td><td>${g.tov}</td>
@@ -539,7 +539,7 @@ function splitsCard(G, key){
   const row = k => { const gs = groups.get(k), n = gs.length, S = f => gs.reduce((t,g)=>t+(g[f]||0),0);
     return `<tr><td class="l">${esc(label(k))}</td><td>${n}</td><td>${f1(S("min")/n)}</td><td>${f1(S("pts")/n)}</td><td>${f1((S("drb")+S("orb"))/n)}</td><td>${f1(S("ast")/n)}</td><td>${f1(S("stl")/n)}</td><td>${f1(S("blk")/n)}</td><td>${f1(S("tov")/n)}</td><td>${pct(S("fgm"),S("fga"))}</td><td>${pct(S("f3m"),S("f3a"))}</td><td class="ev">${f3(sumEval(gs))}</td></tr>`; };
   const opts = [["place","Home / away"],["result","Wins / losses"],["role","Starter / bench"],["month","By month"],["opp","By opponent"]];
-  return `<div class="pp-card c12"><h3>Splits <small>per game</small></h3>
+  return `<div class="pp-card c12"${key === "career" ? ' id="pj-splits"' : ""}><h3>Splits <small>per game</small></h3>
     <div class="pp-tabs">${opts.map(([v,t])=>`<button data-split="${key}" data-v="${v}" class="${v===type?"on":""}">${t}</button>`).join("")}</div>
     <div class="tablewrap"${type==="opp"?' style="max-height:380px;overflow-y:auto"':""}><div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Split</th><th>G</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>Pulse</th></tr></thead>
     <tbody>${keys.map(row).join("")}</tbody></table></div></div></div>`;
@@ -692,11 +692,11 @@ function matesCard(I){
 function insightsHtml(){
   const I = REC.insights;
   if(!I) return "";
-  return sectionHead("Pulse insights", "What his Pulse says about where he stands, where he's headed and what he's worth. Each one was tested on past seasons before it went on the page.")
+  return sectionHead("Pulse insights", "What his Pulse says about where he stands, where he's headed and what he's worth. Each one was tested on past seasons before it went on the page.", "pj-insights")
     + `<div class="pp-grid">${hotCard(I)}${winsCard(I)}${projCard(I)}${consCard(I)}${vsCard(I)}${matesCard(I)}</div><div class="pp-gap"></div>`;
 }
-function sectionHead(title, sub){
-  return `<div class="pp-section"><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
+function sectionHead(title, sub, id){
+  return `<div class="pp-section"${id ? ` id="${id}"` : ""}><h2>${title}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`;
 }
 function currentLabel(){
   const cur = (REC.seasons || []).find(x => x.current);
@@ -721,7 +721,7 @@ function render(){
     const G = (REC.games || {})[label] || null;
     const curPO = (REC.playoffs || []).find(x => x.season === label);
     const sim = REC.similarSeason;
-    seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.")
+    seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.", "pj-season")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
       + insightsHtml()
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
@@ -746,18 +746,30 @@ function render(){
   } else {
     gameCareer = `<div class="final-note">Shot-by-shot and game-by-game data isn't available for this player's seasons, so there's no shooting chart, passing, splits, highs, on/off or game log. The NBA's public game feed only goes back so far.</div>`;
   }
-  const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.")
+  const careerHtml = sectionHead(retired ? "Career" : "Career to date", retired ? "Every season of their NBA career." : "Every season so far, including this one.", "pj-career")
     + `<div class="pp-grid">${statLineCard(ct, "Career stat line", "per game, whole career", extra)}</div><div class="pp-gap"></div>`
     + `<div class="pp-grid">${retired ? driversCard(ct, careerLeague(REC.seasons), "What drives their Pulse", "whole career, per minute") : peTrendCard(REC.seasons, ct.value)}${similarCard("Most similar careers", "all-time", REC.similarCareer && REC.similarCareer.map(r => [r[0], r[1], r[2], r[3]]), "career")}</div><div class="pp-gap"></div>`
-    + gameCareer + `<div class="pp-gap"></div><div class="pp-grid">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
-    + sectionHead("Playoffs", "Every postseason run.") + playoffsBlock();
+    + `<div id="pj-games"></div>` + gameCareer + `<div class="pp-gap"></div><div class="pp-grid" id="pj-seasons">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
+    + sectionHead("Playoffs", "Every postseason run.", "pj-playoffs") + playoffsBlock();
 
-  EL.innerHTML = heroHtml(team) + `<div class="pp-body">
+  const JUMPS = [["pj-season", "This season"], ["pj-insights", "Pulse insights"], ["pj-career", "Career"], ["pj-games", "Shooting & passing"],
+    ["pj-splits", "Splits"], ["pj-log", "Game log"], ["pj-seasons", "Season by season"], ["pj-playoffs", "Playoffs"]];
+  EL.innerHTML = heroHtml(team) + `<nav class="pp-jumps" id="ppJumps"><div class="pp-jumps-in"></div></nav><div class="pp-body">
     <div class="pp-grid">${bioCard()}${retired ? earningsCard() : contractCard()}${teamsCard()}</div>
     ${seasonHtml}
     ${careerHtml}
   </div>`;
   document.title = `${REC.name} · Full Court Geek Press`;
+  const jin = EL.querySelector("#ppJumps .pp-jumps-in"), have = JUMPS.filter(([id]) => EL.querySelector("#" + id));
+  jin.innerHTML = have.map(([id, t]) => `<a href="#" data-jump="${id}">${t}</a>`).join("");
+  jin.querySelectorAll("[data-jump]").forEach(a => a.onclick = e => { e.preventDefault(); const el = EL.querySelector("#" + a.dataset.jump);
+    if(el) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 112, behavior: "smooth"}); });
+  const mark = () => { if(!EL.isConnected || EL.hidden) return; let cur = have[0] && have[0][0];
+    have.forEach(([id]) => { const el = EL.querySelector("#" + id); if(el && el.getBoundingClientRect().top < 130) cur = id; });
+    jin.querySelectorAll("[data-jump]").forEach(a => a.classList.toggle("on", a.dataset.jump === cur)); };
+  window.removeEventListener("scroll", window.__ppMark || (() => {})); window.__ppMark = mark;
+  window.addEventListener("scroll", mark, {passive: true}); mark();
+  if(window.Ticker){ if(retired) Ticker.hide(); else Ticker.show(REC.team, {player: REC.name}); }
   EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });

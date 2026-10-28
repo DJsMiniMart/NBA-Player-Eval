@@ -539,6 +539,7 @@ async function show(code){
   TEAM = t;
   pick = [];
   drawHero(); drawFilters(); drawData(); drawShooting(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
+  if(window.Ticker) Ticker.show(code);
   $('asof').textContent = TEAM && TEAM.at ? `Team data updated ${new Date(TEAM.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.` : "";
 }
 function codeFromHash(){
