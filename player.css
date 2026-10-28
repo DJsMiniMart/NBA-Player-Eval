@@ -181,3 +181,5 @@
 .pp-jumps a{white-space:nowrap;text-decoration:none;color:var(--dim);font-weight:600;font-size:13px;padding:6px 12px;border-radius:999px;}
 .pp-jumps a:hover{color:var(--ink);background:var(--panel);}
 .pp-jumps a.on{color:#fff;background:var(--tcbar,var(--tc1));}
+.pp-inj{display:inline-block;margin:6px 0 2px;padding:4px 10px;border-radius:8px;background:rgba(214,51,108,.16);color:#fff;font-size:13px;text-decoration:none;}
+.pp-inj b{color:#ffb3c7;} .pp-inj span{opacity:.85;font-weight:600;margin-left:4px;} .pp-inj:hover span{text-decoration:underline;}

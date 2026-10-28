@@ -46,9 +46,14 @@ function items(code, F, player){
     const o = F.m.odds && F.m.odds[next[0]];
     const line = o && o.spread != null ? ` · line ${esc(o.spread <= 0 ? next[2] : next[3])} ${o.spread === 0 ? "PK" : sgn(-Math.abs(o.spread))}` : "";
     out.push(["next", `<b>NEXT</b> ${home ? "vs" : "@"} ${esc(opp)} · ${esc(time(next[1]))}${next[8] ? " · " + esc(String(next[8]).split(",")[0]) : ""}${u ? ` · Pulse picks <b>${esc(u.pick)}</b> (${Math.round(u.p * 100)}%)` : ""}${line}`]);
-    const inj = F.m.inj && F.m.inj[next[0]] && F.m.inj[next[0]][code];
-    (inj || []).filter(r => r[0] && !/^active$/i.test(r[1])).slice(0, 6).forEach(r => out.push(["inj", `<b>INJURY</b> ${esc(r[0])} · ${esc(r[1])}${r[2] ? " (" + esc(r[2]) + ")" : ""}`, null, aboutPlayer(r[0])]));
   }
+  const feed = window.Injuries && Injuries.data() && Injuries.data().teams && Injuries.data().teams[code];
+  const inj = feed ? feed.map(x => [x.name, x.status, [x.side, x.type].filter(Boolean).join(" "), x])
+    : ((next && F.m.inj && F.m.inj[next[0]] && F.m.inj[next[0]][code]) || []).map(r => [r[0], r[1], r[2], null]);
+  inj.filter(r => r[0] && !/^active$/i.test(r[1])).slice(0, 8).forEach(([name, st, what, x]) => {
+    const wh = x && window.Injuries ? Injuries.when(x) : "";
+    out.push(["inj", `<b>INJURY</b> ${esc(name)} · ${esc(st)}${what ? " (" + esc(what) + ")" : ""}${wh ? " · " + esc(wh) : ""}`, x && x.link, aboutPlayer(name)]);
+  });
   // headlines tagged with the team
   (F.m.news || []).filter(n => (n.teams || []).includes(full) || fold(n.h).includes(fold(nick)))
     .slice(0, 8).forEach(n => out.push(["news", `<b>${esc(String(n.k || "News").toUpperCase())}</b> ${esc(n.h)}`, n.u, aboutPlayer(n.h + " " + (n.d || ""))]));
@@ -100,6 +105,7 @@ async function show(code, opts){
   const F = await files();
   if(KEY !== key) return;
   if(window.HotStart) await HotStart.ready;
+  if(window.Injuries) await Injuries.ready;
   const list = items(code, F, opts.player);
   css();
   if(!BAR){

@@ -174,9 +174,11 @@
   .up .inj > div{font-size:11.5px;line-height:1.5;}
   .up .inj span{display:block;font-size:10px;font-weight:700;color:var(--dim);letter-spacing:.5px;}
   .up .inj em{color:var(--dim);font-style:normal;}
-  .up .inj i{font-style:normal;display:inline-block;margin:0 6px 2px 0;white-space:nowrap;}
-  .up .inj i b{font-size:9.5px;padding:0 4px;border-radius:4px;margin-left:2px;}
-  .up .inj i.out b{background:var(--bad-soft);color:var(--bad);} .up .inj i.dbt b{background:#fdeadd;color:#c2410c;} .up .inj i.q b{background:var(--warn-soft);color:var(--warn);}
+  .up .inj i,.up .inj a{font-style:normal;display:inline-block;margin:0 6px 2px 0;white-space:nowrap;color:inherit;text-decoration:none;}
+  .up .inj a:hover{text-decoration:underline;}
+  .up .inj i b,.up .inj a b{font-size:9.5px;padding:0 4px;border-radius:4px;margin-left:2px;}
+  .up .inj small{font-size:9.5px;color:var(--dim);margin-left:3px;font-weight:600;}
+  .up .inj .out b{background:var(--bad-soft);color:var(--bad);} .up .inj .dbt b{background:#fdeadd;color:#c2410c;} .up .inj .q b{background:var(--warn-soft);color:var(--warn);}
   .up .live{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#0b0b0d;color:#fff;font-variant-numeric:tabular-nums;}
   .up .live b{font:700 20px/1 "Barlow Condensed",sans-serif;letter-spacing:.3px;}
   .up .live small{font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
@@ -299,6 +301,7 @@
 <script src="player.js"></script>
 <script src="box.js"></script>
 <script src="mypicks.js"></script>
+<script src="injuries.js"></script>
 <script>
 (function(){
 "use strict";
@@ -538,7 +541,10 @@ function injHtml(u){
     if(!rows.length) return `<div><span>${esc(t)}</span><em>No injuries listed</em></div>`;
     return `<div><span>${esc(t)}</span>${rows.slice(0, 4).map(r => { const st = String(r[1]).toLowerCase();
       const cls = st === "out" ? "out" : st === "doubtful" ? "dbt" : "q";
-      return `<i class="${cls}" title="${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}">${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b></i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
+      const e = window.Injuries ? Injuries.find(t, r[0]) : null, tg = e ? Injuries.tag(e) : "", wh = e ? Injuries.when(e) : "";
+      const tip = `${esc(r[0])}: ${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}${wh ? " · " + esc(wh) : ""}${e && (e.note || e.long) ? " — " + esc(e.note || e.long) : ""}${e ? " (tap for the story)" : ""}`;
+      const inner = `${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b>${tg ? `<small>${esc(tg)}</small>` : ""}`;
+      return e && e.link ? `<a class="${cls}" href="${esc(e.link)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>` : `<i class="${cls}" title="${tip}">${inner}</i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
   };
   return `<div class="inj">${side(u.away)}${side(u.home)}</div>${lineupHtml(u)}`;
 }
@@ -725,6 +731,7 @@ async function init(){
   $("next").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i < NIGHTS.length - 1) showNight(NIGHTS[i + 1]); };
   document.querySelectorAll("#standTabs button").forEach(b => b.onclick = () => { standView = b.dataset.v; store.set("home.stand", standView); renderStandings(); });
   renderNews(); renderTx(); renderUpcoming(); pollLive();
+  if(window.Injuries) Injuries.ready.then(d => { if(d){ renderUpcoming(); paintLive(); } });
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
 init();

@@ -344,28 +344,27 @@ function drawSchedule(){
   if(firstOpen && upcoming.length){ const i = games.indexOf(upcoming[0]); const tr = firstOpen.querySelectorAll('tbody tr')[i]; if(tr) firstOpen.scrollTop = Math.max(0, tr.offsetTop - 80); }
 }
 
-/* ---------- injuries ---------- */
+/* ---------- injuries (data/injuries.json: ESPN's report with timetables and links, refreshed hourly) ---------- */
 async function drawInjuries(){
+  const md = iso => new Date(iso + "T12:00:00").toLocaleDateString("en-US", {month:"short", day:"numeric"});
   const show = (list, src) => {
     $('injBody').innerHTML = list && list.length ? list.map(x => {
       const s = String(x.status || "").toLowerCase();
       const cls = s.includes("out") ? "out" : (s.includes("day") || s.includes("question") || s.includes("doubt") || s.includes("probable")) ? "dtd" : "oth";
       const what = [x.side, x.type, x.detail].filter(Boolean).join(" ");
-      return `<div class="inj"><span class="who">${esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
-        <span class="why">${what ? esc(what) + ". " : ""}${esc(x.note || "")}${x.ret ? ` Expected back around ${esc(new Date(x.ret + "T12:00:00Z").toLocaleDateString("en-US", {month:"short", day:"numeric"}))}.` : ""}</span></div>`;
+      const wh = window.Injuries && x.tl ? Injuries.when(x) : "";
+      const note = x.long && x.long.length > (x.note || "").length ? x.long : x.note;
+      return `<div class="inj"><span class="who">${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener" title="${x.story ? "ESPN: " + esc(x.story) : "ESPN news on " + esc(x.name)}">${esc(x.name)}</a>` : esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
+        ${wh ? `<span class="tl"><span>⏱ ${esc(wh)}</span></span>` : ""}
+        <span class="why">${what ? esc(what) + ". " : ""}${esc(note || "")}${x.date ? ` <span class="note">(${esc(md(x.date))})</span>` : ""}${x.link ? ` <a class="more" href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Read the story →" : "More on ESPN →"}</a>` : ""}</span></div>`;
     }).join("") + `<div class="note pad" style="margin:0">${src}</div>` : `<div class="empty">No injuries reported.<br><span class="note">${src}</span></div>`;
   };
   const saved = TEAM ? TEAM.injuries : null;
-  show(saved, TEAM && TEAM.injuriesAt ? `As of ${new Date(TEAM.injuriesAt).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})} (ESPN). Checking for updates…` : "Checking ESPN…");
-  try{
-    const r = await fetch("https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries");
-    const d = await r.json();
-    const nick = TEAMS[CODE].n.split(" ").pop().toLowerCase();
-    const t = (d.injuries || []).find(x => String(x.displayName || "").toLowerCase().includes(nick === "blazers" ? "blazers" : nick));
-    const list = ((t && t.injuries) || []).map(inj => { const a = inj.athlete || {}, det = inj.details || {};
-      return {name:a.displayName, pos:(a.position || {}).abbreviation, status:inj.status, type:det.type, detail:det.detail, side:det.side, ret:(det.returnDate || "").slice(0,10), note:inj.shortComment}; });
-    show(list, "Live from ESPN.");
-  }catch(_){
+  show(saved, "Loading the latest report…");
+  const d = window.Injuries ? await Injuries.ready : null;
+  if(d && d.teams){
+    show(d.teams[CODE] || [], `ESPN injury report as of ${new Date(d.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}, refreshed hourly. Timetables come from the latest team and beat-writer news (e.g. "out 2–3 weeks", "re-evaluated in a week"); tap a name for the story.`);
+  } else {
     show(saved, TEAM && TEAM.injuriesAt ? `As of ${new Date(TEAM.injuriesAt).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})} (ESPN, saved during the morning update).` : "The injury report is saved during the morning update.");
   }
 }

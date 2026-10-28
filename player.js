@@ -181,6 +181,7 @@ function heroHtml(team){
       <div>
         <div id="ppAwards">${awardsHtml(REC.id)}</div>
         <h1 class="pp-name">${esc(REC.name)}${!retired && window.HotStart ? HotStart.chip(REC.id) : ""}</h1>
+        ${!retired && window.Injuries ? injuryLine() : ""}
         <div class="pp-teamline">${retired ? `Retired · played ${esc(seasons[0].season)} to ${esc(last.season)} · ${careerTeams().length} team${careerTeams().length===1?"":"s"}` : esc(team.n || "")}${facts ? " · " + esc(facts) : ""}</div>
       </div>
       <div class="pp-eval">
@@ -193,6 +194,12 @@ function heroHtml(team){
   </div></div>`;
 }
 
+function injuryLine(){
+  const e = Injuries.find(REC.team, REC.name);
+  if(!e || /^active$/i.test(e.status || "")) return "";
+  const what = [e.side, e.type, e.detail].filter(Boolean).join(" "), wh = Injuries.when(e);
+  return `<a class="pp-inj" href="${esc(e.link)}" target="_blank" rel="noopener" title="${esc(e.note || e.long || "")}">🩹 <b>${esc(e.status)}</b>${what ? " · " + esc(what) : ""}${wh ? " · " + esc(wh) : ""} <span>${e.story ? "Read the story →" : "More on ESPN →"}</span></a>`;
+}
 function bioCard(){
   const b = REC.bio || {}, d = REC.draft;
   const age = ageFrom(b.born);
@@ -861,6 +868,7 @@ async function show(id, el){
     REC = rec; SEL = null; LOGS_ALL = {};
   }
   if(window.HotStart) await HotStart.ready;
+  if(window.Injuries) await Injuries.ready;
   render();
 }
 
