@@ -206,8 +206,8 @@ function bioCard(){
   const born = b.born && /^\d{4}-\d{2}-\d{2}$/.test(b.born) ? new Date(b.born+"T12:00:00").toLocaleDateString([], {month:"long", day:"numeric", year:"numeric"}) : (b.born || null);
   const draft = d ? `${d.year} · ${ordinal(d.round)} round · ${ordinal(d.pick)} pick${d.team ? " (" + esc(d.team) + ")" : ""}` : (b.from ? "Undrafted" : "—");
   const rows = [["Age", age != null ? `${age}${born ? ` (born ${born})` : ""}` : "—"], ["Height", height(b.ht)], ["Weight", b.wt ? b.wt + " lb" : "—"],
-    ["Position", b.pos || "—"], ["College", b.college || "—"], ["Draft", draft], ["NBA seasons", b.from ? `${b.from - 1}-${String(b.from).slice(2)} to ${b.to - 1}-${String(b.to).slice(2)}` : "—"]];
-  return `<div class="pp-card c6"><h3>Player bio</h3><dl class="pp-kv">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>`;
+    ["Position", b.pos || "—"], ["College", b.college ? {html: `${esc(b.college)} <a class="pp-college" href="https://www.sports-reference.com/cbb/search/search.fcgi?search=${encodeURIComponent(REC.name)}" target="_blank" rel="noopener" title="${esc(REC.name)}'s college stats at Sports-Reference (opens in a new tab)">College stats ↗</a>`} : "—"], ["Draft", draft], ["NBA seasons", b.from ? `${b.from - 1}-${String(b.from).slice(2)} to ${b.to - 1}-${String(b.to).slice(2)}` : "—"]];
+  return `<div class="pp-card c6"><h3>Player bio</h3><dl class="pp-kv">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v && v.html ? v.html : esc(v)}</dd>`).join("")}</dl></div>`;
 }
 
 function teamsCard(){
