@@ -58,7 +58,7 @@ function items(code, F, player){
   });
   // headlines tagged with the team
   (F.m.news || []).filter(n => (n.teams || []).includes(full) || fold(n.h).includes(fold(nick)))
-    .slice(0, 8).forEach(n => out.push(["news", `<b>${esc(String(n.k || "News").toUpperCase())}</b> ${esc(n.h)}`, n.u, aboutPlayer(n.h + " " + (n.d || ""))]));
+    .slice(0, 8).forEach(n => out.push(["news", `<b>${esc(/headline/i.test(n.k || "") ? "NEWS" : String(n.k || "News").toUpperCase())}</b> ${esc(n.h)}`, n.u, aboutPlayer(n.h + " " + (n.d || ""))]));
   // transactions, last 30 days
   const cut = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
   (F.m.transactions || []).filter(t => t[1] === code && t[0] >= cut).slice(0, 6)
@@ -75,6 +75,37 @@ function items(code, F, player){
   return out;
 }
 
+/* the whole league, for The Morning Press */
+function leagueItems(F){
+  const out = [], now = Date.now();
+  const games = (F.s.games || []).slice().sort((a, b) => String(a[1]).localeCompare(String(b[1])));
+  const recent = games.filter(g => g[4] === 3 && now - new Date(g[1]) < 36 * 36e5);
+  recent.forEach(g => { const hw = g[5] > g[6];
+    out.push(["final", `<b>FINAL</b> ${esc(g[3])} ${hw ? g[6] : `<u>${g[6]}</u>`} · ${esc(g[2])} ${hw ? `<u>${g[5]}</u>` : g[5]}`]); });
+  games.filter(g => g[4] !== 3 && new Date(g[1]) - now < 30 * 36e5 && new Date(g[1]) - now > -4 * 36e5).forEach(g => {
+    const u = (F.p.upcoming || []).find(x => x.id === g[0]), o = F.m.odds && F.m.odds[g[0]];
+    const line = o && o.spread != null ? ` · ${esc(o.spread <= 0 ? g[2] : g[3])} ${o.spread === 0 ? "PK" : sgn(-Math.abs(o.spread))}` : "";
+    out.push(["next", `<b>${esc(new Date(g[1]).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"}))}</b> ${esc(g[3])} @ ${esc(g[2])}${u ? ` · Pulse: <b>${esc(u.pick)}</b> ${Math.round(u.p * 100)}%` : ""}${line}`, `matchup.html#${encodeURIComponent(g[0])}`]);
+  });
+  (F.m.news || []).slice(0, 8).forEach(n => out.push(["news", `<b>${esc(/headline/i.test(n.k || "") ? "NEWS" : String(n.k || "News").toUpperCase())}</b> ${esc(n.h)}`, n.u]));
+  const cut = new Date(now - 3 * 864e5).toISOString().slice(0, 10);
+  (F.m.transactions || []).filter(t => t[0] >= cut).slice(0, 8).forEach(t => out.push(["tx", `<b>MOVE</b> ${esc(t[1])}: ${esc(t[2])}`]));
+  const inj = window.Injuries && Injuries.data() && Injuries.data().teams;
+  if(inj){
+    Object.entries(inj).flatMap(([c, l]) => l.map(x => [c, x])).filter(([c, x]) => x.tl && ["range", "about", "season", "reeval", "indef", "wtw"].includes(x.tl.kind))
+      .sort((a, b) => String(b[1].date).localeCompare(String(a[1].date))).slice(0, 8)
+      .forEach(([c, x]) => out.push(["inj", `<b>INJURY</b> ${window.playerLink ? playerLink(x.name, c) : esc(x.name)} (${esc(c)}) · ${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(Injuries.when(x))} 📰</a>` : esc(Injuries.when(x))}`]));
+  }
+  const HS = window.HotStart, byId = new Map((F.idx || []).map(r => [r[0], r]));
+  Object.entries((F.h && F.h.players) || {}).filter(([, h]) => h[0] === "jump" || h[0] === "drop").sort((a, b) => Math.abs(b[1][2]) - Math.abs(a[1][2])).slice(0, 6)
+    .forEach(([id, h]) => { const r = byId.get(id), b = HS && HS.info(id); if(!r || !b) return;
+      out.push(["hot", `${b.icon} <b>${window.playerLink ? playerLink(r[1], r[4], null, id) : esc(r[1])}</b> (${esc(r[4])}) ${esc(b.label.toLowerCase())}: ${h[1] >= 0 ? "up" : "down"} ${Math.abs(Math.round(h[1] * 100))}%`]); });
+  // mix them so one kind doesn't run on for a minute
+  const kinds = ["final", "next", "news", "inj", "hot", "tx"], buckets = kinds.map(k => out.filter(x => x[0] === k)), mixed = [];
+  while(buckets.some(b => b.length)) buckets.forEach(b => { if(b.length) mixed.push(b.shift()); });
+  return mixed;
+}
+
 function css(){
   if(document.getElementById("tickerCss")) return;
   const s = document.createElement("style"); s.id = "tickerCss";
@@ -88,6 +119,7 @@ function css(){
 .tk-run span{padding:0 18px;position:relative;}
 .tk-run span::after{content:"◆";position:absolute;right:-5px;font-size:8px;color:var(--tk1,#C8102E);}
 .tk-run span b{color:#ffd166;font-weight:700;margin-right:3px;}
+.tk-run span u{text-decoration:none;font-weight:700;color:#fff;}
 .tk-run span.mine b{color:#7ee2a8;}
 .tk-run a{color:#fff;text-decoration:none;} .tk-run a:hover{text-decoration:underline;}
 .tk-btn{flex:none;width:38px;border:0;background:#1b1b20;color:#fff;font-size:14px;cursor:pointer;}
@@ -109,17 +141,17 @@ async function show(code, opts){
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Injuries.ready;
   if(window.PlayerIndex) await PlayerIndex.ready;
-  const list = items(code, F, opts.player);
+  const list = code === "NBA" ? leagueItems(F) : items(code, F, opts.player);
   css();
   if(!BAR){
     BAR = document.createElement("div"); BAR.className = "tk"; BAR.setAttribute("role", "region"); BAR.setAttribute("aria-label", "Team news ticker");
     document.body.appendChild(BAR); document.body.classList.add("has-tk");
   }
   const team = T()[code] || {};
-  BAR.style.setProperty("--tk1", team.c1 || "#C8102E");
+  BAR.style.setProperty("--tk1", code === "NBA" ? "#1D428A" : (team.c1 || "#C8102E"));
   if(!list.length){ BAR.innerHTML = `<div class="tk-lab">${esc(code)} news</div><div class="tk-view" style="padding:0 14px;color:#aab">No team news right now.</div>`; return; }
   const one = list.map(([k, h, u, m]) => `<span class="${m ? "mine" : ""}">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${h}</a>` : h}</span>`).join("");
-  const logo = team.id && window.teamBadge ? `<img src="${teamBadge(code)}" alt="" onerror="this.remove()">` : "";
+  const logo = code === "NBA" ? `<img src="img/emblem-sm.png" alt="" style="border-radius:4px;background:none">` : team.id && window.teamBadge ? `<img src="${teamBadge(code)}" alt="" onerror="this.remove()">` : "";
   BAR.innerHTML = `<div class="tk-lab">${logo}${esc(code)}<span class="tk-word">&nbsp;news</span></div><div class="tk-view"><div class="tk-run">${one}${one}</div></div><button class="tk-btn" title="Pause or play the ticker" aria-label="Pause or play the ticker">❚❚</button>`;
   const run = BAR.querySelector(".tk-run");
   requestAnimationFrame(() => { const w = run.scrollWidth / 2; run.style.setProperty("--tkdur", Math.max(25, w / 70) + "s"); });   // about 70 px a second

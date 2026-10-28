@@ -26,7 +26,7 @@ function tag(e){
 function when(e){
   const t = e && e.tl; if(!t) return "";
   let s = t.label;
-  if(t.kind === "range" && t.from && t.to) s += ` · back ~${md(t.from)}–${md(t.to)}`;
+  if(t.kind === "range" && t.from && t.to) s += ` · ${/^Re-eval/.test(t.label) ? "around" : "back ~"} ${md(t.from)}–${md(t.to)}`;
   else if(t.kind === "about" && t.from) s += ` · back ~${md(t.from)}`;
   if(t.reevalLabel && t.kind !== "reeval") s += ` · ${t.reevalLabel}`;
   return s;

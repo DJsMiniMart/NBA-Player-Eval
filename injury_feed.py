@@ -69,10 +69,11 @@ def timeline(text, status, date, ret):
     m = re.search(r"re-?evaluat\w*(?:\s+\w+){0,4}?\s+in\s+(?:about\s+|roughly\s+|another\s+|the next\s+)?" + NUM + r"(?:\s*(?:-to-|-|–|to|or)\s*" + NUM + r")?[\s-]+" + UNIT, low)
     if m and num(m.group(1)):
         n, u = num(m.group(1)), m.group(3)
-        if m.group(2) and num(m.group(2)) and not out:   # "re-evaluated in 3-to-4 months": that's the timetable too
+        if m.group(2) and num(m.group(2)):   # "re-evaluated in 3-to-4 months": that's the timetable
             hi = num(m.group(2))
-            out = {"kind": "range", "label": f"Out {n}–{hi} {u}s", "from": (base + dt.timedelta(days=n * UNIT_DAYS[u])).isoformat(),
+            out = {"kind": "range", "label": f"Re-evaluated in {n}–{hi} {u}s", "from": (base + dt.timedelta(days=n * UNIT_DAYS[u])).isoformat(),
                    "to": (base + dt.timedelta(days=hi * UNIT_DAYS[u])).isoformat()}
+            return out
         when = base + dt.timedelta(days=n * UNIT_DAYS[u])
         r = {"reeval": when.isoformat(), "reevalLabel": f"Re-evaluated in {n} {u}{'s' if n != 1 else ''} (~{fmt(when)})"}
         if out:

@@ -35,6 +35,13 @@
   .wrap{max-width:1200px;margin:0 auto;padding:0 16px;}
   h2{font:700 21px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;margin:0;}
   .sec{margin:22px 0 0;}
+  .otd ul{list-style:none;margin:0;padding:4px 0;}
+  .otd li{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);align-items:start;}
+  .otd li:last-child{border-bottom:0;}
+  .otd .yr{font:700 18px/1.2 "Barlow Condensed",sans-serif;color:var(--accent);}
+  .otd .tx{font-size:13.5px;line-height:1.4;}
+  .otd .tx small{display:block;color:var(--dim);font-size:11.5px;margin-top:2px;}
+  .otd .tx small a{color:var(--dim);}
   .jumps{position:sticky;top:57px;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);}
   .jumps-in{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1200px;margin:0 auto;scrollbar-width:none;}
   .jumps-in::-webkit-scrollbar{display:none;}
@@ -200,6 +207,8 @@
   .up .mp button{font:600 12px Inter,sans-serif;padding:5px 4px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
   .up .mp button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   .up .mp button:disabled{cursor:default;opacity:.55;} .up .mp button.on:disabled{opacity:1;}
+  .up .mlink{display:block;padding:9px 14px;border-top:1px solid var(--line);font-size:12.5px;font-weight:700;text-decoration:none;color:var(--court);background:var(--panel);}
+  .up .mlink:hover{text-decoration:underline;}
   .up ul{list-style:none;margin:0;padding:8px 14px 10px;border-top:1px solid var(--line);background:var(--row);display:grid;gap:5px;flex:1;}
   .up li{display:flex;gap:8px;font-size:12.5px;line-height:1.35;}
   .up li span{flex:none;width:18px;text-align:center;}
@@ -242,7 +251,7 @@
 </div></header>
 <nav class="jumps" aria-label="Jump to a section"><div class="jumps-in" id="jumps">
   <a href="#scoresSec">Scores</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
-  <a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#txSec">Transactions</a>
+  <a href="#otdSec">On this day</a><a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#txSec">Transactions</a>
 </div></nav>
 
 <main class="wrap">
@@ -268,6 +277,11 @@
       <section class="sec" id="leadSec">
         <div class="sec-h"><h2>Top performers</h2><small id="leadNote"></small></div>
         <div class="leaders" id="leaders"></div>
+      </section>
+
+      <section class="sec" id="otdSec" hidden>
+        <div class="sec-h"><h2>On this day</h2><small id="otdNote"></small></div>
+        <div class="card otd" id="otd"></div>
       </section>
 
       <section class="sec" id="storySec">
@@ -313,6 +327,8 @@
 <script src="box.js"></script>
 <script src="mypicks.js"></script>
 <script src="injuries.js"></script>
+<script src="hotstart.js"></script>
+<script src="ticker.js"></script>
 <script>
 (function(){
 "use strict";
@@ -685,7 +701,8 @@ function renderUpcoming(){
       ${linesHtml(u)}
       ${myPicksHtml(u)}
       <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
-      <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul></div>`;
+      <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul>
+      <a class="mlink" href="matchup.html#${encodeURIComponent(u.id)}">Full matchup: tale of the tape, rest, players, head-to-head →</a></div>`;
   }).join("");
   const rec = PRED.record || [0, 0];
   const book = Object.values((MORNING && MORNING.odds) || {})[0];
@@ -745,8 +762,26 @@ async function init(){
   document.querySelectorAll("#standTabs button").forEach(b => b.onclick = () => { standView = b.dataset.v; store.set("home.stand", standView); renderStandings(); });
   renderNews(); renderTx(); renderUpcoming(); pollLive();
   Promise.all([window.Injuries ? Injuries.ready : null, window.PlayerIndex ? PlayerIndex.ready : null]).then(() => { renderUpcoming(); paintLive(); });
+  if(window.Ticker) Ticker.show("NBA");
+  renderOnThisDay();
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
+/* ---------- On this day (data/onthisday.json, built by onthisday.py from every game since 2002-03) ---------- */
+async function renderOnThisDay(){
+  const d = await getJSON("data/onthisday.json");
+  const now = new Date(), md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const list = d && d.days && d.days[md];
+  if(!list || !list.length){ $("otdSec").hidden = true; return; }
+  $("otdSec").hidden = false;
+  $("otdNote").textContent = `${now.toLocaleDateString("en-US", {month:"long", day:"numeric"})} in NBA history, since ${d.since}`;
+  const ICON = {points:"🔥", triple:"🔺", pulse:"💓", game:"🏀"};
+  const ago = y => { const n = now.getFullYear() - y; return n <= 0 ? "this year" : n === 1 ? "1 year ago" : `${n} years ago`; };
+  $("otd").innerHTML = `<ul>${list.map(([yr, kind, text, id, gid]) => {
+    let t = esc(text);
+    if(id){ const nm = text.split(/ scored | put up |: /)[0]; t = t.replace(esc(nm), `<a class="plink" href="pe.html#/player/${encodeURIComponent(id)}">${esc(nm)}</a>`); }
+    return `<li><div class="yr">${yr}</div><div class="tx">${ICON[kind] || "•"} ${t}<small>${ago(yr)} · <a href="https://www.espn.com/nba/game/_/gameId/${encodeURIComponent(gid)}" target="_blank" rel="noopener">box score on ESPN</a></small></div></li>`; }).join("")}</ul>`;
+}
+
 init();
 })();
 

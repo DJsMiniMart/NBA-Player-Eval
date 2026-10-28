@@ -39,7 +39,7 @@ window.teamBadge = function(key){
   return badgeCache[code] = "data:image/svg+xml," + encodeURIComponent(svg);
 };
 const PAGES = [
-  {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$/.test(p.path)},
+  {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$|matchup\.html$/.test(p.path)},
   {label:"The Pulse Board", sub:"Leaderboard, Pulse$, rookie report",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"The Locker Room", sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
   {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
