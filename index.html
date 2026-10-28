@@ -35,6 +35,13 @@
   .wrap{max-width:1200px;margin:0 auto;padding:0 16px;}
   h2{font:700 21px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.6px;margin:0;}
   .sec{margin:22px 0 0;}
+  .jumps{position:sticky;top:57px;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);}
+  .jumps-in{display:flex;gap:4px;overflow-x:auto;padding:8px 16px;max-width:1200px;margin:0 auto;scrollbar-width:none;}
+  .jumps-in::-webkit-scrollbar{display:none;}
+  .jumps a{white-space:nowrap;text-decoration:none;color:var(--dim);font-weight:600;font-size:13px;padding:6px 12px;border-radius:999px;}
+  .jumps a:hover{color:var(--ink);background:var(--panel);}
+  .jumps a.on{color:#fff;background:var(--accent);}
+  .sec{scroll-margin-top:112px;}
   .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
   .sec-h small{color:var(--dim);font-size:12.5px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;}
@@ -233,6 +240,10 @@
   </div>
   <div class="facts" id="facts"></div>
 </div></header>
+<nav class="jumps" aria-label="Jump to a section"><div class="jumps-in" id="jumps">
+  <a href="#scoresSec">Scores</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
+  <a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#txSec">Transactions</a>
+</div></nav>
 
 <main class="wrap">
   <section class="sec" id="scoresSec">
@@ -254,24 +265,24 @@
         <div class="card potn" id="potn"></div>
       </section>
 
-      <section class="sec">
+      <section class="sec" id="leadSec">
         <div class="sec-h"><h2>Top performers</h2><small id="leadNote"></small></div>
         <div class="leaders" id="leaders"></div>
       </section>
 
-      <section class="sec">
+      <section class="sec" id="storySec">
         <div class="sec-h"><h2>Storylines</h2><small>Big nights and late-game moments</small></div>
         <div class="card" id="stories"></div>
       </section>
 
-      <section class="sec">
+      <section class="sec" id="newsSec">
         <div class="sec-h"><h2>Headlines</h2><small id="newsAt"></small></div>
         <div class="card" id="news"></div>
       </section>
     </div>
 
     <aside>
-      <section class="sec">
+      <section class="sec" id="standSec">
         <div class="sec-h"><h2>Standings</h2>
           <div class="tabs" id="standTabs"><button data-v="conf" class="on">Conference</button><button data-v="div">Division</button></div></div>
         <div class="card stand" id="standings"></div>
@@ -280,7 +291,7 @@
     </aside>
   </div>
 
-  <section class="sec">
+  <section class="sec" id="txSec">
     <div class="sec-h"><h2>Transaction tracker</h2><small id="txAt"></small></div>
     <div class="card">
       <div class="txbar">
@@ -737,6 +748,24 @@ async function init(){
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
 init();
+})();
+
+/* ---------- jump buttons: skip to a section; the current one is highlighted ---------- */
+(function(){
+  const links = [...document.querySelectorAll("#jumps a")];
+  links.forEach(a => a.onclick = e => { e.preventDefault(); const el = document.querySelector(a.getAttribute("href")); if(el && !el.hidden) window.scrollTo({top: el.getBoundingClientRect().top + window.scrollY - 108, behavior: "smooth"}); });
+  const mark = () => {
+    const shown = links.filter(a => { const el = document.querySelector(a.getAttribute("href")); const vis = el && !el.hidden && el.offsetParent !== null; a.hidden = !vis; return vis; });
+    let cur = shown[0];
+    shown.forEach(a => { if(document.querySelector(a.getAttribute("href")).getBoundingClientRect().top < 140) cur = a; });
+    if(window.innerHeight + window.scrollY >= document.body.scrollHeight - 4 && shown.length) cur = shown[shown.length - 1];
+    links.forEach(a => a.classList.toggle("on", a === cur));
+    const bar = document.getElementById("jumps");   // keep the highlighted button in view on narrow screens
+    if(cur && bar && (cur.offsetLeft < bar.scrollLeft || cur.offsetLeft + cur.offsetWidth > bar.scrollLeft + bar.clientWidth)) bar.scrollLeft = cur.offsetLeft - 16;
+  };
+  window.addEventListener("scroll", mark, {passive: true});
+  setInterval(mark, 1500);   // sections appear as their data loads
+  mark();
 })();
 </script>
 </body>
