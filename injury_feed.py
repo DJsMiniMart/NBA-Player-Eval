@@ -53,7 +53,7 @@ def timeline(text, status, date, ret):
     base = date or dt.date.today()
     if re.search(r"rest of the (?:20\d\d-\d\d )?(?:regular )?season|season-ending|out for the (?:20\d\d-\d\d )?season|miss the (?:entire |remainder of the )?(?:20\d\d-\d\d )?season", low):
         return {"kind": "season", "label": "Out for the season"}
-    m = re.search(NUM + r"\s*(?:-|–|to|or)\s*" + NUM + r"\s+" + UNIT, low)
+    m = re.search(NUM + r"\s*(?:-to-|-|–|to|or)\s*" + NUM + r"[\s-]+" + UNIT, low)
     if m and num(m.group(1)) and num(m.group(2)):
         a, b, u = num(m.group(1)), num(m.group(2)), m.group(3)
         out = {"kind": "range", "label": f"Out {a}–{b} {u}s", "from": (base + dt.timedelta(days=a * UNIT_DAYS[u])).isoformat(),
@@ -66,9 +66,13 @@ def timeline(text, status, date, ret):
             least = "at least" in m.group(0)
             out = {"kind": "about", "label": f"Out {'at least ' if least else 'about '}{n} {u}{'s' if n != 1 else ''}",
                    "from": (base + dt.timedelta(days=n * UNIT_DAYS[u])).isoformat()}
-    m = re.search(r"re-?evaluat\w*\s+(?:again\s+)?in\s+(?:about\s+|roughly\s+|another\s+)?" + NUM + r"\s+" + UNIT, low)
+    m = re.search(r"re-?evaluat\w*(?:\s+\w+){0,4}?\s+in\s+(?:about\s+|roughly\s+|another\s+|the next\s+)?" + NUM + r"(?:\s*(?:-to-|-|–|to|or)\s*" + NUM + r")?[\s-]+" + UNIT, low)
     if m and num(m.group(1)):
-        n, u = num(m.group(1)), m.group(2)
+        n, u = num(m.group(1)), m.group(3)
+        if m.group(2) and num(m.group(2)) and not out:   # "re-evaluated in 3-to-4 months": that's the timetable too
+            hi = num(m.group(2))
+            out = {"kind": "range", "label": f"Out {n}–{hi} {u}s", "from": (base + dt.timedelta(days=n * UNIT_DAYS[u])).isoformat(),
+                   "to": (base + dt.timedelta(days=hi * UNIT_DAYS[u])).isoformat()}
         when = base + dt.timedelta(days=n * UNIT_DAYS[u])
         r = {"reeval": when.isoformat(), "reevalLabel": f"Re-evaluated in {n} {u}{'s' if n != 1 else ''} (~{fmt(when)})"}
         if out:
@@ -79,10 +83,18 @@ def timeline(text, status, date, ret):
         return out
     if "indefinitely" in low:
         return {"kind": "indef", "label": "Out indefinitely"}
+    if "week-to-week" in low or "week to week" in low:
+        return {"kind": "wtw", "label": "Week-to-week"}
     m = re.search(r"(questionable|doubtful|probable|ruled out|available)\s+(?:to play\s+)?(?:for|in)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)'?s?", low)
     if m and (dt.date.today() - base).days <= 2:   # "questionable for Wednesday" goes stale fast
         word = {"ruled out": "Out", "available": "Available"}.get(m.group(1), m.group(1).capitalize())
         return {"kind": "game", "label": f"{word} for {m.group(2).capitalize()}"}
+    fresh = (dt.date.today() - base).days <= 2
+    m = re.search(r"next (?:chance|opportunity)\b[^.]*?\b(?:comes|come|arrives|arrive|will come|will arrive|is|would be)\s+(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)", low)
+    if m and fresh:
+        return {"kind": "game", "label": f"Next chance to play: {m.group(1).capitalize()}"}
+    if re.search(r"\bday-to-day\b", low):
+        return {"kind": "dtd", "label": "Day-to-day"}
     if ret and date and (ret - date).days > 3:
         return {"kind": "est", "label": f"ESPN expects him back ~{fmt(ret)}", "from": ret.isoformat()}
     if "day-to-day" in str(status).lower():
