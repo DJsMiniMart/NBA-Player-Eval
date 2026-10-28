@@ -8,6 +8,28 @@
 const BADGE_COLORS = {ATL:["#C8102E","#FDB927",1610612737], BOS:["#007A33","#BA9653",1610612738], BKN:["#000000","#A1A1A4",1610612751], CHA:["#1D1160","#00788C",1610612766], CHI:["#CE1141","#000000",1610612741], CLE:["#860038","#FDBB30",1610612739], DAL:["#00538C","#B8C4CA",1610612742], DEN:["#0E2240","#FEC524",1610612743], DET:["#C8102E","#1D42BA",1610612765], GSW:["#1D428A","#FFC72C",1610612744], HOU:["#CE1141","#C4CED4",1610612745], IND:["#002D62","#FDBB30",1610612754], LAC:["#C8102E","#1D428A",1610612746], LAL:["#552583","#FDB927",1610612747], MEM:["#12173F","#5D76A9",1610612763], MIA:["#98002E","#F9A01B",1610612748], MIL:["#00471B","#EEE1C6",1610612749], MIN:["#0C2340","#78BE20",1610612750], NOP:["#0C2340","#C8102E",1610612740], NYK:["#006BB6","#F58426",1610612752], OKC:["#007AC1","#EF3B24",1610612760], ORL:["#0077C0","#C4CED4",1610612753], PHI:["#006BB6","#ED174C",1610612755], PHX:["#1D1160","#E56020",1610612756], POR:["#E03A3E","#000000",1610612757], SAC:["#5A2D81","#63727A",1610612758], SAS:["#000000","#C4CED4",1610612759], TOR:["#CE1141","#000000",1610612761], UTA:["#3E2680","#000000",1610612762], WAS:["#002B5C","#E31837",1610612764]};
 const BADGE_BY_ID = {}; Object.entries(BADGE_COLORS).forEach(([c, v]) => BADGE_BY_ID[v[2]] = c);
 const badgeCache = {};
+/* Player links: window.PlayerIndex.ready loads data/players/index.json ([id, name, first, last, team]);
+   window.playerLink(name, team, label, id) returns a link to his page (or plain text if he has no page). */
+(function(){
+  const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(jr|sr|ii|iii|iv)\b\.?/g, "").replace(/[^a-z]/g, "");
+  const byName = new Map(), byNameTeam = new Map();
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const base = /pe\.html$/.test(location.pathname) ? "" : "pe.html";
+  const ready = fetch("data/players/index.json?t=" + Math.floor(Date.now() / 36e5)).then(r => r.ok ? r.json() : []).catch(() => []).then(rows => {
+    (rows || []).forEach(r => { const k = fold(r[1]); byNameTeam.set(k + "|" + r[4], r[0]); const cur = byName.get(k); if(!cur || String(r[3]) > String(cur[1])) byName.set(k, [r[0], r[3]]); });
+    return true;
+  });
+  const id = (name, team) => { const k = fold(name); return byNameTeam.get(k + "|" + team) || (byName.get(k) || [])[0] || null; };
+  window.PlayerIndex = {ready, id, url: pid => `${base}#/player/${encodeURIComponent(pid)}`};
+  /* a player link inside a clickable row, card or button goes to his page instead of opening the row */
+  document.addEventListener("click", e => {
+    const a = e.target.closest && e.target.closest("a.plink"); if(!a) return;
+    e.stopPropagation(); e.preventDefault();
+    if(e.metaKey || e.ctrlKey || a.target === "_blank") window.open(a.href, "_blank"); else location.href = a.href;
+  }, true);
+  window.playerLink = (name, team, label, pid, attrs) => { pid = pid || id(name, team);
+    return pid ? `<a class="plink" href="${base}#/player/${encodeURIComponent(pid)}"${attrs || ""}>${esc(label || name)}</a>` : esc(label || name); };
+})();
 window.teamBadge = function(key){
   const code = BADGE_COLORS[key] ? key : BADGE_BY_ID[key] || ({BRK:"BKN", CHO:"CHA", PHO:"PHX"})[key] || String(key || "");
   if(badgeCache[code]) return badgeCache[code];

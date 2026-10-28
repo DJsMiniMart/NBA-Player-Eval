@@ -52,7 +52,9 @@ function items(code, F, player){
     : ((next && F.m.inj && F.m.inj[next[0]] && F.m.inj[next[0]][code]) || []).map(r => [r[0], r[1], r[2], null]);
   inj.filter(r => r[0] && !/^active$/i.test(r[1])).slice(0, 8).forEach(([name, st, what, x]) => {
     const wh = x && window.Injuries ? Injuries.when(x) : "";
-    out.push(["inj", `<b>INJURY</b> ${esc(name)} · ${esc(st)}${what ? " (" + esc(what) + ")" : ""}${wh ? " · " + esc(wh) : ""}`, x && x.link, aboutPlayer(name)]);
+    const nm = window.playerLink ? playerLink(name, code) : esc(name);
+    const rest = `${esc(st)}${what ? " (" + esc(what) + ")" : ""}${wh ? " · " + esc(wh) : ""}`;
+    out.push(["inj", `<b>INJURY</b> ${nm} · ${x && x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${rest} 📰</a>` : rest}`, null, aboutPlayer(name)]);
   });
   // headlines tagged with the team
   (F.m.news || []).filter(n => (n.teams || []).includes(full) || fold(n.h).includes(fold(nick)))
@@ -66,7 +68,7 @@ function items(code, F, player){
   Object.entries((F.h && F.h.players) || {}).forEach(([id, h]) => {
     const r = byId.get(id); if(!r || r[4] !== code || !HS) return;
     const b = HS.info(id); if(!b) return;
-    out.push(["hot", `${b.icon} <b>${esc(r[1])}</b> ${esc(b.label.toLowerCase())}: ${b.raw >= 0 ? "up" : "down"} ${Math.abs(Math.round(b.raw * 100))}% on last season`, null, player && fold(r[1]) === pf]);
+    out.push(["hot", `${b.icon} <b>${window.playerLink ? playerLink(r[1], code, null, id) : esc(r[1])}</b> ${esc(b.label.toLowerCase())}: ${b.raw >= 0 ? "up" : "down"} ${Math.abs(Math.round(b.raw * 100))}% on last season`, null, player && fold(r[1]) === pf]);
   });
   // the player's own items first
   if(player) out.sort((a, b) => (b[3] ? 1 : 0) - (a[3] ? 1 : 0));
@@ -106,6 +108,7 @@ async function show(code, opts){
   if(KEY !== key) return;
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Injuries.ready;
+  if(window.PlayerIndex) await PlayerIndex.ready;
   const list = items(code, F, opts.player);
   css();
   if(!BAR){

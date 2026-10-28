@@ -313,7 +313,7 @@ function teamCard(t, r){
         const nextOpt = p.years.slice(1).find(y => y[2]);
         return `<div class="prow ${on ? "on" : ""}" data-p="${id}" role="checkbox" aria-checked="${on ? "true" : "false"}" tabindex="0">
           <span class="box">${on ? "✓" : ""}</span>
-          <span class="nm">${esc(p.name)}${tag}<small>${esc(p.pos)}${p.pos ? " · " : ""}${yrs}${nextOpt ? ` · ${nextOpt[2] === "player option" ? "PO" : nextOpt[2] === "team option" ? "TO" : "ETO"} ${nextOpt[0]}` : ""}</small></span>
+          <span class="nm">${window.playerLink ? playerLink(p.name, p.team, null, p.id, ' target="_blank" title="Open his page in a new tab"') : esc(p.name)}${tag}<small>${esc(p.pos)}${p.pos ? " · " : ""}${yrs}${nextOpt ? ` · ${nextOpt[2] === "player option" ? "PO" : nextOpt[2] === "team option" ? "TO" : "ETO"} ${nextOpt[0]}` : ""}</small></span>
           <span class="sal">${M(p.salary)}</span>
           <span class="ev" title="${p.eval != null ? "Pulse, " + esc(p.evalSeason) : "No Pulse yet"}">${p.eval != null ? p.eval.toFixed(3) : "—"}</span>
           ${on && others.length > 1 ? `<select data-to="${id}" onclick="event.stopPropagation()">${choose(on)}</select>` : ""}
@@ -436,7 +436,7 @@ function drawResults(ev){
     <div class="results">${Object.values(res).map(r => {
       const T = TEAMS[r.t], pr = prod(r);
       const list = (ps, picks, cash) => {
-        const items = ps.map(p => `${esc(p.name)} <span class="muted">${M(p.salary)}${p.eval != null ? " · " + p.eval.toFixed(3) : ""}</span>`)
+        const items = ps.map(p => `${window.playerLink ? playerLink(p.name, p.team, null, p.id, ' target="_blank"') : esc(p.name)} <span class="muted">${M(p.salary)}${p.eval != null ? " · " + p.eval.toFixed(3) : ""}</span>`)
           .concat(picks.map(k => `${esc(pickName(k))}`)).concat(cash ? [`${M(cash)} cash`] : []);
         return items.length ? `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>` : `<span class="muted">Nothing</span>`;
       };
@@ -444,7 +444,7 @@ function drawResults(ev){
       return `<div class="rcard" style="--c1:${T.c1}">
         <h3><img src="${logo(r.t)}" alt="" onerror="this.style.visibility='hidden'">${esc(T.n)}</h3>
         <div class="moves">
-          <div><b>Receive</b>${r.inP.length || r.inPicks.length || r.cashIn ? `<ul>${r.inP.map(p => `<li>${esc(p.name)}${from(p.team)} <span class="muted">${M(p.salary)}</span></li>`).join("")}${r.inPicks.map(k => `<li>${esc(pickName(k))}${from(k.from)}</li>`).join("")}${r.cashIn ? `<li>${M(r.cashIn)} cash</li>` : ""}</ul>` : `<span class="muted">Nothing</span>`}</div>
+          <div><b>Receive</b>${r.inP.length || r.inPicks.length || r.cashIn ? `<ul>${r.inP.map(p => `<li>${window.playerLink ? playerLink(p.name, p.team, null, p.id, ' target="_blank"') : esc(p.name)}${from(p.team)} <span class="muted">${M(p.salary)}</span></li>`).join("")}${r.inPicks.map(k => `<li>${esc(pickName(k))}${from(k.from)}</li>`).join("")}${r.cashIn ? `<li>${M(r.cashIn)} cash</li>` : ""}</ul>` : `<span class="muted">Nothing</span>`}</div>
           <div><b>Send</b>${list(r.outP, r.outPicks, r.cashOut)}</div>
         </div>
         <div class="nums">

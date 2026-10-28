@@ -354,7 +354,7 @@ async function drawInjuries(){
       const what = [x.side, x.type, x.detail].filter(Boolean).join(" ");
       const wh = window.Injuries && x.tl ? Injuries.when(x) : "";
       const note = x.long && x.long.length > (x.note || "").length ? x.long : x.note;
-      return `<div class="inj"><span class="who">${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener" title="${x.story ? "ESPN: " + esc(x.story) : "ESPN news on " + esc(x.name)}">${esc(x.name)}</a>` : esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
+      return `<div class="inj"><span class="who">${window.playerLink ? window.playerLink(x.name, CODE) : esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
         ${wh ? `<span class="tl"><span>⏱ ${esc(wh)}</span></span>` : ""}
         <span class="why">${what ? esc(what) + ". " : ""}${esc(note || "")}${x.date ? ` <span class="note">(${esc(md(x.date))})</span>` : ""}${x.link ? ` <a class="more" href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Read the story →" : "More on ESPN →"}</a>` : ""}</span></div>`;
     }).join("") + `<div class="note pad" style="margin:0">${src}</div>` : `<div class="empty">No injuries reported.<br><span class="note">${src}</span></div>`;
@@ -362,8 +362,9 @@ async function drawInjuries(){
   const saved = TEAM ? TEAM.injuries : null;
   show(saved, "Loading the latest report…");
   const d = window.Injuries ? await Injuries.ready : null;
+  if(window.PlayerIndex) await PlayerIndex.ready;
   if(d && d.teams){
-    show(d.teams[CODE] || [], `ESPN injury report as of ${new Date(d.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}, refreshed hourly. Timetables come from the latest team and beat-writer news (e.g. "out 2–3 weeks", "re-evaluated in a week"); tap a name for the story.`);
+    show(d.teams[CODE] || [], `ESPN injury report as of ${new Date(d.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}, refreshed hourly. Timetables come from the latest team and beat-writer news (e.g. "out 2–3 weeks", "re-evaluated in a week"); tap a name for his page, or the story link for the news.`);
   } else {
     show(saved, TEAM && TEAM.injuriesAt ? `As of ${new Date(TEAM.injuriesAt).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})} (ESPN, saved during the morning update).` : "The injury report is saved during the morning update.");
   }

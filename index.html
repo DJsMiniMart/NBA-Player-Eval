@@ -394,7 +394,7 @@ function allLines(games){
   });
   return out;
 }
-const plink = (p, label) => { const id = IDS.get(fold(p.name)); return id ? `<a href="pe.html#/player/${encodeURIComponent(id)}">${esc(label || p.name)}</a>` : esc(label || p.name); };
+const plink = (p, label) => { const id = IDS.get(fold(p.name)) || (window.PlayerIndex && PlayerIndex.id(p.name, p.team)); return id ? `<a class="plink" href="pe.html#/player/${encodeURIComponent(id)}">${esc(label || p.name)}</a>` : esc(label || p.name); };
 const statLine = p => [`${p.pts} pts`, `${p.reb} reb`, `${p.ast} ast`, p.stl >= 2 ? `${p.stl} stl` : "", p.blk >= 2 ? `${p.blk} blk` : ""].filter(Boolean).join(", ");
 
 function renderScores(games, lines){
@@ -407,7 +407,7 @@ function renderScores(games, lines){
     const ot = min > 48 ? (min === 53 ? "OT" : (min - 48) / 5 + "OT") : "";
     const top = t => lines.filter(p => p.gid === gid && p.team === t).sort((x, y) => y.pts - x.pts || y.pe - x.pe)[0];
     const row = (t, s, win) => `<div class="tm ${win ? "win" : "lose"}">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div><div class="sc">${s}</div></div>`;
-    const tl = t => { const p = top(t); return p ? `<div><b>${esc(lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} Pulse</span></div>` : ""; };
+    const tl = t => { const p = top(t); return p ? `<div><b>${plink(p, lastName(p.name))}</b><span>${p.pts}-${p.reb}-${p.ast} · ${p.pe.toFixed(2)} Pulse</span></div>` : ""; };
     const rc = recaps[gid];
     return `<button class="card game" data-gid="${gid}" aria-label="${esc(nick(a))} ${al[0]}, ${esc(nick(h))} ${hl[0]}. Open box score">
       ${row(a, al[0], !hw)}${row(h, hl[0], hw)}
@@ -440,7 +440,7 @@ function renderFacts(games, lines){
     [games.length, games.length === 1 ? "game" : "games"],
     [close, "within 5 pts"],
     [ots, "overtime"],
-    hi ? [hi.pts, "top score · " + esc(lastName(hi.name))] : null,
+    hi ? [hi.pts, "top score · " + plink(hi, lastName(hi.name))] : null,
     best ? [best.s, "most pts · " + esc(best.t)] : null,
     pickFact(games),
     atsFact(),
@@ -542,9 +542,11 @@ function injHtml(u){
     return `<div><span>${esc(t)}</span>${rows.slice(0, 4).map(r => { const st = String(r[1]).toLowerCase();
       const cls = st === "out" ? "out" : st === "doubtful" ? "dbt" : "q";
       const e = window.Injuries ? Injuries.find(t, r[0]) : null, tg = e ? Injuries.tag(e) : "", wh = e ? Injuries.when(e) : "";
-      const tip = `${esc(r[0])}: ${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}${wh ? " · " + esc(wh) : ""}${e && (e.note || e.long) ? " — " + esc(e.note || e.long) : ""}${e ? " (tap for the story)" : ""}`;
+      const tip = `${esc(r[0])}: ${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}${wh ? " · " + esc(wh) : ""}${e && (e.note || e.long) ? " — " + esc(e.note || e.long) : ""}${e ? " (tap the status for the story)" : ""}`;
       const inner = `${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b>${tg ? `<small>${esc(tg)}</small>` : ""}`;
-      return e && e.link ? `<a class="${cls}" href="${esc(e.link)}" target="_blank" rel="noopener" title="${tip}">${inner}</a>` : `<i class="${cls}" title="${tip}">${inner}</i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
+      const nameLink = window.playerLink ? playerLink(r[0], t, lastName(r[0])) : esc(lastName(r[0]));
+      const badge = `<b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b>${tg ? `<small>${esc(tg)}</small>` : ""}`;
+      return `<i class="${cls}" title="${tip}">${nameLink} ${e && e.link ? `<a class="injs" href="${esc(e.link)}" target="_blank" rel="noopener" title="${tip}">${badge}</a>` : badge}</i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
   };
   return `<div class="inj">${side(u.away)}${side(u.home)}</div>${lineupHtml(u)}`;
 }
@@ -552,7 +554,7 @@ function injHtml(u){
 function lineupHtml(u){
   const L = u.lineup; if(!L) return "";
   const bits = [u.away, u.home].flatMap(t => ((L[t] && L[t][1]) || []).map(([nm, q, pts]) =>
-    `${esc(lastName(nm))}${q < 1 ? ` (${Math.round(q * 100)}% likely out)` : ""} −${pts.toFixed(1)} pts`));
+    `${window.playerLink ? playerLink(nm, t, lastName(nm)) : esc(lastName(nm))}${q < 1 ? ` (${Math.round(q * 100)}% likely out)` : ""} −${pts.toFixed(1)} pts`));
   return bits.length ? `<div class="vegas" title="Pulse moves each team's rating for regulars expected to sit, using the injury report. Points are how much each absence costs on Pulse's line.">🩹 Pulse adjusted for: ${bits.join(" · ")}</div>` : "";
 }
 
@@ -731,7 +733,7 @@ async function init(){
   $("next").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i < NIGHTS.length - 1) showNight(NIGHTS[i + 1]); };
   document.querySelectorAll("#standTabs button").forEach(b => b.onclick = () => { standView = b.dataset.v; store.set("home.stand", standView); renderStandings(); });
   renderNews(); renderTx(); renderUpcoming(); pollLive();
-  if(window.Injuries) Injuries.ready.then(d => { if(d){ renderUpcoming(); paintLive(); } });
+  Promise.all([window.Injuries ? Injuries.ready : null, window.PlayerIndex ? PlayerIndex.ready : null]).then(() => { renderUpcoming(); paintLive(); });
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
 init();

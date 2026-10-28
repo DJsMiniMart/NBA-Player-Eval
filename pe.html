@@ -434,7 +434,7 @@ function draw(){
   $('podium').innerHTML = pool.slice(0,3).map((p,i)=>`
     <div class="pod" style="--c:var(--${["gold","silver","bronze"][i]})" data-key="${esc(p.key)}">
       <div class="rk">${["1st","2nd","3rd"][i]}</div>
-      <div class="nm">${esc(p.name)}${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</div>
+      <div class="nm"><a class="plink" href="#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</div>
       <div class="tm">${VIEW==="alltime" || VIEW==="careers" ? esc(p.season)+" · " : ""}${esc(p.team)} · ${p.g.toLocaleString()} games · ${f1(p.mpg)} min</div>
       <div class="val">${f3(p.value)}</div>
     </div>`).join("");
@@ -451,7 +451,7 @@ function draw(){
   $('tbody').innerHTML = shown.map(p => {
     const row = `<tr class="p" data-key="${esc(p.key)}">
       <td class="l rank">${p.rank}</td>
-      <td class="l name">${esc(p.name)}${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</td>
+      <td class="l name"><a class="plink" href="#/player/${encodeURIComponent(p.id)}">${esc(p.name)}</a>${VIEW==="current" && window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</td>
       ${VIEW==="alltime" ? `<td class="l">${esc(p.season)}</td>` : VIEW==="careers" ? `<td class="l yrs"><span class="long">${esc(p.season)}</span><span class="short">${esc(shortYears(p))}</span>${p.noTov ? "*" : ""}</td>` : ""}
       ${teamCell(p)}
       <td>${p.g}</td><td class="hide-sm">${f1(p.mpg)}</td>
