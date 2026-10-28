@@ -41,6 +41,9 @@
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
   .seg button{border:0;border-radius:0;}
   .tw{overflow:auto;}
+  .tw-top{position:relative;height:12px;margin:2px 0 8px;border-radius:6px;background:var(--row,#eef1f6);border:1px solid var(--line,#dde2ea);cursor:pointer;touch-action:none;}
+  .tw-thumb{position:absolute;top:1px;left:0;height:8px;border-radius:5px;background:var(--dim,#5b6475);opacity:.55;cursor:grab;touch-action:none;}
+  .tw-thumb:hover,.tw-thumb:active{opacity:.85;}
   table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--dim);text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel);position:sticky;top:0;z-index:1;cursor:pointer;user-select:none;}
   th:hover{color:var(--ink);}

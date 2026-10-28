@@ -201,6 +201,37 @@ async function init(){
   $('pTeam').onchange = e => { P.team = e.target.value; drawPlayers(); };
   $('pQual').onchange = e => { P.qual = e.target.checked; drawPlayers(); };
   drawTeams(); drawLeaders(); drawPlayers();
+  topScroll('teamTable'); topScroll('playerTable');
+}
+/* a scroll bar above a wide table, always visible (phones and Macs hide the normal one), kept in step with the table */
+function topScroll(id){
+  const box = $(id); if(!box || box.dataset.topScroll) return;
+  box.dataset.topScroll = "1";
+  const bar = document.createElement("div"); bar.className = "tw-top"; bar.setAttribute("role", "scrollbar"); bar.setAttribute("aria-controls", id); bar.setAttribute("aria-orientation", "horizontal");
+  const thumb = document.createElement("div"); thumb.className = "tw-thumb"; bar.appendChild(thumb);
+  box.parentNode.insertBefore(bar, box);
+  const room = () => Math.max(0, box.scrollWidth - box.clientWidth);
+  const paint = () => {
+    const r = room();
+    bar.style.display = r > 1 ? "" : "none";
+    const w = Math.max(40, bar.clientWidth * box.clientWidth / Math.max(1, box.scrollWidth));
+    thumb.style.width = w + "px";
+    thumb.style.transform = `translateX(${r ? (bar.clientWidth - w) * box.scrollLeft / r : 0}px)`;
+  };
+  box.addEventListener("scroll", paint, {passive: true});
+  let drag = null;
+  const move = e => { if(!drag) return; const w = thumb.offsetWidth, span = Math.max(1, bar.clientWidth - w);
+    box.scrollLeft = drag.left + (e.clientX - drag.x) * room() / span; };
+  thumb.addEventListener("pointerdown", e => { drag = {x: e.clientX, left: box.scrollLeft}; thumb.setPointerCapture(e.pointerId); e.preventDefault(); });
+  thumb.addEventListener("pointermove", move);
+  thumb.addEventListener("pointerup", () => { drag = null; });
+  thumb.addEventListener("pointercancel", () => { drag = null; });
+  bar.addEventListener("pointerdown", e => { if(e.target !== bar) return; const rect = bar.getBoundingClientRect(), w = thumb.offsetWidth;
+    box.scrollLeft = (e.clientX - rect.left - w / 2) / Math.max(1, bar.clientWidth - w) * room(); });
+  new MutationObserver(paint).observe(box, {childList: true, subtree: true});
+  if(window.ResizeObserver) new ResizeObserver(paint).observe(box);
+  window.addEventListener("resize", paint);
+  paint();
 }
 init();
 })();
