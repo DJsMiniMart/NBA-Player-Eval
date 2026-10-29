@@ -190,3 +190,5 @@
 .pp-stories li span{font-size:17px;line-height:1.2;}
 .pp-stories li.k-hot{background:rgba(245,159,0,.12);} .pp-stories li.k-cold{background:rgba(28,126,214,.1);} .pp-stories li.k-contract{background:rgba(47,158,68,.1);}
 @media (max-width:760px){ .pp-stories{grid-template-columns:1fr;} }
+.pp-yt{display:inline-block;font-weight:600;font-size:13px;text-decoration:none;color:var(--tcbar,#1D428A);margin-top:4px;}
+.pp-yt:hover{text-decoration:underline;}

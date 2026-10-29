@@ -84,6 +84,7 @@ async function open(gid){
   box.classList.add("open"); document.body.style.overflow = "hidden";
   $("bxBody").innerHTML = `<div class="bx-empty">Loading box score…</div>`;
   const [g, ids, rc] = await Promise.all([getJSON(`data/games/${encodeURIComponent(gid)}.json`), playerIds(), recaps()]);
+  if(window.Clips) await Clips.ready;
   if(!g){ $("bxBody").innerHTML = `<div class="bx-empty">This box score isn't available yet. Box scores are added during the update after each game.</div>`; return; }
   const sides = [g.away, g.home];
   const score = t => g.teams[t].line[0];
@@ -118,7 +119,8 @@ async function open(gid){
   const r = rc[gid];
   $("bxBody").innerHTML = `<div class="bx-head"><div class="bx-score">${sides.map(t => `<div class="${t === winner ? "win" : ""}"><img src="${logo(t)}" alt="" onerror="this.remove()"><b>${score(t)}</b><span>${esc(t)}</span></div>`).join(`<i>@</i>`)}</div>
     <div class="bx-note" style="text-align:center">Final${ot} · ${when}</div>
-    ${r ? `<div class="bx-recap"><b>${r.u ? `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.h)}</a>` : esc(r.h)}</b>${r.d && r.d !== r.h ? `<p>${esc(r.d)}</p>` : ""}</div>` : ""}</div>
+    ${r ? `<div class="bx-recap"><b>${r.u ? `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.h)}</a>` : esc(r.h)}</b>${r.d && r.d !== r.h ? `<p>${esc(r.d)}</p>` : ""}</div>` : ""}
+    ${window.Clips && Clips.forGame(gid).length ? `<div class="bx-clips"><div class="bx-note" style="font-weight:700;margin:10px 0 4px">▶ Highlights</div>${Clips.strip(Clips.forGame(gid))}</div>` : ""}</div>
     ${sides.map(table).join("")}
     <p class="bx-note" style="margin-top:10px">Pulse = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Pulse+ also subtracts 1 per missed field goal and 0.5 per missed free throw. Clutch Pulse is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
 }

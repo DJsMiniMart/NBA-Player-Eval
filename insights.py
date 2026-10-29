@@ -319,6 +319,32 @@ def enrich(players, accs, current_label, contracts):
             if st:
                 out[pid]["stories"] = st
 
+    # ---------- 8. his highlight clips (data/highlights_season.json, built by highlights.py) ----------
+    try:
+        with open(os.path.join(DATA, "highlights_season.json"), encoding="utf-8") as f:
+            hl = (json.load(f) or {}).get("games") or {}
+    except (OSError, ValueError):
+        hl = {}
+    if hl and cur:
+        for pid, rec in players.items():
+            L = logs_of(rec, cur)
+            if not L:
+                continue
+            full = rec["name"].lower()
+            last_ = full.split(" ")[-1] if " " in full else full
+            if last_ in ("jr.", "jr", "sr.", "ii", "iii", "iv") and len(full.split(" ")) > 2:
+                last_ = full.split(" ")[-2]
+            mine = []
+            for l in L:
+                g = hl.get(l[0])
+                for c in (g or {}).get("clips", []):
+                    h = c[1].lower()
+                    if full in h or (len(last_) >= 4 and f" {last_}" in f" {h}" ):
+                        mine.append([l[0], l[1], l[2], l[3]] + c[1:])
+            if mine:
+                mine.sort(key=lambda x: x[1], reverse=True)
+                out[pid]["clips"] = mine[:12]
+
     for pid, ins in out.items():
         if ins:
             players[pid]["insights"] = ins

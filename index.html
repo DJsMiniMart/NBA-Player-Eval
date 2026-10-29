@@ -253,7 +253,7 @@
   <div class="facts" id="facts"></div>
 </div></header>
 <nav class="jumps" aria-label="Jump to a section"><div class="jumps-in" id="jumps">
-  <a href="#scoresSec">Scores</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
+  <a href="#scoresSec">Scores</a><a href="#hlSec">Highlights</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
   <a href="#otdSec">On this day</a><a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#txSec">Transactions</a>
 </div></nav>
 
@@ -261,6 +261,11 @@
   <section class="sec" id="scoresSec">
     <div class="sec-h"><h2>Scores</h2><small>Click a game for the full box score</small></div>
     <div class="scores" id="scores"><div class="card empty">Loading games…</div></div>
+  </section>
+
+  <section class="sec" id="hlSec" hidden>
+    <div class="sec-h"><h2>Highlights</h2><small id="hlNote">Tap a clip to watch it on ESPN</small></div>
+    <div id="hlBody"></div>
   </section>
 
   <section class="sec" id="upSec">
@@ -333,6 +338,7 @@
 <script src="hotstart.js"></script>
 <script src="ticker.js"></script>
 <script src="search.js"></script>
+<script src="clips.js"></script>
 <script>
 (function(){
 "use strict";
@@ -752,6 +758,7 @@ async function showNight(d){
   await loadBoxes(games);
   if(NIGHT !== d) return;
   const lines = allLines(games);
+  renderHighlights(games);
   renderFacts(games, lines); renderScores(games, lines); renderPotn(lines); renderLeaders(lines); renderStories(games, lines); renderStandings();
 }
 
@@ -787,6 +794,19 @@ async function renderOnThisDay(){
     return `<li><div class="yr">${yr}</div><div class="tx">${ICON[kind] || "•"} ${t}<small>${ago(yr)} · <a href="https://www.espn.com/nba/game/_/gameId/${encodeURIComponent(gid)}" target="_blank" rel="noopener">box score on ESPN</a></small></div></li>`; }).join("")}</ul>`;
 }
 
+/* ---------- highlights for the night shown (clips.js / data/highlights.json) ---------- */
+async function renderHighlights(games){
+  if(!window.Clips){ return; }
+  await Clips.ready;
+  const items = [];
+  games.forEach(g => { const [gid, , h, a] = g; Clips.forGame(gid).forEach(c => items.push({h: c[1], u: c[2], t: c[3], s: c[4], sub: `${a} @ ${h}`})); });
+  // spread across games: first clip of each game, then the second, ...
+  const byGame = games.map(g => items.filter(x => x.sub === `${g[3]} @ ${g[2]}`)), mixed = [];
+  while(byGame.some(b => b.length)) byGame.forEach(b => { if(b.length) mixed.push(b.shift()); });
+  $("hlSec").hidden = !mixed.length;
+  $("hlBody").innerHTML = Clips.strip(mixed, {max: 24});
+  $("hlNote").textContent = mixed.length ? `${mixed.length} clips from ${games.filter(g => Clips.forGame(g[0]).length).length} games · tap one to watch it on ESPN` : "";
+}
 init();
 })();
 

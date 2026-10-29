@@ -703,6 +703,14 @@ function storiesCard(){
     <ul class="pp-stories">${st.map(([k, icon, t]) => `<li class="k-${esc(k)}"><span>${icon}</span><div>${esc(t)}</div></li>`).join("")}</ul>
     <div class="pp-note">Built every morning from his contract, minutes, starts, game log, career totals and schedule. "Usual Pulse" is his expected level from the hot-start check (this season blended with last).</div></div>`;
 }
+function clipsCard(){
+  const C = (REC.insights && REC.insights.clips) || [];
+  const yt = `https://www.youtube.com/results?search_query=${encodeURIComponent(REC.name + " highlights")}`;
+  const items = C.map(([gid, date, opp, home, head, url, thumb, sec]) => ({h: head, u: url, t: thumb, s: sec, sub: `${shortDate(date)} ${home ? "vs" : "@"} ${opp}`}));
+  return `<div class="pp-card c12"><h3>Highlights <small>${items.length ? `${items.length} clip${items.length === 1 ? "" : "s"} this season · open on ESPN` : "this season"}</small></h3>
+    ${items.length && window.Clips ? Clips.strip(items) : `<div class="pp-empty" style="margin-bottom:8px">No ESPN clips with him in the title yet this season.</div>`}
+    <a class="pp-yt" href="${esc(yt)}" target="_blank" rel="noopener">▶ More ${esc(REC.name)} highlights on YouTube →</a></div>`;
+}
 function insightsHtml(){
   const I = REC.insights;
   if(!I) return "";
@@ -738,6 +746,7 @@ function render(){
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.", "pj-season")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
       + (storiesCard() ? `<div class="pp-grid">${storiesCard()}</div><div class="pp-gap"></div>` : "")
+      + `<div class="pp-grid">${clipsCard()}</div><div class="pp-gap"></div>`
       + insightsHtml()
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`

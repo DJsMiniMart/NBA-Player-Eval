@@ -25,6 +25,8 @@ jobs:
         run: python -c "import morning; morning.refresh_lines()"
       - name: Injury report with timetables
         run: python injury_feed.py || echo "Injury report not refreshed this time"
+      - name: Game highlight clips
+        run: python highlights.py || echo "Highlights not refreshed this time"
       - name: Re-pick with the new injury report
         run: python predict.py || echo "Picks not refreshed this time"
       - name: Save them

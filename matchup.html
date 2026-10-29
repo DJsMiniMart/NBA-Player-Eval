@@ -79,6 +79,7 @@
 <script src="hotstart.js"></script>
 <script src="injuries.js"></script>
 <script src="mypicks.js"></script>
+<script src="clips.js"></script>
 <script>
 (function(){
 "use strict";
@@ -98,7 +99,7 @@ async function load(){
   const gid = decodeURIComponent(location.hash.replace("#", ""));
   const [S, P, M, L, PL, H] = await Promise.all([get("data/schedule.json"), get("data/predictions.json"), get("data/morning.json"),
     get("data/teams/league.json"), get("data/teams/players.json"), get("data/h2h.json")]);
-  await Promise.all([window.HotStart && HotStart.ready, window.Injuries && Injuries.ready, window.PlayerIndex && PlayerIndex.ready]);
+  await Promise.all([window.HotStart && HotStart.ready, window.Injuries && Injuries.ready, window.PlayerIndex && PlayerIndex.ready, window.Clips && Clips.ready]);
   const g = ((S && S.games) || []).find(x => x[0] === gid);
   if(!g){ $("hero").innerHTML = `<a class="back" href="index.html#upSec">← The Morning Press</a><div class="empty" style="color:#fff">Couldn't find that game. It may be from an older schedule.</div>`; return; }
   const [ , when, home, away, state, hs, as_, arena, tv] = g;
@@ -125,6 +126,18 @@ async function load(){
 
   let html = "";
   if(state === 3) html += `<div class="final">Final: ${esc(away)} ${as_}, ${esc(home)} ${hs}. <a href="index.html">Box scores are on The Morning Press →</a></div>`;
+
+  // ---------- highlights: this game when it's over, else each team's last game ----------
+  if(window.Clips){
+    const mine = Clips.forGame(gid);
+    if(state === 3 && mine.length) html += `<h2>Highlights</h2><div class="card pad">${Clips.strip(mine)}</div>`;
+    else if(state !== 3){
+      const lastOf = t => ((S && S.games) || []).filter(x => x[4] === 3 && (x[2] === t || x[3] === t)).sort((a, b) => String(b[1]).localeCompare(String(a[1])))[0];
+      const parts = [away, home].map(t => { const lg = lastOf(t); const c = lg ? Clips.forGame(lg[0]) : [];
+        return c.length ? c.slice(0, 4).map(x => ({h: x[1], u: x[2], t: x[3], s: x[4], sub: `${t}'s last game: ${lg[3]} @ ${lg[2]}`})) : []; }).flat();
+      if(parts.length) html += `<h2>Catch up: last game highlights</h2><div class="card pad">${Clips.strip(parts)}</div>`;
+    }
+  }
 
   // ---------- projected score ----------
   if(U && O && O.total != null && U.margin != null && state !== 3){
