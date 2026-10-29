@@ -302,6 +302,23 @@ def enrich(players, accs, current_label, contracts):
                     res.sort(key=lambda r: -abs(r[6]))
                     out[pid].setdefault("mates", {})[lab] = {"team": t, "rows": res[:8]}
 
+    # ---------- 7. storylines about the player ----------
+    if cur:
+        sched = []
+        try:
+            with open(os.path.join(DATA, "schedule.json"), encoding="utf-8") as f:
+                sched = (json.load(f) or {}).get("games") or []
+        except (OSError, ValueError):
+            pass
+        for pid, rec in players.items():
+            try:
+                st = player_stories(rec, out[pid], cur, prev, logs_of, season_bbr, tg, contracts.get(pid) or rec.get("contract"), sched)
+            except Exception as e:  # noqa: BLE001 -- one odd record shouldn't stop the rest
+                st = []
+                print(f"Storylines skipped for {pid}: {e}")
+            if st:
+                out[pid]["stories"] = st
+
     for pid, ins in out.items():
         if ins:
             players[pid]["insights"] = ins
@@ -310,3 +327,161 @@ def enrich(players, accs, current_label, contracts):
     with open(os.path.join(DATA, "awards_race.json"), "w", encoding="utf-8") as f:
         json.dump(races, f, separators=(",", ":"))
     print(f"Insights: {sum(1 for x in out.values() if x)} players, {len(hot)} hot-start badges")
+
+MILESTONES = {"pts": [1000, 5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000],
+              "trb": [1000, 2500, 5000, 7500, 10000, 12500, 15000], "ast": [1000, 2500, 5000, 7500, 10000, 12500, 15000],
+              "stl": [500, 1000, 1500, 2000], "blk": [500, 1000, 1500, 2000, 2500, 3000]}
+MILE_WORD = {"pts": "points", "trb": "rebounds", "ast": "assists", "stl": "steals", "blk": "blocks"}
+
+
+def player_stories(rec, ins, cur, prev, logs_of, season_bbr, tg, contract, sched):
+    """[[kind, icon, text]] about this player right now: contract, role and minutes, streaks, career highs, new team,
+    milestones, returning from injury, award races. Only for players who've played this season."""
+    L = sorted(logs_of(rec, cur), key=lambda l: (l[1], l[0]))
+    if not L:
+        return []
+    out = []
+    name = rec["name"].split(" ")[-1] if " " in rec["name"] else rec["name"]
+    team_now = None
+    g0 = tg[cur].get(L[-1][0])
+    if g0:
+        team_now = g0[1] if L[-1][3] == 1 else g0[2]
+    last = season_bbr(rec, prev) if prev else None
+    gp = len(L)
+    mpg = sum(l[4] for l in L) / gp
+    # contract
+    yrs = (contract or {}).get("years") or []
+    after = [y for y in yrs if y[0] > cur]
+    if yrs and any(y[0] == cur for y in yrs):
+        nxt = after[0] if after else None
+        opt = (nxt[2] or "").lower() if nxt else ""
+        if not after:
+            out.append(["contract", "📝", f"Contract year: his deal ends after this season, so he's playing for his next contract."])
+        elif "player" in opt:
+            out.append(["contract", "📝", f"Player option next summer ({nxt[1]}): a big season could mean he opts out to chase a bigger deal."])
+        elif "team" in opt:
+            nseasons = len({s_["season"] for s_ in rec.get("seasons") or []})
+            if nseasons <= 4:   # rookie-scale deals: the options are usually picked up for players who are producing
+                out.append(["contract", "📝", f"On his rookie deal: team option for {nxt[0]} ({nxt[1]}), usually picked up for players who are producing."])
+            else:
+                out.append(["contract", "📝", f"Team option next summer ({nxt[1]}): his team decides whether to keep him, so he's playing for his spot."])
+        elif "early" in opt or "etoe" in opt:
+            out.append(["contract", "📝", f"Early termination option next summer: he can leave his deal and hit free agency."])
+    # role and minutes
+    if last and (last.get("g") or 0) >= 20 and gp >= 3:
+        lmpg = last["mp"] / last["g"]
+        lgs = (last.get("gs") or 0) / last["g"]
+        gs = sum(l[20] for l in L) / gp
+        if lgs >= 0.7 and gs <= 0.3:
+            out.append(["role", "🪑", f"Moved to the bench: started {round(lgs * 100)}% of his games last season, {sum(l[20] for l in L)} of {gp} this season."])
+        elif lgs <= 0.3 and gs >= 0.7:
+            out.append(["role", "⬆️", f"New starter: he's started {sum(l[20] for l in L)} of {gp} games after coming off the bench most of last season."])
+        if mpg <= lmpg - 5:
+            out.append(["role", "⏱️", f"Fighting for minutes: {mpg:.1f} a game, down from {lmpg:.1f} last season."])
+        elif mpg >= lmpg + 5:
+            out.append(["role", "⏱️", f"Bigger role: {mpg:.1f} minutes a game, up from {lmpg:.1f} last season."])
+    if gp >= 6:
+        r3 = sum(l[4] for l in L[-3:]) / 3
+        if r3 <= mpg - 6:
+            out.append(["role", "📉", f"Minutes slipping lately: {r3:.0f} a game over his last 3, vs {mpg:.0f} for the season."])
+        elif r3 >= mpg + 6:
+            out.append(["role", "📈", f"Minutes climbing: {r3:.0f} a game over his last 3, vs {mpg:.0f} for the season."])
+    # streaks against his usual level (the hot-start blend when there is one, else last season)
+    base = (ins.get("hot") or {}).get("proj") or (last.get("value") if last else None)
+    if base and base > 0:
+        ev = [pp(l) / l[4] for l in L if l[4] >= 12]
+        up = 0
+        for v in reversed(ev):
+            if v >= base * 1.1:
+                up += 1
+            else:
+                break
+        dn = 0
+        for v in reversed(ev):
+            if v <= base * 0.9:
+                dn += 1
+            else:
+                break
+        if up >= 3:
+            out.append(["hot", "🔥", f"Hot streak: {up} straight games well above his usual Pulse ({base:.3f})."])
+        elif dn >= 3:
+            out.append(["cold", "🧊", f"Cold streak: {dn} straight games well below his usual Pulse ({base:.3f})."])
+    for cut in (40, 30, 25, 20):
+        n = 0
+        for l in reversed(L):
+            if l[5] >= cut:
+                n += 1
+            else:
+                break
+        if n >= (2 if cut >= 30 else 3):
+            out.append(["hot", "🎯", f"{n} straight games with {cut}+ points."])
+            break
+    # career high this season
+    before = [l for lab, x in (rec.get("games") or {}).items() if lab < cur for l in (x or {}).get("logs", [])]
+    if len(before) >= 40:
+        for key, i, word in (("pts", 5, "points"), ("ast", 6, "assists")):
+            best_before = max(l[i] for l in before)
+            top = max(L, key=lambda l: l[i])
+            if top[i] > best_before and top[i] >= (25 if key == "pts" else 10):
+                out.append(["high", "⭐", f"Career high this season: {top[i]} {word} {'vs' if top[3] == 1 else 'at'} {top[2]} ({top[1]}), topping his old best of {best_before}."])
+        tr = lambda l: l[7] + l[8]  # noqa: E731
+        bb, tt = max(tr(l) for l in before), max(L, key=tr)
+        if tr(tt) > bb and tr(tt) >= 12:
+            out.append(["high", "⭐", f"Career high this season: {tr(tt)} rebounds {'vs' if tt[3] == 1 else 'at'} {tt[2]} ({tt[1]})."])
+    # new team, and facing an old one
+    seasons = sorted(rec.get("seasons") or [], key=lambda s: s["season"])
+    olds = []
+    for s_ in seasons:
+        if s_["season"] >= cur:
+            continue
+        for t in str(s_.get("team") or "").replace("→", ",").split(","):
+            t = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}.get(t.strip(), t.strip())
+            if t and t != "TOT" and t not in olds:
+                olds.append(t)
+    if team_now and last:
+        lt = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}.get(last.get("lastTeam") or "", last.get("lastTeam") or "")
+        if lt and lt != team_now and lt != "TOT":
+            out.append(["team", "🆕", f"First season with {team_now} after playing for {lt} last season."])
+    if team_now:
+        nxt = sorted((g for g in sched if g[4] != 3 and team_now in (g[2], g[3])), key=lambda g: g[1])
+        if nxt:
+            g = nxt[0]
+            opp = g[3] if g[2] == team_now else g[2]
+            if opp in olds and opp != team_now:
+                out.append(["revenge", "🔄", f"Next up: {'vs' if g[2] == team_now else 'at'} {opp}, one of his former teams ({g[1][:10]})."])
+    # milestones (career totals from every season, including this one)
+    for k, marks in MILESTONES.items():
+        tot = sum((s_.get(k) or 0) for s_ in seasons if s_.get(k) is not None)
+        if k == "trb" and not tot:
+            tot = sum((s_.get("drb") or 0) + (s_.get("orb") or 0) for s_ in seasons)
+        cur_s = next((s_ for s_ in seasons if s_["season"] == cur), None)
+        rate = None
+        if cur_s and cur_s.get("g"):
+            rate = (cur_s.get(k) if k != "trb" else (cur_s.get("trb") or (cur_s.get("drb") or 0) + (cur_s.get("orb") or 0))) / cur_s["g"]
+        if not rate and last and last.get("g"):
+            rate = (last.get(k) or 0) / last["g"]
+        nxt_m = next((m for m in marks if m > tot), None)
+        if nxt_m and rate and rate > 0:
+            games = (nxt_m - tot) / rate
+            if games <= 15:
+                out.append(["milestone", "🏁", f"Milestone watch: {nxt_m - tot:,} {MILE_WORD[k]} from {nxt_m:,} for his career, about {max(1, round(games))} game{'s' if round(games) != 1 else ''} at his pace."])
+    # back from missing games
+    if gp >= 2 and team_now:
+        team_games = sorted(gid for gid, v in tg[cur].items() if team_now in (v[1], v[2]))
+        dates = {gid: tg[cur][gid][0] for gid in team_games}
+        mine = {l[0] for l in L}
+        order = sorted(team_games, key=lambda gid: dates[gid])
+        if order and order[-1] in mine:
+            i = len(order) - 2
+            missed = 0
+            while i >= 0 and order[i] not in mine:
+                missed += 1
+                i -= 1
+            if missed >= 3 and i >= 0:
+                out.append(["back", "🩹", f"Back in the lineup after missing {missed} games."])
+    # award races
+    names = {"mvp": "MVP", "roy": "Rookie of the Year", "smoy": "Sixth Man"}
+    for k, r in (ins.get("races") or {}).items():
+        if r <= 5:
+            out.append(["race", "🏆", f"#{r} in the {names.get(k, k)} race on the Pulse Board."])
+    return out[:8]

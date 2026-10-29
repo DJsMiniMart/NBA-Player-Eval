@@ -696,6 +696,13 @@ function matesCard(I){
     <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Teammate</th><th>Games with</th><th>His Pulse with</th><th>Games without</th><th>His Pulse without</th><th>When he sits</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="pp-note">"When he sits" is how ${esc(REC.name.split(" ").slice(-1)[0])}'s Pulse changes in games that teammate missed, pulled toward no change when there are only a few such games (8 games' worth). Positive means he does more without that teammate (more shots and touches); negative means he's better with him. Only teammates averaging 15+ minutes who missed 4+ games count, and the other players out those nights aren't separated, so small numbers here are noise.</div></div>`;
 }
+function storiesCard(){
+  const st = (REC.insights && REC.insights.stories) || [];
+  if(!st.length) return "";
+  return `<div class="pp-card c12"><h3>Storylines <small>what's going on with him this season</small></h3>
+    <ul class="pp-stories">${st.map(([k, icon, t]) => `<li class="k-${esc(k)}"><span>${icon}</span><div>${esc(t)}</div></li>`).join("")}</ul>
+    <div class="pp-note">Built every morning from his contract, minutes, starts, game log, career totals and schedule. "Usual Pulse" is his expected level from the hot-start check (this season blended with last).</div></div>`;
+}
 function insightsHtml(){
   const I = REC.insights;
   if(!I) return "";
@@ -730,6 +737,7 @@ function render(){
     const sim = REC.similarSeason;
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.", "pj-season")
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
+      + (storiesCard() ? `<div class="pp-grid">${storiesCard()}</div><div class="pp-gap"></div>` : "")
       + insightsHtml()
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
