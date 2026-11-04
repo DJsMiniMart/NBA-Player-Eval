@@ -72,6 +72,8 @@ def build(now=None, current_year=None):
             t = league_z.setdefault(z, [0, 0])
             t[0] += att
             t[1] += made
+    press = pressure_table(acc.get("dp") or {})
+    profile = opp_profile(oz) if hz_ok else {}
     fo = extra.get("frontOffice", {})
     snap = (load_json(os.path.join(DATA_DIR, "picks.json"), {})            # fallback when RealGM can't be reached:
             or load_json(os.path.join(DATA_DIR, "..", "picks.json"), {}) or {})   # data/picks.json or the main folder
@@ -93,10 +95,95 @@ def build(now=None, current_year=None):
             "injuries": extra.get("injuries", {}).get(code, []), "injuriesAt": extra.get("at", {}).get("injuries"),
             "names": names, "stints": st, "players": plogs[code], "history": history.get(code),
             "zones": tz.get(code, {}), "oppZones": oz.get(code, {}), "leagueZones": league_z,
-            "zoneRanks": zone_ranks(tz, oz, code)})
+            "zoneRanks": zone_ranks(tz, oz, code),
+            "pressure": press.get(code), "oppProfile": profile.get(code)})
     write_box_scores(acc, tgames)
     write_player_totals(acc, tgames, season, now)
     print(f"Team pages: {len(games)} games, {sum(len(v) for v in stints.values())} games with lineups")
+
+
+# ---------- ball pressure and opponents' shot profile ----------
+# key, label, how it's figured, higher is "more pressure"/better for the defense
+PRESS_STATS = [
+    ("tovPct",   "Turnovers forced", "per 100 opponent possessions", True),
+    ("stlPct",   "Steals", "per 100 opponent possessions", True),
+    ("live",     "Live-ball share", "of forced turnovers that are steals", True),
+    ("pass",     "Steals jumping passes", "share of steals off bad passes (vs. strips)", True),
+    ("strip",    "Strips", "lost-ball steals per game", True),
+    ("press",    "Press violations forced", "backcourt, 8-second, 5-second and inbound turnovers per game", True),
+    ("shotClock", "Shot-clock violations forced", "per game", True),
+    ("charges",  "Charges drawn", "per game", True),
+    ("stealPts", "Points off steals", "within 7 seconds of a steal, per game", True),
+    ("fouls",    "Fouls committed", "per 100 opponent possessions (the cost of gambling)", False),
+    ("shootFouls", "Shooting fouls", "per 100 opponent possessions", False),
+]
+
+
+def pressure_table(dp):
+    """{team: {"games": n, "stats": {key: [value, rank 1-30 (1 = most pressure), league average]}}}"""
+    tot = {}
+    for by in dp.values():
+        for t, v in by.items():
+            if t not in CODES:
+                continue
+            a = tot.setdefault(t, [0.0] * 11 + [0])
+            for i, x in enumerate(v[:11]):
+                a[i] += x
+            a[11] += 1
+    if len(tot) < 30 or min(a[11] for a in tot.values()) < 1:
+        return {}
+    vals = {}
+    for t, a in tot.items():
+        poss, tov, stl, sp, ss, prs, sc, chg, fl, sf, spts, g = a
+        per = lambda x: 100 * x / poss if poss else 0  # noqa: E731
+        vals[t] = {"tovPct": per(tov), "stlPct": per(stl), "live": stl / tov if tov else 0, "pass": sp / stl if stl else 0,
+                   "strip": ss / g, "press": prs / g, "shotClock": sc / g, "charges": chg / g, "stealPts": spts / g,
+                   "fouls": per(fl), "shootFouls": per(sf)}
+    out = {t: {"games": tot[t][11], "stats": {}} for t in vals}
+    for key, _, _, high in PRESS_STATS:
+        order = sorted(vals, key=lambda t: vals[t][key], reverse=high)
+        avg = sum(v[key] for v in vals.values()) / len(vals)
+        for t in vals:
+            out[t]["stats"][key] = [round(vals[t][key], 3), order.index(t) + 1, round(avg, 3)]
+    return out
+
+
+PROFILE = [("rim", "At the rim", {"ra"}), ("paint", "Rest of the paint", {"paint"}),
+           ("mid", "Mid-range", {"mlb", "mlw", "mtop", "mrw", "mrb"}), ("c3", "Corner 3", {"c3l", "c3r"}),
+           ("ab3", "Above-the-break 3", {"w3l", "t3", "w3r", "deep"})]
+
+
+def opp_profile(oz):
+    """Where opponents shoot against each team: share of attempts and FG% by area, with ranks
+    (share: 1 = fewest allowed from there; FG%: 1 = lowest allowed) and league averages."""
+    if len(oz) < 30:
+        return {}
+    rows = {}
+    for t, zones in oz.items():
+        fga = sum(v[0] for v in zones.values())
+        if not fga:
+            continue
+        r = {}
+        for key, _, keys in PROFILE:
+            a = sum(zones.get(z, [0, 0])[0] for z in keys)
+            m = sum(zones.get(z, [0, 0])[1] for z in keys)
+            r[key] = [a, m, a / fga, m / a if a else 0]
+        rows[t] = r
+    lg = {}
+    for key, _, keys in PROFILE:
+        a = sum(r[key][0] for r in rows.values())
+        m = sum(r[key][1] for r in rows.values())
+        tot = sum(sum(r[k][0] for k, _, _ in PROFILE) for r in rows.values())
+        lg[key] = [a / tot if tot else 0, m / a if a else 0]
+    out = {}
+    for t, r in rows.items():
+        out[t] = {}
+        for key, _, _ in PROFILE:
+            share_rank = sorted(rows, key=lambda c: rows[c][key][2]).index(t) + 1
+            pct_rank = sorted(rows, key=lambda c: rows[c][key][3]).index(t) + 1
+            out[t][key] = [r[key][0], r[key][1], round(r[key][2], 4), round(r[key][3], 4), share_rank, pct_rank,
+                           round(lg[key][0], 4), round(lg[key][1], 4)]
+    return out
 
 
 def zone_ranks(tz, oz, code):

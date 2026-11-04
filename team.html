@@ -71,6 +71,16 @@
   .srow .v{font-weight:700;font-size:15px;text-align:right;}
   .rk{font-size:11px;font-weight:700;text-align:center;padding:2px 0;border-radius:999px;background:var(--row);color:var(--dim);}
   .rk.top{background:var(--good-soft);color:var(--good);} .rk.bot{background:var(--bad-soft);color:var(--bad);}
+  .srow small{display:block;font-size:11px;color:var(--dim);font-weight:400;margin-top:1px;}
+  .srow .lg{font-size:11px;color:var(--dim);font-weight:400;display:block;text-align:right;}
+  .prof{display:grid;grid-template-columns:1fr 92px 64px 64px;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;font-size:13px;}
+  @media (max-width:560px){.prof{grid-template-columns:1fr 60px 62px 66px;gap:6px;padding:8px 10px;}}
+  .prof:last-child{border-bottom:0;}
+  .prof.h{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;padding-top:9px;padding-bottom:7px;}
+  .prof .bar{height:8px;border-radius:4px;background:var(--row);position:relative;overflow:hidden;}
+  .prof .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c1);border-radius:4px;}
+  .prof .bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;}
+  .prof .n{text-align:right;} .prof .n small{display:block;font-size:10.5px;color:var(--dim);}
   .big4{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
   tr.game{cursor:pointer;} tr.game:hover td{background:var(--accent-soft);}
   /* box score pop-up */
@@ -207,7 +217,7 @@
 <div class="picker"><div class="picker-in" id="picker"></div></div>
 <div class="hero"><div class="wrap hero-in" id="hero"><div class="empty" style="color:#fff">Loading…</div></div></div>
 <nav class="tabs"><div class="tabs-in" id="tabs">
-  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
+  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#defense">Defense</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
   <a href="#injuries">Injuries</a><a href="#cap">Cap sheet</a><a href="#picks">Draft picks</a>
   <a href="#records">Franchise records</a><a href="#awards">Awards</a><a href="#drafthist">Draft history</a>
 </div></nav>
@@ -230,6 +240,11 @@
     <h2>Shot zones</h2>
     <p class="note">Every shot this season, by area of the floor: red zones are above the league average for that zone, blue below. The corner three runs from the baseline up to the break in the three-point line. Hover a zone for the numbers. Whole season (the filters above don't apply here).</p>
     <div class="card pad" id="shotBody"></div>
+  </section>
+  <section id="defense">
+    <h2>Defense: ball pressure &amp; shots allowed</h2>
+    <p class="note">How hard this defense goes after the ball, what that costs it in fouls, and where opponents end up shooting. Counted from every play this season; ranks are among the 30 teams. Whole season (the filters above don't apply here).</p>
+    <div class="groups" id="defBody" style="margin-top:0"></div>
   </section>
   <section id="roster">
     <h2>Roster</h2>

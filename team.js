@@ -135,7 +135,7 @@ function drawHero(){
     <div class="logo"><img src="${logo(CODE)}" alt="" onerror="this.style.visibility='hidden'"></div>
     <div>${trophies}<h1>${esc(T.n)}</h1>
       <div class="sub">${CONF_OF[CODE]}ern Conference · ${DIV_OF[CODE]} Division${TEAM && TEAM.arena ? " · " + esc(TEAM.arena) : ""}</div>
-      <div class="record">${r ? `${r.w}-${r.l}` : "0-0"}<small>${cr ? `${ord(cr)} in the ${CONF_OF[CODE]}` : (LEAGUE ? "season hasn't started" : "")}</small></div></div>
+      <div class="record">${r ? `${r.w}-${r.l}` : "0-0"}<small>${cr ? `${ordN(cr)} in the ${CONF_OF[CODE]}` : (LEAGUE ? "season hasn't started" : "")}</small></div></div>
     <div class="facts">
       ${fact("Head coach", TEAM && TEAM.coach)}${fact("Owner", TEAM && TEAM.owner)}
       ${fact("Executive", TEAM && TEAM.executive)}${fact("Season", (LEAGUE && LEAGUE.season) || RULES.season)}
@@ -167,8 +167,8 @@ function drawStats(){
   if(!LEAGUE || !LEAGUE.games.length){ $('statsBody').innerHTML = `<div class="card empty" style="margin-top:12px">No games have been played yet this season. Team stats and ranks appear after the first games (the update runs every morning).</div>`; return; }
   if(!games.length){ $('statsBody').innerHTML = `<div class="card empty" style="margin-top:12px">No games match these filters.</div>`; return; }
   const s = summarize(games), R = ranks(), rk = R.out[CODE] || {};
-  const badge = k => rk[k] ? `<span class="rk ${rk[k] <= 10 ? "top" : rk[k] > 20 ? "bot" : ""}" title="${ord(rk[k])} of ${R.teams}">${ord(rk[k])}</span>` : `<span class="rk">—</span>`;
-  const tile = (k, label, fmt, tip) => `<div class="card tile"${tip ? ` title="${esc(tip)}"` : ""}><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ord(rk[k])} in the NBA` : ""}</div></div>`;
+  const badge = k => rk[k] ? `<span class="rk ${rk[k] <= 10 ? "top" : rk[k] > 20 ? "bot" : ""}" title="${ordN(rk[k])} of ${R.teams}">${ordN(rk[k])}</span>` : `<span class="rk">—</span>`;
+  const tile = (k, label, fmt, tip) => `<div class="card tile"${tip ? ` title="${esc(tip)}"` : ""}><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ordN(rk[k])} in the NBA` : ""}</div></div>`;
   $('statsBody').innerHTML = `
     <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team Pulse",f3n,"Points, assists×2, rebounds×2, steals×4, blocks, minus turnovers×4, per 48 minutes")}</div>
     <div class="groups">${GROUPS.map(([name, rows]) => `<div class="card grp"><h3>${name}</h3>${rows.map(([k, label, fmt]) => `<div class="srow"><span class="k">${label}</span><span class="v">${fmt(s[k])}</span>${badge(k)}</div>`).join("")}</div>`).join("")}</div>
@@ -527,6 +527,53 @@ function drawShooting(){
   el.querySelectorAll("[data-side]").forEach(b => b.onclick = () => { shotSide = b.dataset.side; drawShooting(); });
 }
 
+/* ---------- defense: ball pressure + opponents' shot profile ---------- */
+const PRESS = [
+  ["tovPct", "Turnovers forced", "per 100 opponent possessions", v => v.toFixed(1)],
+  ["stlPct", "Steals", "per 100 opponent possessions", v => v.toFixed(1)],
+  ["live", "Live-ball share", "forced turnovers that are steals", v => Math.round(v * 100) + "%"],
+  ["pass", "Steals jumping passes", "share of steals off bad passes (the rest are strips)", v => Math.round(v * 100) + "%"],
+  ["strip", "Strips", "lost-ball steals per game", v => v.toFixed(1)],
+  ["stealPts", "Points off steals", "scored within 7 seconds of a steal, per game", v => v.toFixed(1)],
+  ["press", "Press violations forced", "backcourt, 8-second, 5-second, inbound, per game", v => v.toFixed(2)],
+  ["shotClock", "Shot-clock violations forced", "per game", v => v.toFixed(2)],
+  ["charges", "Charges drawn", "per game", v => v.toFixed(2)],
+  ["fouls", "Fouls committed", "per 100 opponent possessions: the cost of gambling", v => v.toFixed(1)],
+  ["shootFouls", "Shooting fouls", "per 100 opponent possessions", v => v.toFixed(1)],
+];
+const PROF = [["rim", "At the rim"], ["paint", "Rest of the paint"], ["mid", "Mid-range"], ["c3", "Corner 3"], ["ab3", "Above-the-break 3"]];
+const rkCls = r => r <= 5 ? "top" : r >= 26 ? "bot" : "";
+const ordN = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th","st","nd","rd"][n % 10] || "th");
+function drawDefense(){
+  const el = $('defBody');
+  if(!el) return;
+  const P = TEAM && TEAM.pressure, O = TEAM && TEAM.oppProfile;
+  const T = TEAMS[CODE] || {n: CODE};
+  const press = P && P.stats ? `<div class="card grp"><h3>Ball pressure &amp; gambling</h3>
+      ${PRESS.map(([k, label, how, f]) => { const s = P.stats[k]; if(!s) return "";
+        return `<div class="srow"><div class="k">${label}<small>${how}</small></div>
+          <div class="v">${f(s[0])}<span class="lg">avg ${f(s[2])}</span></div>
+          <div class="rk ${rkCls(s[1])}" title="${ordN(s[1])} of 30${k === "fouls" || k === "shootFouls" ? " (1st = fewest)" : ""}">${ordN(s[1])}</div></div>`; }).join("")}
+      <div class="srow" style="grid-template-columns:1fr"><div class="k" style="font-size:12px">${P.games} games. Green = top 5 in the league, red = bottom 5. A team that ranks high on steals and high on fouls is gambling; high on steals and low on fouls is pressure that pays.</div></div>
+    </div>` : `<div class="card grp"><h3>Ball pressure &amp; gambling</h3><div class="empty">Ball-pressure numbers show up after the next morning update (they're counted from each game's play-by-play).</div></div>`;
+  let prof;
+  if(O && O.rim){
+    const max = Math.max(...PROF.map(([k]) => Math.max(O[k][2], O[k][6])));
+    prof = `<div class="card grp"><h3>Where opponents shoot against ${esc(T.n)}</h3>
+      <div class="prof h"><div>Area</div><div>Share of shots</div><div class="n">Share</div><div class="n">FG%</div></div>
+      ${PROF.map(([k, label]) => { const r = O[k];
+        const sh = (r[2] * 100).toFixed(1), lsh = (r[6] * 100).toFixed(1);
+        const d = (r[3] - r[7]) * 100;
+        return `<div class="prof"><div>${label}<small style="display:block;font-size:10.5px;color:var(--dim)">${r[1]}/${r[0]} made</small></div>
+          <div class="bar" title="Black tick = league average ${lsh}%"><i style="width:${(r[2] / max * 100).toFixed(1)}%"></i><b style="left:${(r[6] / max * 100).toFixed(1)}%"></b></div>
+          <div class="n">${sh}%<small>${ordN(r[4])} fewest</small></div>
+          <div class="n"><span class="${d < -1 ? "pos" : d > 1 ? "neg" : ""}">${(r[3] * 100).toFixed(1)}%</span><small>lg ${(r[7] * 100).toFixed(1)}% · ${ordN(r[5])}</small></div></div>`; }).join("")}
+      <div class="srow" style="grid-template-columns:1fr"><div class="k" style="font-size:12px">Share = the part of opponents' shots taken from that area (bar; the tick is the league average). Rank "1st fewest" means no defense gives up a smaller share from there. FG% in green is below the league average (good for the defense), red above; its rank is 1st = lowest allowed.</div></div>
+    </div>`;
+  } else prof = `<div class="card grp"><h3>Where opponents shoot</h3><div class="empty">Shows up after the next morning update.</div></div>`;
+  el.innerHTML = press + prof;
+}
+
 /* ---------- page ---------- */
 function drawData(){ drawStats(); drawLineups(); drawRoster(); }
 async function show(code){
@@ -538,7 +585,7 @@ async function show(code){
   if(CODE !== code) return;
   TEAM = t;
   pick = [];
-  drawHero(); drawFilters(); drawData(); drawShooting(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
+  drawHero(); drawFilters(); drawData(); drawShooting(); drawDefense(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
   if(window.Ticker) Ticker.show(code);
   $('asof').textContent = TEAM && TEAM.at ? `Team data updated ${new Date(TEAM.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.` : "";
 }
