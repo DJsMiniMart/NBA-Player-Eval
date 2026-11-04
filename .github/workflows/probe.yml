@@ -7,13 +7,23 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           python3 - <<'PY'
-          import collections, espn_games as E
-          c = collections.Counter(); ex = {}
-          for gid in ["401909921","401909920","401909919","401909918","401909917","401909916"]:
-              for p in E.plays_for(gid):
-                  k = str((p.get("type") or {}).get("text",""))
-                  c[k] += 1
-                  ex.setdefault(k, (str(p.get("text"))[:120], [str(x.get("type")) for x in p.get("participants") or []], p.get("clock",{}).get("displayValue")))
-          for k, n in c.most_common():
-              print(f"{n:5d} | {k!r} | {ex[k]}")
+          import json, collections, espn_games as E
+          acc = json.load(open("data/pbp/2026-27.json"))
+          c = collections.Counter()
+          for gid in ["401909921","401909920","401909919","401909918"]:
+              row = acc["tgames"][gid]
+              g = {"id": gid, "home": row[1], "away": row[2]}
+              s = E.get_json(f"{E.SITE}/summary?event={gid}"); plays = E.plays_for(gid)
+              box = E.box_score(s)
+              tt = {tid: v["tri"] for tid, v in box.items()}; to = {pl["id"]: v["tri"] for v in box.values() for pl in v["players"]}
+              dp = E.pressure(g, tt, to, plays)
+              for t in (row[1], row[2]):
+                  o = row[2] if t == row[1] else row[1]
+                  bl = row[3] if t == row[1] else row[4]; ol = row[4] if t == row[1] else row[3]
+                  print(gid, t, dict(zip(E.DP_COLS, dp[t])), "| box stl", bl[10], "opp tov", ol[12], "pf", bl[13])
+              for p in plays:
+                  k = str((p.get("type") or {}).get("text","")).lower()
+                  if "foul" in k or "turnover" in k or "violation" in str(p.get("text")).lower():
+                      c[(k, E.ref_id(p.get("team"), "teams") is not None)] += 1
+          print(c.most_common(40))
           PY

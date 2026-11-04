@@ -5,6 +5,7 @@ reads ESPN instead and writes the same file the rest of the site uses, data/pbp/
 
   - every player's game log (minutes, points, rebounds, ... and the result)
   - every shot (zone + 2-ft court cell), who assisted whom, steal and block types
+  - ball-pressure counts per team per game ("dp": steals, forced turnovers, press violations, fouls)
   - each team's box score per game ("tgames"), for the team pages' stats, filters and ranks
   - every five-man lineup each team used: seconds, points for/against, possessions ("stints")
 
@@ -341,6 +342,104 @@ def hz_only(acc, g, summary, plays):
     return True
 
 
+# ---------- ball pressure (per defending team, per game) ----------
+# [opp possessions, opp turnovers, steals, steals off passes, strips (lost ball), press violations forced
+#  (backcourt, 8-second, 5-second, inbound), shot-clock violations forced, charges drawn, fouls,
+#  shooting fouls, points within 7 seconds of a steal]
+DP_COLS = ["poss", "tov", "stl", "stlPass", "stlStrip", "press", "shotClock", "charges", "fouls", "shootFouls", "stealPts"]
+PRESS_RE = re.compile(r"back ?court|8[- ]?second|five[- ]second|5[- ]?second|inbound", re.I)
+
+
+def pressure(g, tri_of_team, tri_of, plays):
+    """Ball-pressure counts for each team as the defense: {team: [DP_COLS...]}."""
+    other = {g["home"]: g["away"], g["away"]: g["home"]}
+    out = {t: [0.0] + [0] * (len(DP_COLS) - 1) for t in other}
+    plays = sorted(plays, key=lambda p: (to_int((p.get("period") or {}).get("number")), -float((p.get("clock") or {}).get("value") or 0),
+                                         to_int(p.get("sequenceNumber"))))
+    last = (0, 0)
+    pending = None   # (stealing team, period, clock)
+    for p in plays:
+        kind = str((p.get("type") or {}).get("text", "")).lower()
+        text = str(p.get("text") or "").lower()
+        period = to_int((p.get("period") or {}).get("number"))
+        clock = float((p.get("clock") or {}).get("value") or 0)
+        ppl = [ref_id(x.get("athlete"), "athletes") for x in sorted(p.get("participants") or [], key=lambda x: to_int(x.get("order")))]
+        ppl = [x for x in ppl if x]
+        team = tri_of_team.get(ref_id(p.get("team"), "teams")) or (tri_of.get(ppl[0]) if ppl else None)
+        hs, as_ = to_int(p.get("homeScore")), to_int(p.get("awayScore"))
+        if (hs, as_) != last and hs >= last[0] and as_ >= last[1]:
+            for t, pts in ((g["home"], hs - last[0]), (g["away"], as_ - last[1])):
+                if pts > 0 and pending:
+                    if pending[0] == t and pending[1] == period and pending[2] - clock <= 7:
+                        out[t][10] += pts
+                    pending = None
+            last = (hs, as_)
+        if pending and (pending[1] != period or pending[2] - clock > 7):
+            pending = None
+        if team not in other:
+            continue
+        d = out[other[team]]          # the defense on this play, when the play is the offense's
+        is_tov = "turnover" in kind or "turnover" in text
+        if p.get("shootingPlay") and "free throw" not in kind:
+            d[0] += 1
+        elif "free throw" in kind and "technical" not in kind:
+            d[0] += 0.44
+        elif is_tov:
+            d[0] += 1
+        elif "offensive rebound" in kind:
+            d[0] -= 1
+        if is_tov:
+            d[1] += 1
+            if "steal" in text:
+                d[2] += 1
+                if "bad pass" in kind:
+                    d[3] += 1
+                elif "lost ball" in kind:
+                    d[4] += 1
+                pending = (other[team], period, clock)
+            if PRESS_RE.search(kind + " " + text):
+                d[5] += 1
+            elif "shot clock" in kind:
+                d[6] += 1
+        elif kind == "offensive charge":
+            d[7] += 1
+        elif kind in ("personal foul", "shooting foul", "loose ball foul"):
+            f = out[team]             # fouls belong to the fouler's team, the defense
+            f[8] += 1
+            if kind == "shooting foul":
+                f[9] += 1
+    return {t: [round(v[0], 1)] + v[1:] for t, v in out.items()}
+
+
+def dp_only(acc, g, summary, plays):
+    """Ball-pressure counts for a game saved before they were tracked."""
+    box = box_score(summary)
+    tri_of_team = {tid: v["tri"] for tid, v in box.items()}
+    tri_of = {pl["id"]: v["tri"] for v in box.values() for pl in v["players"]}
+    if not plays or not tri_of:
+        return False
+    acc.setdefault("dp", {})[g["id"]] = pressure(g, tri_of_team, tri_of, plays)
+    return True
+
+
+def upgrade_dp(acc, games, out_of_time, label):
+    """Ball-pressure counts for this season's games saved before they were tracked."""
+    have = set(acc.setdefault("dp", {})) | set(acc.setdefault("dpFail", {}))
+    todo = [g for g in games if g["id"] in set(acc["done"]) and g["id"] not in have]
+    n = 0
+    for g in todo:
+        if out_of_time():
+            break
+        summary = get_json(f"{SITE}/summary?event={g['id']}")
+        plays = plays_for(g["id"]) if summary else None
+        if summary and plays and dp_only(acc, g, summary, plays):
+            n += 1
+        else:
+            acc["dpFail"][g["id"]] = 1
+    if todo:
+        print(f"ESPN ball pressure {label}: added {n} of {len(todo)} older games")
+
+
 def reset_hz_if_old(acc):
     """Zones saved under older rules are thrown out so they get rebuilt."""
     if acc.get("hzV") == HZ_VERSION:
@@ -424,6 +523,7 @@ def add_game(acc, g, summary, plays):
                               1 if pl["starter"] else 0, margin, game_min])
 
     second = shots_and_lineups(acc, g, by_tri, tri_of_team, tri_of, names, plays, other)
+    acc.setdefault("dp", {})[gid] = pressure(g, tri_of_team, tri_of, plays)
 
     # team box score: [pts, fgm, fga, 3pm, 3pa, ftm, fta, oreb, dreb, ast, stl, blk, tov, pf,
     #                  paint, fast break, second chance, points off turnovers, bench]
@@ -744,6 +844,7 @@ def update(now, current_year):
         if added % 25 == 0:
             save(path, acc)
     upgrade_hz(acc, [g for g in games if g["state"] == 3], lambda: time.time() - started > TIME_BUDGET_SEC, label)
+    upgrade_dp(acc, [g for g in games if g["state"] == 3 and g["reg"]], lambda: time.time() - started > TIME_BUDGET_SEC, label)
     save(path, acc)
     print(f"ESPN: added {added} games ({len(acc['done'])} so far this season) in {int(time.time() - started)}s")
     if not os.environ.get("NO_BACKFILL"):   # the workflow runs the backfill as its own step, after saving today's games
