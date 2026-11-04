@@ -148,11 +148,11 @@
     <button id="reset">Start over</button>
   </div>
 
-  <div id="out"></div>
+  <div id="out" data-jump="Verdict"></div>
 
   <div class="teams" id="teams"><div class="empty">Loading…</div></div>
 
-  <details class="rules" id="rules">
+  <details class="rules" id="rules" data-jump="How it's checked">
     <summary>How the Trade Machine checks a trade</summary>
     <div id="rulesBody"></div>
   </details>
@@ -165,6 +165,7 @@
 </div>
 <div class="toast" id="toast"></div>
 <script src="nav.js"></script>
+<script src="jumps.js"></script>
 <script src="player.js"></script>
 <script src="cap.js"></script>
 <script src="picks.js"></script>

@@ -142,7 +142,7 @@
   </div>
 </div>
 <div class="wrap" style="padding-top:12px">
-  <div class="podium" id="podium"></div>
+  <div class="podium" id="podium" data-jump="Leaderboard"></div>
 
   <div class="controls">
     <div><label for="season">Season</label><select id="season"></select></div>
@@ -164,13 +164,13 @@
   </div>
 
   <div class="final-note" id="finalNote" hidden></div>
-  <div class="card trend" id="trendCard">
+  <div class="card trend" id="trendCard" data-jump="Top 5 trend">
     <h2>Top 5 over the season</h2>
     <div class="sub">Each player's number as of each day's update. Click any player above to see their own line.</div>
     <div class="chartbox"><canvas id="topChart"></canvas></div>
   </div>
 
-  <div class="card rookies" id="valueCard" hidden>
+  <div class="card rookies" id="valueCard" data-jump="Pulse$" hidden>
     <div class="rk-head"><div><h2>Pulse$ <span class="mvrd-tag">value per dollar: who's outplaying his contract</span></h2><div class="sub" id="vSub"></div></div>
       <div class="v-tabs" id="vTabs"><button data-v="out" class="on">Outplaying contract</button><button data-v="all">Everyone</button><select id="vTierPick" aria-label="Pay tier"></select></div></div>
     <div class="rk-tiles" id="vTiles"></div>
@@ -179,14 +179,14 @@
     <div class="sub" style="padding:8px 16px 14px" id="vNote"></div>
   </div>
 
-  <div class="card rookies" id="racesCard" hidden>
+  <div class="card rookies" id="racesCard" data-jump="Award races" hidden>
     <div class="rk-head" id="races"><div><h2>Award races <span class="mvrd-tag">who Pulse says is winning</span></h2><div class="sub" id="raceSub"></div></div>
       <div class="v-tabs" id="raceTabs"><button data-r="mvp" class="on">MVP</button><button data-r="roy">Rookie of the Year</button><button data-r="smoy">Sixth Man</button></div></div>
     <div class="tablewrap"><table class="rk-tbl"><thead><tr id="raceHead"></tr></thead><tbody id="raceBody"></tbody></table></div>
     <div class="sub" style="padding:8px 16px 14px" id="raceNote"></div>
   </div>
 
-  <div class="card rookies" id="rookieCard" hidden>
+  <div class="card rookies" id="rookieCard" data-jump="Rookie report" hidden>
     <div class="rk-head"><div><h2>Rookie report</h2><div class="sub" id="rkSub"></div></div>
       <label class="rk-all"><input type="checkbox" id="rkAll"> Show every rookie</label></div>
     <div class="rk-tiles" id="rkTiles"></div>
@@ -204,6 +204,7 @@
 <div id="playerView" hidden></div>
 <div id="playersView" hidden></div>
 <script src="nav.js"></script>
+<script src="jumps.js"></script>
 <script src="zones.js"></script>
 <script src="hotstart.js"></script>
 <script src="injuries.js"></script>

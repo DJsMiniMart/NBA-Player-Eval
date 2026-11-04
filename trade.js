@@ -293,7 +293,7 @@ function teamCard(t, r){
   const picks = S.picks.map((k,i) => [k,i]).filter(([k]) => k.from === t);
   const cash = S.cash[t];
   const zb = r.zb, za = r.za;
-  return `<div class="tcard" style="--c1:${T.c1}" data-team="${t}">
+  return `<div class="tcard" style="--c1:${T.c1}" data-team="${t}" data-jump="${t}">
     <div class="thead">
       <img src="${logo(t)}" alt="" onerror="this.style.visibility='hidden'">
       <select data-swap="${t}" aria-label="Team">${CODES.map(c => `<option value="${c}" ${c===t?"selected":""} ${c!==t && S.teams.includes(c)?"disabled":""}>${esc(TEAMS[c].n)}</option>`).join("")}</select>

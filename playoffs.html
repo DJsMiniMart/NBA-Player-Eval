@@ -79,6 +79,7 @@
   <p class="note foot" id="foot"></p>
 </main>
 <script src="nav.js"></script>
+<script src="jumps.js"></script>
 <script src="player.js"></script>
 <script src="picks.js"></script>
 <script>
@@ -132,7 +133,7 @@ const rec = r => VIEW === "proj" ? `${Math.round(r.w)}-${Math.round(r.l)}` : `${
 function drawPlayoffs(S){
   const table = c => {
     const list = S[c], lead = list[0];
-    return `<div><h2>${c}ern Conference</h2><div class="card tw"><table><thead><tr><th class="l"></th><th class="l">Team</th><th>W-L</th><th>Pct</th><th>GB</th><th class="l"></th></tr></thead><tbody>${
+    return `<div><h2 data-jump="${c} standings">${c}ern Conference</h2><div class="card tw"><table><thead><tr><th class="l"></th><th class="l">Team</th><th>W-L</th><th>Pct</th><th>GB</th><th class="l"></th></tr></thead><tbody>${
       list.map((r, i) => { const gb = ((lead.w - r.w) + (r.l - lead.l)) / 2;
         const tag = i < 6 ? `<span class="tag po">Playoffs</span>` : i < 10 ? `<span class="tag pi">Play-in</span>` : `<span class="tag lot">Lottery</span>`;
         return `<tr class="${i === 5 ? "cut6" : i === 9 ? "cut10" : ""}"><td class="l sd">${i + 1}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td>
@@ -147,7 +148,7 @@ function drawPlayoffs(S){
       <div class="mu"><span>9 vs 10 · loser is out</span>${team(9, L[8])}${team(10, L[9])}</div>
       <div class="mu"><span>Loser of 7/8 vs winner of 9/10 · for the 8 seed</span>${team(8, L[7])}${team(9, L[8])}</div></div>`;
     const mus = [[0, 7], [3, 4], [2, 5], [1, 6]].map(([a, b]) => `<div class="mu">${team(a + 1, L[a])}${team(b + 1, L[b])}</div>`).join("");
-    return `<h2>${c}: first round if the season ended today</h2><div class="card"><div class="bracket">${mus}</div>
+    return `<h2 data-jump="${c} first round">${c}: first round if the season ended today</h2><div class="card"><div class="bracket">${mus}</div>
       <p class="note" style="margin:0 14px 8px">Play-in tournament (higher seeds assumed to win):</p>${playin}</div>`;
   };
   $("po").innerHTML = `<div class="confs">${table("East")}${table("West")}</div>${bracket("East")}${bracket("West")}`;
@@ -218,10 +219,10 @@ function drawLottery(S){
       <div class="card"><b>Play-in: 2 or 1</b><p>No. 9 and 10 seeds get 2 balls; the losers of the 7-vs-8 games get 1 (2.7%).</p></div>
       <div class="card"><b>No repeats</b><p>No team can pick No. 1 two years running, or top 5 three years running.${NO_REPEAT_NUMBER_ONE.length ? ` This year: ${NO_REPEAT_NUMBER_ONE.map(nick).join(", ")} can't win No. 1; ${NO_TOP5.map(nick).join(", ")} can't land top 5.` : ""}</p></div>
     </div>
-    <h2>2027 lottery odds ${VIEW === "proj" ? "(Pulse projection)" : "(if the season ended today)"}</h2>
+    <h2 data-jump="Lottery odds">2027 lottery odds ${VIEW === "proj" ? "(Pulse projection)" : "(if the season ended today)"}</h2>
     <div class="card tw lot"><table><thead><tr><th class="l">Team</th><th>W-L</th><th>Balls</th><th>No. 1</th><th>Top 4</th><th title="Average pick">Avg</th>${cols.map(k => `<th>${k + 1}</th>`).join("")}<th class="l">Who owns the pick</th></tr></thead><tbody>${body}</tbody></table></div>
     <p class="note">Odds come from ${SIMS.toLocaleString()} simulated lotteries with the rules above. Ties are broken by record and then alphabetically (the league uses coin flips). "If the season ended today," the higher seed is assumed to win each play-in game, so the 8 seeds stand in for the 7-vs-8 losers. Pick ownership and protections come from RealGM and can be complex; check a team's Draft picks section for the full text.</p>
-    <h2>Picks 17-30</h2>
+    <h2 data-jump="Picks 17-30">Picks 17-30</h2>
     <div class="card tw"><table><thead><tr><th class="l">Pick</th><th class="l">Team</th><th>W-L</th><th class="l">Who owns the pick</th></tr></thead><tbody>${
       rest.map((r, i) => `<tr><td class="l sd">${17 + i}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td><td class="l" style="white-space:normal">${(() => { const o = ownership(r.t), ow = o.ownerAt(17 + i); return ow === r.t ? `<b>${esc(r.t)}</b>` : `<b>${esc(ow)}</b> <span class="note">(${o.text()})</span>`; })()}</td></tr>`).join("")}</tbody></table></div>`;
 }

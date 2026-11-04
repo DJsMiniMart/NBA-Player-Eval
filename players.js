@@ -67,13 +67,13 @@ function render(el){
 
   el.querySelector("#plBody").innerHTML = (groups.length ? groups.map(g => {
     const pay = g.list.reduce((t,r)=>t+(r.salary||0),0);
-    return `<section class="pl-team" style="--c1:${g.t.c1};--c2:${g.t.c2}">
+    return `<section class="pl-team" data-jump="${esc(g.c)}" style="--c1:${g.t.c1};--c2:${g.t.c2}">
       <header><img src="${teamBadge(g.t.id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
         <div><h3>${esc(g.t.n)}</h3><small>${g.list.length} player${g.list.length===1?"":"s"}${pay ? " · " + money(pay) + " this season" : ""}</small></div>
         <a class="pl-trade" href="team.html#${esc(g.c)}">Team page →</a><a class="pl-trade" style="margin-left:12px" href="trade.html#${esc(g.c)}">Trade machine →</a></header>
       <div class="pl-rows">${g.list.map(row).join("")}</div></section>`;
   }).join("") : `<div class="empty">No current players match.</div>`)
-  + (others.length ? `<section class="pl-team pl-past"><header><div><h3>Other players since 1973-74</h3><small>Matching "${esc(q.trim())}"</small></div></header>
+  + (others.length ? `<section class="pl-team pl-past" data-jump="Past players"><header><div><h3>Other players since 1973-74</h3><small>Matching "${esc(q.trim())}"</small></div></header>
       <div class="pl-rows">${others.map(p => `<button class="pl-row" data-open="${esc(p.id)}"><span class="pl-name">${esc(p.name)}${window.HotStart ? HotStart.chip(p.id, {small: true}) : ""}</span><span class="pl-meta">${esc(p.pos || "")}</span><span class="pl-meta">${p.from ? esc(p.from) + "–" + esc(p.to) : ""}</span><span class="pl-go">Page →</span></button>`).join("")}</div></section>` : "");
   el.querySelectorAll("[data-open]").forEach(b => b.onclick = () => { location.hash = "#/player/" + encodeURIComponent(b.dataset.open); });
   el.querySelector("#plCount").textContent = `${rows.length} current player${rows.length===1?"":"s"}`;
