@@ -1,0 +1,19 @@
+name: Probe play types
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          import collections, espn_games as E
+          c = collections.Counter(); ex = {}
+          for gid in ["401909921","401909920","401909919","401909918","401909917","401909916"]:
+              for p in E.plays_for(gid):
+                  k = str((p.get("type") or {}).get("text",""))
+                  c[k] += 1
+                  ex.setdefault(k, (str(p.get("text"))[:120], [str(x.get("type")) for x in p.get("participants") or []], p.get("clock",{}).get("displayValue")))
+          for k, n in c.most_common():
+              print(f"{n:5d} | {k!r} | {ex[k]}")
+          PY
