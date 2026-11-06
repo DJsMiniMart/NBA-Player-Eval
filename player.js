@@ -798,6 +798,7 @@ function render(){
   EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
+  bindPairs();
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
   EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
@@ -805,6 +806,22 @@ function render(){
 
 /* ---------- on the floor together: two-man pairings from the team's lineup stints (data/teams/<code>.json) ---------- */
 const TEAMFILE = {};
+let PAIRPICK = [], PAIRFOR = null;
+function pairAgg(rows){
+  const a = {secs: 0, pf: 0, pa: 0, pof: 0, poa: 0, games: new Set()};
+  rows.forEach(s => { a.secs += s[2]; a.pf += s[3]; a.pa += s[4]; a.pof += s[5]; a.poa += s[6]; a.games.add(s[0]); });
+  a.min = a.secs / 60; a.ortg = a.pof ? a.pf / a.pof * 100 : null; a.drtg = a.poa ? a.pa / a.poa * 100 : null;
+  a.net = a.ortg != null && a.drtg != null ? a.ortg - a.drtg : null;
+  return a;
+}
+function bindPairs(){
+  const box = EL && EL.querySelector("#ppPairs");
+  if(!box) return;
+  const redraw = () => { const y = window.scrollY; box.outerHTML = pairsCard(); bindPairs(); window.scrollTo(0, y); };
+  box.querySelectorAll("[data-pk]").forEach(b => b.onclick = () => { const id = b.dataset.pk;
+    PAIRPICK = PAIRPICK.includes(id) ? PAIRPICK.filter(x => x !== id) : PAIRPICK.concat(id); redraw(); });
+  const c = box.querySelector("#pkClear"); if(c) c.onclick = e => { e.preventDefault(); PAIRPICK = []; redraw(); };
+}
 async function loadTeamFile(code){
   if(!(code in TEAMFILE)) TEAMFILE[code] = await getJSON(`data/teams/${code}.json`);
   return TEAMFILE[code];
@@ -827,7 +844,7 @@ function pairsCard(){
     }
   }
   if(!ME[0]) return box + head + `<div class="pp-empty">Shows up once ${esc(REC.name.split(" ")[0])} has played for ${esc(code)} this season.</div></div>`;
-  const net = a => a[3] + a[4] ? (a[1] - a[2]) / ((a[3] + a[4]) / 2) * 100 : null;
+  const net = a => a[3] && a[4] ? a[1] / a[3] * 100 - a[2] / a[4] * 100 : null;   // offensive rating minus defensive rating, as on the team page
   const minus = (a, b) => a.map((v, i) => v - (b ? b[i] : 0));
   const rows = Object.entries(W).filter(([, a]) => a[0] >= 20 * 60).map(([id, a]) => {
     const without = minus(ME, a), tw = TO[id] || z();
@@ -841,7 +858,31 @@ function pairsCard(){
   const best = big.slice().sort((a, b) => b.n - a.n)[0], worst = big.slice().sort((a, b) => a.n - b.n)[0];
   const link = r => window.playerLink ? playerLink(r.name, code) : esc(r.name);
   const chips = best && worst && best !== worst ? `<div class="pp-note" style="margin:0 0 8px;font-size:12.5px">Best pairing: <b>${link(best)}</b> (${fmt(best.n)} per 100 in ${mn(best.tog)} min) · Weakest pairing: <b>${link(worst)}</b> (${fmt(worst.n)} per 100 in ${mn(worst.tog)} min)</div>` : "";
-  return box + head + chips + `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l" rowspan="2" style="vertical-align:bottom">Teammate</th><th colspan="3" style="text-align:center;border-bottom:1px solid var(--line)">Together</th>
+  if(PAIRFOR !== REC.id){ PAIRFOR = REC.id; PAIRPICK = []; }
+  const mates = Object.entries(W).sort((a, b) => b[1][0] - a[1][0]);
+  PAIRPICK = PAIRPICK.filter(id => W[id]);
+  const short = id => { const n = ((T.names || {})[id] || id).split(" "); return n.length > 1 ? n.slice(1).join(" ") : n[0]; };
+  const meShort = REC.name.split(" ").slice(-1)[0];
+  let cmp = "";
+  if(PAIRPICK.length){
+    const st = (T.stints || []).map(s => [s[0], s[1].split(","), s[2], s[3], s[4], s[5], s[6]]);
+    const allOn = ids => PAIRPICK.every(p => ids.includes(p));
+    const A = pairAgg(st.filter(s => s[1].includes(me) && allOn(s[1])));
+    const B = pairAgg(st.filter(s => s[1].includes(me) && !allOn(s[1])));
+    const C = pairAgg(st.filter(s => !s[1].includes(me) && allOn(s[1])));
+    const sg = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+    const f1 = v => v == null ? "—" : v.toFixed(1);
+    const group = PAIRPICK.map(short).join(" + ");
+    const tile = (title, a) => `<div class="pk-box"><h4>${esc(title)}</h4>${a.secs ? `<div class="pk-nums">
+        <div><span>Min</span><b>${Math.round(a.min)}</b></div><div><span>Off rtg</span><b>${f1(a.ortg)}</b></div>
+        <div><span>Def rtg</span><b>${f1(a.drtg)}</b></div><div><span>Net</span><b class="${a.net >= 0 ? "pos" : "neg"}">${sg(a.net)}</b></div></div>
+        <div class="pp-note" style="margin-top:6px">${a.games.size} game${a.games.size === 1 ? "" : "s"} · ${a.pf}-${a.pa} points</div>` : `<div class="pp-empty" style="padding:10px 0">No minutes.</div>`}</div>`;
+    cmp = `<div class="pk-cmp">${tile(`${meShort} + ${group} together`, A)}${tile(`${meShort} without ${PAIRPICK.length > 1 ? "all of them" : short(PAIRPICK[0])}`, B)}${tile(`${group} without ${meShort}`, C)}</div>
+      ${A.secs && A.min < 30 ? `<div class="pp-note" style="margin:0 0 10px">Small sample: under 30 minutes together, so these can swing a lot.</div>` : ""}`;
+  }
+  const picker = `<div class="pk"><div class="pp-note" style="margin:0 0 6px">Pick one or more teammates to see how they play with ${esc(meShort)}${PAIRPICK.length ? ` · ${PAIRPICK.length} picked · <a href="#" id="pkClear">clear</a>` : ""}</div>
+    <div class="pk-chips">${mates.map(([id, a]) => `<button class="pk-chip${PAIRPICK.includes(id) ? " on" : ""}" data-pk="${esc(id)}">${esc((T.names || {})[id] || id)}<small>${Math.round(a[0] / 60)} min</small></button>`).join("")}</div></div>`;
+  return box + head + picker + cmp + chips + `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l" rowspan="2" style="vertical-align:bottom">Teammate</th><th colspan="3" style="text-align:center;border-bottom:1px solid var(--line)">Together</th>
       <th colspan="2" style="text-align:center;border-bottom:1px solid var(--line)">Him, teammate sits</th><th colspan="2" style="text-align:center;border-bottom:1px solid var(--line)">Teammate, he sits</th></tr>
       <tr><th>Min</th><th>+/-</th><th>Net</th><th>Min</th><th>Net</th><th>Min</th><th>Net</th></tr></thead><tbody>${rows.slice(0, 12).map(r => `<tr>
       <td class="l">${link(r)}</td><td>${mn(r.tog)}</td><td>${fmt(r.tog[1] - r.tog[2]).replace(".0", "")}</td><td class="${cls(r.n)}">${fmt(r.n)}</td>
@@ -931,7 +972,7 @@ async function show(id, el){
     }
     REC = rec; SEL = null; LOGS_ALL = {};
   }
-  if(REC && REC.team) loadTeamFile(REC.team).then(() => { const box = EL.querySelector("#ppPairs"); if(box && REC && REC.id === id) box.outerHTML = pairsCard(); });
+  if(REC && REC.team) loadTeamFile(REC.team).then(() => { const box = EL.querySelector("#ppPairs"); if(box && REC && REC.id === id) box.outerHTML = pairsCard(); bindPairs(); });
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Injuries.ready;
   render();

@@ -192,3 +192,19 @@
 @media (max-width:760px){ .pp-stories{grid-template-columns:1fr;} }
 .pp-yt{display:inline-block;font-weight:600;font-size:13px;text-decoration:none;color:var(--tcbar,#1D428A);margin-top:4px;}
 .pp-yt:hover{text-decoration:underline;}
+
+/* On the floor together: teammate picker */
+.pk{margin:4px 0 12px;}
+.pk-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.pk-chip{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:5px 11px;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer;}
+.pk-chip small{font-weight:400;opacity:.7;margin-left:5px;}
+.pk-chip:hover{border-color:var(--tc1);}
+.pk-chip.on{background:var(--tc1);border-color:var(--tc1);color:#fff;}
+.pk-cmp{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 12px;}
+.pk-box{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--row);}
+.pk-box h4{margin:0 0 6px;font-size:12.5px;font-weight:600;color:var(--dim);}
+.pk-nums{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.pk-nums span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+.pk-nums b{font:700 22px/1.1 "Barlow Condensed",sans-serif;}
+.pk-nums b.pos{color:#2f9e44;} .pk-nums b.neg{color:#e03131;}
+@media (max-width:760px){.pk-cmp{grid-template-columns:1fr;}}
