@@ -748,6 +748,7 @@ function render(){
       + (storiesCard() ? `<div class="pp-grid">${storiesCard()}</div><div class="pp-gap"></div>` : "")
       + `<div class="pp-grid">${clipsCard()}</div><div class="pp-gap"></div>`
       + insightsHtml()
+      + (pairsCard() ? `<div class="pp-grid">${pairsCard()}</div><div class="pp-gap"></div>` : "")
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
         ${similarCard("Most similar players this season", sim ? sim.season : "", sim && sim.list.map(r => [r[0], r[1], r[2] + " · " + f3(r[4]), r[3]]), "season")}${onOffCard(G)}${clutchCard()}</div><div class="pp-gap"></div>`
       + (curPO ? `<div class="pp-grid">${statLineCard(curPO, `${label} playoffs`, "per game, this postseason")}</div><div class="pp-gap"></div>` : "")
@@ -800,6 +801,52 @@ function render(){
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
   EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
+}
+
+/* ---------- on the floor together: two-man pairings from the team's lineup stints (data/teams/<code>.json) ---------- */
+const TEAMFILE = {};
+async function loadTeamFile(code){
+  if(!(code in TEAMFILE)) TEAMFILE[code] = await getJSON(`data/teams/${code}.json`);
+  return TEAMFILE[code];
+}
+function pairsCard(){
+  const box = `<div class="pp-card c12" id="ppPairs">`, head = `<h3>On the floor together <small>this season · how the team does with him and each teammate on the court</small></h3>`;
+  const me = REC && REC.nbaId != null ? String(REC.nbaId) : null, code = REC && REC.team;
+  if(!me || !code) return "";
+  if(!(code in TEAMFILE)) return box + head + `<div class="pp-empty">Loading…</div></div>`;
+  const T = TEAMFILE[code];
+  const z = () => [0, 0, 0, 0, 0];   // seconds, points for, points against, possessions for, possessions against
+  const add = (a, s) => { a[0] += s[2]; a[1] += s[3]; a[2] += s[4]; a[3] += s[5]; a[4] += s[6]; };
+  const W = {}, MO = {}, TO = {}, ME = z();
+  for(const s of (T && T.stints) || []){
+    const ids = s[1].split(","), on = ids.includes(me);
+    if(on) add(ME, s);
+    for(const id of ids){
+      if(id === me) continue;
+      if(on) add(W[id] || (W[id] = z()), s); else add(TO[id] || (TO[id] = z()), s);
+    }
+  }
+  if(!ME[0]) return box + head + `<div class="pp-empty">Shows up once ${esc(REC.name.split(" ")[0])} has played for ${esc(code)} this season.</div></div>`;
+  const net = a => a[3] + a[4] ? (a[1] - a[2]) / ((a[3] + a[4]) / 2) * 100 : null;
+  const minus = (a, b) => a.map((v, i) => v - (b ? b[i] : 0));
+  const rows = Object.entries(W).filter(([, a]) => a[0] >= 20 * 60).map(([id, a]) => {
+    const without = minus(ME, a), tw = TO[id] || z();
+    return {id, name: (T.names || {})[id] || id, tog: a, wo: without, tw, n: net(a), nwo: net(without), ntw: net(tw)};
+  }).sort((a, b) => b.tog[0] - a.tog[0]);
+  if(!rows.length) return box + head + `<div class="pp-empty">Shows up once he's logged 20+ minutes next to a teammate.</div></div>`;
+  const fmt = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+  const cls = v => v == null ? "" : v >= 5 ? "w" : v <= -5 ? "lo" : "";
+  const mn = a => Math.round(a[0] / 60);
+  const big = rows.filter(r => r.tog[0] >= 60 * 60 && r.n != null);
+  const best = big.slice().sort((a, b) => b.n - a.n)[0], worst = big.slice().sort((a, b) => a.n - b.n)[0];
+  const link = r => window.playerLink ? playerLink(r.name, code) : esc(r.name);
+  const chips = best && worst && best !== worst ? `<div class="pp-note" style="margin:0 0 8px;font-size:12.5px">Best pairing: <b>${link(best)}</b> (${fmt(best.n)} per 100 in ${mn(best.tog)} min) · Weakest pairing: <b>${link(worst)}</b> (${fmt(worst.n)} per 100 in ${mn(worst.tog)} min)</div>` : "";
+  return box + head + chips + `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l" rowspan="2" style="vertical-align:bottom">Teammate</th><th colspan="3" style="text-align:center;border-bottom:1px solid var(--line)">Together</th>
+      <th colspan="2" style="text-align:center;border-bottom:1px solid var(--line)">Him, teammate sits</th><th colspan="2" style="text-align:center;border-bottom:1px solid var(--line)">Teammate, he sits</th></tr>
+      <tr><th>Min</th><th>+/-</th><th>Net</th><th>Min</th><th>Net</th><th>Min</th><th>Net</th></tr></thead><tbody>${rows.slice(0, 12).map(r => `<tr>
+      <td class="l">${link(r)}</td><td>${mn(r.tog)}</td><td>${fmt(r.tog[1] - r.tog[2]).replace(".0", "")}</td><td class="${cls(r.n)}">${fmt(r.n)}</td>
+      <td>${mn(r.wo)}</td><td class="${cls(r.nwo)}">${fmt(r.nwo)}</td><td>${mn(r.tw)}</td><td class="${cls(r.ntw)}">${fmt(r.ntw)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="pp-note">Net = points scored minus points allowed per 100 possessions while those players are on the court (green +5 or better, red −5 or worse). "Him, teammate sits" is ${esc(REC.name.split(" ").slice(-1)[0])} on the floor with that teammate on the bench; "Teammate, he sits" is the reverse. Teammates with 20+ minutes together, most minutes first. ${esc(code)} games only; early in the season a few good or bad stretches swing these a lot. For three-, four- and five-man groups, use Lineups on the <a href="team.html#${esc(code)}">team page</a>.</div></div>`;
 }
 
 /* ---------- crunch time: last 5 minutes of the 4th quarter or overtime, score within 5 ---------- */
@@ -884,6 +931,7 @@ async function show(id, el){
     }
     REC = rec; SEL = null; LOGS_ALL = {};
   }
+  if(REC && REC.team) loadTeamFile(REC.team).then(() => { const box = EL.querySelector("#ppPairs"); if(box && REC && REC.id === id) box.outerHTML = pairsCard(); });
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Injuries.ready;
   render();
