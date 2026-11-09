@@ -10,8 +10,8 @@ jobs:
           python3 - <<'PY'
           import re, json
           from update_stats import fetch
-          html = fetch("https://www.basketball-reference.com/leagues/NBA_2027_transactions.html")
-          print("BBR len", len(html or ""))
+          st, html = fetch("https://www.basketball-reference.com/leagues/NBA_2027_transactions.html")
+          print("BBR len", st, len(html or ""))
           from bs4 import BeautifulSoup
           soup = BeautifulSoup(html or "", "html.parser")
           for li in soup.select("ul.page_index > li")[:6]:
