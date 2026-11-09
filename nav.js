@@ -194,3 +194,56 @@ function mark(){
 }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", build); else build();
 })();
+
+/* Traded this season: a small ⇄ next to every player who's been traded since the draft, and next to the code or
+   name of every team that has made a trade (data/traded.json, built by trades.py). Window.Traded has the lookups. */
+(function(){
+"use strict";
+let T = null;
+const ready = fetch("data/traded.json?t=" + Math.floor(Date.now() / 6e5)).then(r => r.ok ? r.json() : null).then(d => { T = d; return d; }).catch(() => null);
+const md = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", timeZone: "UTC"});
+const NBA = {BRK: "BKN", CHO: "CHA", PHO: "PHX"};
+function player(pid){ return T && T.players ? T.players[pid] || null : null; }
+function team(code){ code = NBA[code] || code; return T && T.teams ? T.teams[code] || null : null; }
+function pTitle(list){ return "Traded this season: " + list.map(e => `${e[1] || "?"} → ${e[2] || "?"} (${md(e[0])})`).join("; "); }
+function tTitle(code, list){ return `${code} made ${list.length} trade${list.length === 1 ? "" : "s"} this season: ` + list.map(e => `with ${e[2].join(", ") || "?"} (${md(e[0])})`).join("; "); }
+function chip(pid){ const l = player(pid); return l ? `<span class="trd" title="${pTitle(l).replace(/"/g, "&quot;")}">⇄</span>` : ""; }
+function teamChip(code){ const l = team(code); return l ? `<span class="trd trd-t" title="${tTitle(NBA[code] || code, l).replace(/"/g, "&quot;")}">⇄</span>` : ""; }
+const css = document.createElement("style");
+css.textContent = `.trd{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:4px;border-radius:50%;background:#e7efff;color:#1D428A;font:700 10px/1 Inter,system-ui,sans-serif;vertical-align:1px;cursor:help;flex:none;text-decoration:none;}
+.trd-t{width:13px;height:13px;font-size:9px;margin-left:3px;}
+.trd-logo{position:relative;top:-7px;margin:0 -2px 0 -11px;width:12px;height:12px;font-size:8.5px;box-shadow:0 0 0 1.5px var(--panel,#fff);vertical-align:top;}
+.sitenav .trd-logo{box-shadow:0 0 0 1.5px #0b0b0d;}
+@media (prefers-color-scheme: dark){.trd{background:#1d2c4d;color:#9cb8ff;}}`;
+document.head.appendChild(css);
+const pidOf = el => { const h = el.getAttribute("href") || ""; const m = h.match(/#\/player\/([^/?#]+)/); return m ? decodeURIComponent(m[1]) : el.dataset.id || el.dataset.open || el.dataset.pid || null; };
+function paint(){
+  if(!T) return;
+  document.querySelectorAll('a.plink:not([data-trd]), a[href*="#/player/"]:not([data-trd]), td.nm[data-id]:not([data-trd]), [data-open]:not([data-trd]), [data-pid]:not([data-trd])').forEach(el => {
+    el.setAttribute("data-trd", "");
+    if(el.closest(".trd, .sitenav, .pp-hero, .jt")) return;
+    const pid = pidOf(el), c = pid && chip(pid);
+    if(!c) return;
+    const spot = el.querySelector(".pl-name") || el;
+    if(spot.tagName === "A") spot.insertAdjacentHTML("afterend", c); else spot.insertAdjacentHTML("beforeend", c);
+  });
+  document.querySelectorAll('a[href*="team.html#"]:not([data-trd]), [data-team]:not([data-trd])').forEach(el => {
+    el.setAttribute("data-trd", "");
+    if(el.closest(".trd, .jt") || el.querySelector("img.tp-big")) return;
+    const m = (el.getAttribute("href") || "").match(/team\.html#([A-Za-z]{3})\b/);
+    const code = (m ? m[1] : el.dataset.team || "").toUpperCase();
+    const txt = (el.textContent || "").trim();
+    if(!code || txt.length > 40 || /→|page|Trade Machine/i.test(txt)) return;   // only team names and codes, not "Team page →" links
+    const c = teamChip(code);
+    if(!c) return;
+    const prev = el.previousElementSibling;
+    const logo = el.querySelector("img") || (prev && prev.tagName === "IMG" ? prev : null);
+    if(logo){ logo.insertAdjacentHTML("afterend", c.replace('class="trd trd-t"', 'class="trd trd-t trd-logo"')); return; }   // on the logo's corner: takes no room
+    if(txt) el.insertAdjacentHTML("beforeend", c);
+  });
+}
+let raf = 0;
+const soon = () => { if(!raf) raf = requestAnimationFrame(() => { raf = 0; paint(); }); };
+ready.then(() => { paint(); new MutationObserver(soon).observe(document.documentElement, {childList: true, subtree: true}); });
+window.Traded = {ready, player, team, chip, teamChip, title: pTitle, _all: () => (T && T.players) || {}};
+})();

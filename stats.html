@@ -66,6 +66,8 @@
   .lead ol{list-style:none;margin:0;padding:0;}
   .lead li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 14px;border-bottom:1px solid var(--line);font-size:13px;}
   .lead li:last-child{border-bottom:0;}
+  .lead li .tlw{display:flex;align-items:center;gap:8px;} .lead li .tlw img{width:22px;height:22px;object-fit:contain;flex:none;}
+  .lead li .tlw a{color:inherit;text-decoration:none;font-weight:600;} .lead li .tlw a:hover{text-decoration:underline;}
   .lead li .n{color:var(--dim);}
   .lead li .who small{display:block;color:var(--dim);font-size:11px;}
   .lead li .v{font-weight:700;font-variant-numeric:tabular-nums;}
@@ -79,7 +81,7 @@
 <body>
 <div class="nba-band"><div class="wrap band-in">
   <div><h1>The Stat <span>Lab</span></h1><div class="meta" id="meta">Loading…</div></div>
-  <div class="jump"><a href="#teams">Team stats</a><a href="#leaders">League leaders</a><a href="#players">All players</a></div>
+  <div class="jump"><a href="#teams">Team stats</a><a href="#leaders">League leaders</a><a href="#teamleaders">Team leaders</a><a href="#players">All players</a></div>
 </div></div>
 <div class="wrap">
   <section id="teams">
@@ -98,6 +100,12 @@
     <p class="note" id="qualNote"></p>
     <div class="ctl"><span class="seg" id="lMode"><button data-m="pg" class="on">Per game</button><button data-m="tot">Totals</button></span></div>
     <div class="leaders" id="leadBody"><div class="empty">Loading…</div></div>
+  </section>
+  <section id="teamleaders">
+    <h2>Team leaders</h2>
+    <p class="note">All 30 teams ranked in the major stats, whole season. For points allowed, turnovers, defense and opponent shooting, lower is better, so the best team is on top.</p>
+    <div class="ctl"><span class="seg" id="tlShow"><button data-m="10" class="on">Top 10</button><button data-m="all">All 30</button></span></div>
+    <div class="leaders" id="tleadBody"><div class="empty">Loading…</div></div>
   </section>
   <section id="players">
     <h2>All players</h2>

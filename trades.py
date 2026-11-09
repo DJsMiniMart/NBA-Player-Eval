@@ -66,6 +66,15 @@ def name_index():
     return out
 
 
+SENT_SPLIT = re.compile(r"(?<=[a-z]{3}\.)\s+(?=[A-Z])")   # not after "Jr." or an initial
+TRADE_SENT = re.compile(r"\b(acquired|traded|in exchange|sent|received|three-team|four-team)\b", re.I)
+
+
+def trade_text(desc):
+    """Just the sentences of a transaction line that are about the trade (ESPN mixes in signings and waivers)."""
+    return " ".join(x for x in re.split(SENT_SPLIT, desc or "") if TRADE_SENT.search(x))
+
+
 def players_in(text, names):
     t = " " + fold(text) + " "
     hits = [(pid, nm) for key, (pid, nm) in names.items() if len(key) > 5 and f" {key} " in t]
@@ -74,14 +83,15 @@ def players_in(text, names):
 
 
 # ---------- grouping ESPN's lines into trades ----------
-def group(rows):
+def group(rows, names=None):
     """rows: [date, team, description, kind] (kind == 'trade'). Returns [{date, teams, rows}] newest first."""
     items = []
     for r in rows:
         if r[3] != "trade":
             continue
-        mentioned = [c for c in teams_in(r[2]) if c != r[1]]
-        items.append({"date": r[0], "team": r[1], "desc": r[2], "teams": [r[1]] + mentioned})
+        mentioned = [c for c in teams_in(trade_text(r[2]) or r[2]) if c != r[1]]
+        items.append({"date": r[0], "team": r[1], "desc": r[2], "teams": [r[1]] + mentioned,
+                      "who": {pid for pid, _ in players_in(trade_text(r[2]), names)} if names else set()})
     parent = list(range(len(items)))
 
     def find(i):
@@ -95,9 +105,11 @@ def group(rows):
             b = items[j]
             if abs((day(a["date"]) - day(b["date"])).days) > 2:
                 continue
-            # the same deal: each side names the other (or they name the same third team in a 3-team deal)
+            # the same deal: each side names the other, and they name the same player (or one side names none)
             if a["team"] in b["teams"] and b["team"] in a["teams"]:
-                parent[find(j)] = find(i)
+                pa, pb = a.get("who") or set(), b.get("who") or set()
+                if pa & pb or not pa or not pb:
+                    parent[find(j)] = find(i)
     groups = {}
     for i, it in enumerate(items):
         groups.setdefault(find(i), []).append(it)
@@ -215,6 +227,75 @@ def story_excerpt(url):
     return {"u": url, "h": h.get("headline") or "", "p": paras} if paras else None
 
 
+# ---------- who went where ----------
+FTEAM = {c: [fold(w) for w in ws] for c, ws in TEAM_WORDS.items()}
+
+
+def fteams(ftext):
+    """Teams named in already-folded text, in the order they appear."""
+    hits = []
+    for c, ws in FTEAM.items():
+        for w in ws:
+            m = re.search(r"\b" + re.escape(w) + r"\b", ftext)
+            if m:
+                hits.append((m.start(), c))
+                break
+    return [c for _, c in sorted(hits)]
+
+
+def direction(name, trade):
+    """(from, to) for one player in a trade, from Basketball-Reference's write-up or ESPN's lines (compared without
+    accents or punctuation, so Schröder matches Schroder)."""
+    fn = fold(name)
+    others = lambda c: [t for t in trade["teams"] if t != c]  # noqa: E731
+    for text in trade.get("bbr") or []:
+        for clause in re.split(r";", re.sub(r"^In a \d+-team trade,?\s*", "", text)):
+            fc = fold(clause)
+            p = fc.find(fn)
+            m = re.search(r"\btraded\b", fc)
+            if p < 0 or not m:
+                continue
+            giver = fteams(fc[:m.start()])
+            rest = fc[m.end():]
+            to_m = re.search(r"\bto\b", rest)
+            receiver = fteams(rest[to_m.end():]) if to_m else []
+            if not giver or not receiver:
+                continue
+            for_m = re.search(r"\bfor\b", rest)
+            cut = m.end() + for_m.start() if for_m else len(fc)
+            return (giver[0], receiver[0]) if p < cut else (receiver[0], giver[0])
+    for date, team, desc in trade["rows"]:
+        for sent in re.split(SENT_SPLIT, desc):
+            fs = fold(sent)
+            p = fs.find(fn)
+            if p < 0:
+                continue
+            before = fs[:p]
+            after_teams = [c for c in fteams(fs[p:]) if c != team]
+            ex = max(before.rfind(" for "), before.rfind("in exchange for"), before.rfind("sent "), before.rfind("traded "))
+            acq = max(before.rfind("acquired"), before.rfind("received"))
+            if acq >= 0 and acq > ex:                      # "Acquired NAME from X"
+                return (after_teams[0] if after_teams else next(iter(others(team)), None), team)
+            if ex >= 0:                                    # "Traded NAME to X" / "... for NAME" / "sent NAME to X"
+                return (team, after_teams[0] if after_teams else next(iter(others(team)), None))
+    return (None, None)
+
+
+def traded_map(trades, since):
+    players, teams = {}, {}
+    for t in trades:
+        if t["date"] < since:
+            continue
+        for c in t["teams"]:
+            teams.setdefault(c, []).append([t["date"], t["id"], [o for o in t["teams"] if o != c]])
+        for pid, nm in t["players"]:
+            frm, to = direction(nm, t)
+            players.setdefault(pid, []).append([t["date"], frm, to, t["id"], nm])
+    for v in players.values():
+        v.sort()
+    return {"since": since, "players": players, "teams": teams}
+
+
 # ---------- putting it together ----------
 def update(now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
@@ -223,8 +304,8 @@ def update(now=None):
     old_by = {t["id"]: t for t in old.get("trades", [])}
     morning = load(MORNING, {}) or {}
     rows = morning.get("transactions") or []
-    trades = group(rows)
     names = name_index()
+    trades = group(rows, names)
 
     # Basketball-Reference: only when a recent trade still lacks its write-up, and not more than every 3 hours
     recent = [t for t in trades if (now.date() - dt.date.fromisoformat(t["date"])).days <= 21]
@@ -256,7 +337,7 @@ def update(now=None):
         t["bbr"] = match_bbr(t, bbr) if bbr is not None else prev.get("bbr") or []
         if not t["bbr"] and prev.get("bbr"):
             t["bbr"] = prev["bbr"]
-        text = " ".join(r[2] for r in t["rows"]) + " " + " ".join(t["bbr"])
+        text = " ".join(trade_text(r[2]) for r in t["rows"]) + " " + " ".join(t["bbr"])
         found = players_in(text, names)
         t["players"] = [[pid, nm] for pid, nm in found]
         news = list(prev.get("news") or [])
@@ -279,6 +360,8 @@ def update(now=None):
                     print(f"Trades: story failed ({e})")
         out.append(t)
     save(OUT, {"at": now.isoformat(timespec="seconds"), "bbrTry": old.get("bbrTry"), "bbrAll": old.get("bbrAll"), "trades": out})
+    since = f"{end_year - 1}-06-15"     # this season's trades: from the draft on
+    save(os.path.join(HERE, "data", "traded.json"), dict(traded_map(out, since), at=now.isoformat(timespec="seconds")))
     print(f"Trades: {len(out)} this season, {sum(bool(t['bbr']) for t in out)} with the full deal from Basketball-Reference, "
           f"{sum(len(t['news']) for t in out)} stories saved")
 

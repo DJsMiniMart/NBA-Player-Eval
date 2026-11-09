@@ -420,11 +420,24 @@ function drawPicks(){
   if(!p || !p.rows || !p.rows.length){ $('picksBody').innerHTML = `<div class="empty">Draft pick details are saved during the morning update.</div>`; return; }
   const heads = p.headers && p.headers.length === p.rows[0].length ? p.headers : ["Year"].concat(p.rows[0].slice(1).map((_, i) => i ? "" : "Picks"));
   $('picksBody').innerHTML = `<table><thead><tr>${heads.map((h, i) => `<th class="l">${esc(h)}</th>`).join("")}</tr></thead>
-    <tbody>${p.rows.map(r => `<tr>${r.map((c, i) => i === 0 ? `<td class="l"><b>${esc(c)}</b></td>` : `<td class="pk ${pickClass(c)}">${pickHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <tbody>${p.rows.map(r => `<tr>${r.map((c, i) => i === 0 ? `<td class="l"><b>${esc(c)}</b></td>` : `<td class="pk ${pickClass(c)}">${pickGrades(c, +r[0], i)}${pickHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
+    <div class="note pad" style="margin:0;border-top:1px solid var(--line)"><b>Pick grades</b> (A+ best, F worst), like 2K's prospect grades: where the original team is projected to finish (its record so far plus Pulse's odds for the rest of the season), how many years out the pick is (the further out, the closer to an average pick), protections that keep it from conveying, and swaps. A projected No. 1 pick is an A+, mid-first-rounders are B/C, late firsts C-/D+, second-rounders D or lower. Hover a grade for the details.</div>
     <div class="note pad" style="margin:0;border-top:1px solid var(--line)"><span class="pkkey own">Own</span> keeps its pick · <span class="pkkey gone">To …</span> traded away · <span class="pkkey cond">Swap / protected</span> depends on where picks land · <span class="pkkey frz">Frozen / forfeited</span> can't be traded or was taken away. Team codes are RealGM's (GOS = Warriors, SAN = Spurs, UTH = Jazz, PHL = 76ers).</div>
     ${TEAM.picksAt ? `<div class="note pad" style="margin:0">As of ${new Date(TEAM.picksAt).toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"})}. "Own" means the team keeps its own pick; "To XXX" means it was traded away.</div>` : ""}`;
 }
 
+/* one 2K-style grade badge per pick in a RealGM cell (picks.js: PickRights + PickGrade) */
+function pickGrades(c, year, col){
+  if(!window.PickRights || !window.PickGrade || !year) return "";
+  const round = col === 2 ? 2 : 1;
+  const cell = PickRights.cell(CODE, c);
+  if(!cell.assets.length) return "";
+  return `<div class="pk-grades">${cell.assets.map(a => {
+    const g = PickGrade.gradeAsset(a, year, round);
+    const who = a.orig === CODE ? "own" : a.orig;
+    return `<span class="pk-g">${PickGrade.badge(g, a.text)}<small>${esc(who)}${a.range ? " " + esc(a.range) : ""}${a.swapWith ? " ⇄" + esc(a.swapWith) : ""}</small></span>`;
+  }).join("")}</div>`;
+}
 function pickClass(c){
   const t = String(c).trim();
   if(/^(Frozen|Forfeited)/i.test(t)) return "frz";
@@ -527,6 +540,65 @@ function drawShooting(){
   el.querySelectorAll("[data-side]").forEach(b => b.onclick = () => { shotSide = b.dataset.side; drawShooting(); });
 }
 
+/* ---------- roster ripple: whose minutes moved after each trade this season (window.Traded from nav.js) ---------- */
+let ripSel = 0, PREVSEASON = null;
+async function loadPrevSeason(){
+  if(PREVSEASON) return PREVSEASON;
+  const y = +String((LEAGUE && LEAGUE.season) || "").slice(0, 4);
+  PREVSEASON = (y && await getJSON(`data/season-${y}.json`)) || {players: []};
+  return PREVSEASON;
+}
+function drawRipple(){
+  const el = $('rippleBody');
+  if(!el) return;
+  const list = (window.Traded && Traded.team(CODE)) || [];
+  const T = TEAMS[CODE] || {n: CODE};
+  if(!list.length){ el.innerHTML = `<div class="card empty">${esc(T.n)} haven't made a trade this season.</div>`; return; }
+  if(ripSel >= list.length) ripSel = 0;
+  const trades = list.slice().sort((x, y) => x[0] < y[0] ? 1 : x[0] > y[0] ? -1 : 0), e = trades[ripSel], date = e[0];   // latest first
+  const games = ((LEAGUE && LEAGUE.games) || []).filter(g => g[2] === CODE || g[3] === CODE);
+  const dateOf = new Map(games.map(g => [g[0], g[1]]));
+  const inSeason = games.some(g => g[1] < date);
+  if(!inSeason && !PREVSEASON){ el.innerHTML = `<div class="card empty">Loading…</div>`; loadPrevSeason().then(drawRipple); return; }
+  // who moved in this trade (traded.json player entries carry the trade id)
+  const moved = {};
+  Object.entries((window.Traded && Traded.ready && TRADED_ALL()) || {}).forEach(([pid, l]) => l.forEach(x => { if(x[3] === e[1]) moved[fold(x[4])] = x[1] === CODE ? "out" : x[2] === CODE ? "in" : null; }));
+  const rows = {};
+  const row = (name) => rows[fold(name)] || (rows[fold(name)] = {name, b: 0, a: 0, gb: 0, ga: 0});
+  const nB = inSeason ? games.filter(g => g[1] < date).length : 82, nA = games.filter(g => g[1] >= date).length;
+  Object.values((TEAM && TEAM.players) || {}).forEach(p => p.g.forEach(g => {
+    const d = dateOf.get(g[0]); if(!d) return;
+    const r = row(p.n);
+    if(d >= date){ r.a += g[1]; r.ga++; } else if(inSeason){ r.b += g[1]; r.gb++; }
+  }));
+  if(!inSeason){
+    const bbr = NBA_TO_BBR[CODE] || CODE;
+    (PREVSEASON.players || []).filter(p => p.team === bbr).forEach(p => { const r = row(p.name); r.b += p.mp || 0; r.gb += p.g || 0; });
+  }
+  const out = Object.values(rows).map(r => ({...r, mb: nB ? r.b / nB : 0, ma: nA ? r.a / nA : 0, tag: moved[fold(r.name)] || null}))
+    .filter(r => r.mb >= 0.5 || r.ma >= 0.5).map(r => ({...r, d: r.ma - r.mb}));
+  out.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+  const max = Math.max(1, ...out.map(r => Math.abs(r.d)));
+  const freed = out.filter(r => r.tag === "out").reduce((s, r) => s + r.mb, 0), added = out.filter(r => r.tag === "in").reduce((s, r) => s + r.ma, 0);
+  const up = out.filter(r => !r.tag && r.d > 0).slice(0, 3), down = out.filter(r => !r.tag && r.d < 0).slice(0, 3);
+  const md = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", timeZone: "UTC"});
+  const short = n => n.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/, "").split(" ").slice(-1)[0];
+  const f1 = v => v.toFixed(1);
+  el.innerHTML = `<div class="card pad">
+      ${trades.length > 1 ? `<div class="chips" style="margin-bottom:12px">${trades.map((x, i) => `<button class="chip ${i === ripSel ? "on" : ""}" data-rip="${i}">${md(x[0])} · with ${esc(x[2].join(", ") || "?")}</button>`).join("")}</div>` : ""}
+      <div class="note" style="margin:0 0 10px">${inSeason ? `Minutes per team game in the ${nB} games before the ${md(date)} trade vs. the ${nA} since.` : `The ${md(date)} trade was in the offseason, so this compares minutes per team game last season with ${esc(T.n)} (82 games) vs. this season (${nA} games); other offseason moves show up here too.`}
+        ${nA < 5 ? " Only a few games since, so this will move a lot." : ""}</div>
+      <div class="rip-sum">${freed ? `<div><span>Minutes that left</span><b>${f1(freed)}</b><small>per game, with players traded away</small></div>` : ""}${added ? `<div><span>Minutes that arrived</span><b>${f1(added)}</b><small>per game, from players acquired</small></div>` : ""}
+        ${up.length ? `<div><span>Biggest gains</span><b>${up.map(r => `${esc(short(r.name))} +${f1(r.d)}`).join(", ")}</b></div>` : ""}${down.length ? `<div><span>Biggest drops</span><b>${down.map(r => `${esc(short(r.name))} −${f1(-r.d)}`).join(", ")}</b></div>` : ""}</div>
+      <div class="tw"><table><thead><tr><th class="l">Player</th><th>${inSeason ? "Before" : "Last season"}</th><th>${inSeason ? "After" : "This season"}</th><th>Change</th><th class="l" style="width:40%"></th></tr></thead><tbody>
+      ${out.slice(0, 18).map(r => `<tr><td class="l nm">${esc(r.name)}${r.tag === "in" ? ` <span class="tag" style="color:var(--good)">ACQUIRED</span>` : r.tag === "out" ? ` <span class="tag" style="color:var(--bad)">TRADED AWAY</span>` : ""}</td>
+        <td>${f1(r.mb)}</td><td>${f1(r.ma)}</td><td class="${r.d > 0.2 ? "pos" : r.d < -0.2 ? "neg" : ""}"><b>${r.d > 0 ? "+" : r.d < 0 ? "−" : ""}${f1(Math.abs(r.d))}</b></td>
+        <td class="l"><div class="rip-bar"><i class="${r.d >= 0 ? "up" : "dn"}" style="${r.d >= 0 ? "left:50%" : `right:50%`};width:${(Math.abs(r.d) / max * 50).toFixed(1)}%"></i></div></td></tr>`).join("")}</tbody></table></div>
+      <div class="note" style="margin:10px 0 0">Minutes per team game (games he missed count as 0), so injuries and rest show up too. Biggest changes first.</div></div>`;
+  el.querySelectorAll("[data-rip]").forEach(b => b.onclick = () => { ripSel = +b.dataset.rip; drawRipple(); });
+}
+const TRADED_ALL = () => { try{ return window.Traded && Traded._all ? Traded._all() : {}; }catch(_){ return {}; } };
+
 /* ---------- defense: ball pressure + opponents' shot profile ---------- */
 const PRESS = [
   ["tovPct", "Turnovers forced", "per 100 opponent possessions", v => v.toFixed(1)],
@@ -585,7 +657,9 @@ async function show(code){
   if(CODE !== code) return;
   TEAM = t;
   pick = [];
-  drawHero(); drawFilters(); drawData(); drawShooting(); drawDefense(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
+  if(window.PickGrade) PickGrade.ready.then(() => { if(CODE === code) drawPicks(); });
+  if(window.Traded) Traded.ready.then(() => { if(CODE === code) drawRipple(); });
+  drawHero(); drawFilters(); drawData(); drawShooting(); drawDefense(); drawRipple(); drawSchedule(); drawInjuries(); drawCap(); drawPicks(); drawHistory();
   if(window.Ticker) Ticker.show(code);
   $('asof').textContent = TEAM && TEAM.at ? `Team data updated ${new Date(TEAM.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}.` : "";
 }

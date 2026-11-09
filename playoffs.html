@@ -206,7 +206,7 @@ function drawLottery(S){
     const notes = [r.group, NO_REPEAT_NUMBER_ONE.includes(r.t) ? "can't pick No. 1 (won it in 2026)" : "", NO_TOP5.includes(r.t) ? "can't pick top 5 (top 5 in 2025 and 2026)" : ""].filter(Boolean).join(" · ");
     return `<tr><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td>
       <td title="${esc(notes)}"><span class="odds">${"<i style=\"background:var(--accent)\"></i>".repeat(r.balls)}</span></td>
-      <td><b>${pct(r.balls / totBalls)}</b></td><td>${pct(r.p.slice(0, 4).reduce((a, b) => a + b, 0))}</td><td>${r.exp.toFixed(1)}</td>
+      <td><b>${pct(r.balls / totBalls)}</b></td><td>${pct(r.p.slice(0, 4).reduce((a, b) => a + b, 0))}</td><td>${r.exp.toFixed(1)}</td><td>${window.PickGrade ? (() => { const v = r.p.reduce((s, q, k) => s + q * PickGrade.value(k + 1, 1), 0); return PickGrade.badge({letter: PickGrade.letter(v), value: v, slot: Math.round(r.exp), chance: 1}); })() : ""}</td>
       ${cols.map(k => `<td style="${shade(r.p[k])};font-size:11.5px">${r.p[k] >= .0005 ? pct(r.p[k]) : ""}</td>`).join("")}
       <td class="own">${o.text()}${owner !== r.t ? `<br>At its most likely spot (No. ${likely}): <b>${esc(owner)}</b> picks` : ""}</td></tr>`;
   }).join("");
@@ -220,11 +220,11 @@ function drawLottery(S){
       <div class="card"><b>No repeats</b><p>No team can pick No. 1 two years running, or top 5 three years running.${NO_REPEAT_NUMBER_ONE.length ? ` This year: ${NO_REPEAT_NUMBER_ONE.map(nick).join(", ")} can't win No. 1; ${NO_TOP5.map(nick).join(", ")} can't land top 5.` : ""}</p></div>
     </div>
     <h2 data-jump="Lottery odds">2027 lottery odds ${VIEW === "proj" ? "(Pulse projection)" : "(if the season ended today)"}</h2>
-    <div class="card tw lot"><table><thead><tr><th class="l">Team</th><th>W-L</th><th>Balls</th><th>No. 1</th><th>Top 4</th><th title="Average pick">Avg</th>${cols.map(k => `<th>${k + 1}</th>`).join("")}<th class="l">Who owns the pick</th></tr></thead><tbody>${body}</tbody></table></div>
+    <div class="card tw lot"><table><thead><tr><th class="l">Team</th><th>W-L</th><th>Balls</th><th>No. 1</th><th>Top 4</th><th title="Average pick">Avg</th><th title="2K-style pick grade from where this pick is likely to land">Grade</th>${cols.map(k => `<th>${k + 1}</th>`).join("")}<th class="l">Who owns the pick</th></tr></thead><tbody>${body}</tbody></table></div>
     <p class="note">Odds come from ${SIMS.toLocaleString()} simulated lotteries with the rules above. Ties are broken by record and then alphabetically (the league uses coin flips). "If the season ended today," the higher seed is assumed to win each play-in game, so the 8 seeds stand in for the 7-vs-8 losers. Pick ownership and protections come from RealGM and can be complex; check a team's Draft picks section for the full text.</p>
     <h2 data-jump="Picks 17-30">Picks 17-30</h2>
-    <div class="card tw"><table><thead><tr><th class="l">Pick</th><th class="l">Team</th><th>W-L</th><th class="l">Who owns the pick</th></tr></thead><tbody>${
-      rest.map((r, i) => `<tr><td class="l sd">${17 + i}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td><td class="l" style="white-space:normal">${(() => { const o = ownership(r.t), ow = o.ownerAt(17 + i); return ow === r.t ? `<b>${esc(r.t)}</b>` : `<b>${esc(ow)}</b> <span class="note">(${o.text()})</span>`; })()}</td></tr>`).join("")}</tbody></table></div>`;
+    <div class="card tw"><table><thead><tr><th class="l">Pick</th><th>Grade</th><th class="l">Team</th><th>W-L</th><th class="l">Who owns the pick</th></tr></thead><tbody>${
+      rest.map((r, i) => `<tr><td class="l sd">${17 + i}</td><td>${window.PickGrade ? PickGrade.badge(PickGrade.grade(r.t, PickGrade.firstDraft(), 1, {slot: 17 + i})) : ""}</td><td class="l tm">${img(r.t)}<a href="team.html#${r.t}">${esc(nick(r.t))}</a></td><td>${rec(r)}</td><td class="l" style="white-space:normal">${(() => { const o = ownership(r.t), ow = o.ownerAt(17 + i); return ow === r.t ? `<b>${esc(r.t)}</b>` : `<b>${esc(ow)}</b> <span class="note">(${o.text()})</span>`; })()}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function draw(){

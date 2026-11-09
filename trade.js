@@ -230,6 +230,14 @@ function minOutFor(inc){
 }
 const PROT1 = [["none","Unprotected"],["top3","Top-3 protected"],["top5","Top-5 protected"],["top8","Top-8 protected"],["top10","Top-10 protected"],["top14","Lottery protected (top 14)"],["top20","Top-20 protected"],["swap","Pick swap (rights only)"]];
 const PROT2 = [["none","Unprotected"],["top40","Top-40 protected"],["top45","Top-45 protected"],["top50","Top-50 protected"],["top55","Top-55 protected"],["swap","Pick swap (rights only)"]];
+/* 2K-style grade for a pick in the trade (picks.js PickGrade): protections become the range where it conveys */
+function pickGrade(k){
+  if(!window.PickGrade || k.kind === "complex" || k.prot === "swap") return window.PickGrade ? PickGrade.badge(null) : "";
+  const m = String(k.prot || "").match(/^top(\d+)$/);
+  let range = k.range || null;
+  if(m){ const n = +m[1] - (k.round === 2 ? 30 : 0); if(n >= 1 && n < 30) range = `${n + 1}-30`; }
+  return PickGrade.badge(PickGrade.grade(k.orig, k.year, k.round, {range}));
+}
 function pickName(k){
   const prot = (k.round === 1 ? PROT1 : PROT2).find(x => x[0] === k.prot);
   const rd = `${k.year} ${k.round === 1 ? "1st" : "2nd"}`;
@@ -322,7 +330,7 @@ function teamCard(t, r){
     </div>
     <div class="sec">
       <h4><span>Draft picks</span>${pickFormOpen === t ? "" : `<button class="ghost" data-addpick="${t}" style="font-family:Inter;text-transform:none;letter-spacing:0">+ Add pick</button>`}</h4>
-      ${picks.map(([k,i]) => `<div class="asset"><span class="what">🏀 ${esc(pickName(k))}</span>${others.length > 1 ? `<select data-pickto="${i}">${choose(k.to)}</select>` : `<span class="muted">to ${esc(short(k.to))}</span>`}<button class="ghost" data-delpick="${i}" title="Remove">✕</button></div>`).join("")}
+      ${picks.map(([k,i]) => `<div class="asset"><span class="what">${pickGrade(k)}${esc(pickName(k))}</span>${others.length > 1 ? `<select data-pickto="${i}">${choose(k.to)}</select>` : `<span class="muted">to ${esc(short(k.to))}</span>`}<button class="ghost" data-delpick="${i}" title="Remove">✕</button></div>`).join("")}
       ${pickFormOpen === t ? pickForm(t) : (picks.length ? "" : `<div class="muted">No picks in this trade.</div>`)}
     </div>
     <div class="sec">
@@ -444,7 +452,7 @@ function drawResults(ev){
       return `<div class="rcard" style="--c1:${T.c1}">
         <h3><img src="${logo(r.t)}" alt="" onerror="this.style.visibility='hidden'">${esc(T.n)}</h3>
         <div class="moves">
-          <div><b>Receive</b>${r.inP.length || r.inPicks.length || r.cashIn ? `<ul>${r.inP.map(p => `<li>${window.playerLink ? playerLink(p.name, p.team, null, p.id, ' target="_blank"') : esc(p.name)}${from(p.team)} <span class="muted">${M(p.salary)}</span></li>`).join("")}${r.inPicks.map(k => `<li>${esc(pickName(k))}${from(k.from)}</li>`).join("")}${r.cashIn ? `<li>${M(r.cashIn)} cash</li>` : ""}</ul>` : `<span class="muted">Nothing</span>`}</div>
+          <div><b>Receive</b>${r.inP.length || r.inPicks.length || r.cashIn ? `<ul>${r.inP.map(p => `<li>${window.playerLink ? playerLink(p.name, p.team, null, p.id, ' target="_blank"') : esc(p.name)}${from(p.team)} <span class="muted">${M(p.salary)}</span></li>`).join("")}${r.inPicks.map(k => `<li>${pickGrade(k)}${esc(pickName(k))}${from(k.from)}</li>`).join("")}${r.cashIn ? `<li>${M(r.cashIn)} cash</li>` : ""}</ul>` : `<span class="muted">Nothing</span>`}</div>
           <div><b>Send</b>${list(r.outP, r.outPicks, r.cashOut)}</div>
         </div>
         <div class="nums">
@@ -517,6 +525,7 @@ async function init(){
     try{ await navigator.clipboard.writeText(location.href); toast("Link copied"); }catch(_){ toast("Copy the address bar to share this trade"); }
   };
   drawTeams();
+  if(window.PickGrade) PickGrade.ready.then(drawTeams);   // grades need the projected standings
 }
 window.TradeMachine = {RULES, maxBack, evaluate: () => evaluate(), state: () => S};
 init();

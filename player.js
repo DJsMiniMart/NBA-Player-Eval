@@ -747,6 +747,7 @@ function render(){
       + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
       + (storiesCard() ? `<div class="pp-grid">${storiesCard()}</div><div class="pp-gap"></div>` : "")
       + `<div class="pp-grid">${clipsCard()}</div><div class="pp-gap"></div>`
+      + tradeHtml()
       + insightsHtml()
       + (pairsCard() ? `<div class="pp-grid">${pairsCard()}</div><div class="pp-gap"></div>` : "")
       + `<div class="pp-grid">${driversCard(cur, cur && cur.lg, "What drives their Pulse", "this season, per minute")}${G ? formCard(G, cur && cur.value) : `<div class="pp-card c6"><h3>Recent form</h3><div class="pp-empty">Shows up after a few games.</div></div>`}
@@ -777,7 +778,7 @@ function render(){
     + `<div id="pj-games"></div>` + gameCareer + `<div class="pp-gap"></div><div class="pp-grid" id="pj-seasons">${careerCard(REC.seasons, "Season by season", true, "per game · regular season")}</div>`
     + sectionHead("Playoffs", "Every postseason run.", "pj-playoffs") + playoffsBlock();
 
-  const JUMPS = [["pj-season", "This season"], ["pj-insights", "Pulse insights"], ["pj-career", "Career"], ["pj-games", "Shooting & passing"],
+  const JUMPS = [["pj-season", "This season"], ["pj-trade", "Before & after trade"], ["pj-insights", "Pulse insights"], ["pj-career", "Career"], ["pj-games", "Shooting & passing"],
     ["pj-splits", "Splits"], ["pj-log", "Game log"], ["pj-seasons", "Season by season"], ["pj-playoffs", "Playoffs"]];
   EL.innerHTML = heroHtml(team) + `<nav class="pp-jumps" id="ppJumps"><div class="pp-jumps-in"></div></nav><div class="pp-body">
     <div class="pp-grid">${bioCard()}${retired ? earningsCard() : contractCard()}${teamsCard()}</div>
@@ -799,9 +800,64 @@ function render(){
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
   bindPairs();
+  EL.querySelectorAll("[data-trsel]").forEach(b => b.onclick = () => { TRSEL = +b.dataset.trsel; const y = window.scrollY; render(); window.scrollTo(0, y); });
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
   EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
+}
+
+/* ---------- before & after the trade (data/traded.json via window.Traded; game logs from the player file) ---------- */
+let TRSEL = 0;
+function tradeHtml(){
+  const list = window.Traded && Traded.player(REC.id);
+  if(!list || !list.length) return "";
+  if(TRSEL >= list.length) TRSEL = 0;
+  const e = list[list.length - 1 - TRSEL];
+  const [date, from, to] = e;
+  const label = currentLabel(), prev = (() => { const y = +label.slice(0, 4) - 1; return `${y}-${String((y + 1) % 100).padStart(2, "0")}`; })();
+  const cur = ((REC.games || {})[label] || {}).logs || [], old = ((REC.games || {})[prev] || {}).logs || [];
+  const inSeason = cur.some(l => l[1] < date);
+  const nextTrade = list.find(x => x[0] > date);
+  const before = inSeason ? cur.filter(l => l[1] < date && (!list.find(x => x[0] < date) || l[1] >= list.filter(x => x[0] < date).slice(-1)[0][0])) : old;
+  const after = cur.filter(l => l[1] >= date && (!nextTrade || l[1] < nextTrade[0]));
+  const T = (window.PlayerPage && PlayerPage.TEAMS) || {};
+  const tn = c => (T[c] && T[c].n) || c || "?";
+  const agg = L => {
+    const s = {g: L.length, min: 0, pts: 0, ast: 0, reb: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, f3m: 0, f3a: 0, ftm: 0, fta: 0, pm: 0, w: 0, mar: 0};
+    L.forEach(l => { s.min += l[4]; s.pts += l[5]; s.ast += l[6]; s.reb += l[7] + l[8]; s.stl += l[9]; s.blk += l[10]; s.tov += l[11];
+      s.fgm += l[12]; s.fga += l[13]; s.f3m += l[14]; s.f3a += l[15]; s.ftm += l[16]; s.fta += l[17]; s.pm += l[18] || 0; s.w += l[19] === "W"; s.mar += l[21] || 0; });
+    s.pulse = s.min ? (s.pts + 2 * s.ast + 2 * s.reb + 4 * s.stl + s.blk - 4 * s.tov) / s.min : null;
+    return s;
+  };
+  const B = agg(before), A = agg(after);
+  const pg = (s, k) => s.g ? s[k] / s.g : null;
+  const pc = (m, a) => a ? m / a : null;
+  const ROWS = [
+    ["Games", s => s.g, v => v, 0], ["Minutes", s => pg(s, "min"), v => v.toFixed(1), 1], ["Points", s => pg(s, "pts"), v => v.toFixed(1), 1],
+    ["Rebounds", s => pg(s, "reb"), v => v.toFixed(1), 1], ["Assists", s => pg(s, "ast"), v => v.toFixed(1), 1], ["Steals", s => pg(s, "stl"), v => v.toFixed(1), 1],
+    ["Blocks", s => pg(s, "blk"), v => v.toFixed(1), 1], ["Turnovers", s => pg(s, "tov"), v => v.toFixed(1), -1],
+    ["FG%", s => pc(s.fgm, s.fga), v => (v * 100).toFixed(1), 1], ["3P%", s => pc(s.f3m, s.f3a), v => (v * 100).toFixed(1), 1], ["FT%", s => pc(s.ftm, s.fta), v => (v * 100).toFixed(1), 1],
+    ["+/- per game", s => pg(s, "pm"), v => (v > 0 ? "+" : "") + v.toFixed(1), 1], ["Pulse", s => s.pulse, v => v.toFixed(3), 1],
+  ];
+  const row = ([name, f, fmt, good]) => {
+    const b = B.g ? f(B) : null, a = A.g ? f(A) : null;
+    const d = b != null && a != null && name !== "Games" ? a - b : null;
+    const scale = /%/.test(name) ? 100 : 1;
+    const cls = d == null || Math.abs(d * scale) < (name === "Pulse" ? 0.03 : 0.3) ? "" : (d * good > 0 ? "w" : "lo");
+    return `<tr><td class="l">${name}</td><td>${b == null ? "—" : fmt(b)}</td><td>${a == null ? "—" : fmt(a)}</td>
+      <td class="${cls}">${d == null ? "" : (d > 0 ? "▲ " : d < 0 ? "▼ " : "") + (name === "Pulse" ? Math.abs(d).toFixed(3) : Math.abs(d * scale).toFixed(1))}</td></tr>`;
+  };
+  const rec = s => s.g ? `${s.w}-${s.g - s.w} in his games · ${(s.mar / s.g > 0 ? "+" : "") + (s.mar / s.g).toFixed(1)} avg margin` : "—";
+  const md = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"});
+  const lastTeam = (() => { const r = (REC.seasons || []).filter(x => x.season === prev); const t = r.map(x => x.team).filter(x => x && x !== "TOT");
+    return t.map(c => ({BRK: "BKN", CHO: "CHA", PHO: "PHX"})[c] || c).map(c => (T[c] && T[c].n.split(" ").slice(-1)[0]) || c).join(", "); })();
+  const beforeLbl = inSeason ? `With ${esc(tn(from))} (this season)` : `${esc(prev)}${lastTeam ? ` (${esc(lastTeam)})` : ""}`;
+  const pick = list.length > 1 ? `<div class="pk-chips" style="margin:0 0 10px">${list.slice().reverse().map((x, i) => `<button class="pk-chip${i === TRSEL ? " on" : ""}" data-trsel="${i}">${md(x[0])}: ${esc(x[1] || "?")} → ${esc(x[2] || "?")}</button>`).join("")}</div>` : "";
+  return sectionHead("Before &amp; after the trade", `Traded ${md(date)} from the ${esc(tn(from))} to the ${esc(tn(to))}. ${inSeason ? "This season's games before the trade vs. after it." : `An offseason trade, so "before" is his ${esc(prev)} season and "after" is this season.`}`, "pj-trade")
+    + `<div class="pp-grid"><div class="pp-card c12" id="ppTrade"><h3>Before &amp; after <small>per game</small></h3>${pick}
+      <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l"></th><th>${beforeLbl}</th><th>With ${esc(tn(to))}${nextTrade ? ` (until ${md(nextTrade[0])})` : ""}</th><th>Change</th></tr></thead>
+      <tbody>${ROWS.map(row).join("")}<tr><td class="l">Team in his games</td><td>${rec(B)}</td><td>${rec(A)}</td><td></td></tr></tbody></table></div>
+      <div class="pp-note">${A.g ? "" : `He hasn't played for ${esc(tn(to))} yet; the "after" column fills in once he does. `}${A.g && A.g < 5 ? "Only a few games since the trade, so the after column will move a lot. " : ""}Green ▲ / red ▼ = better / worse after the trade (fewer turnovers counts as better). Pulse = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</div></div></div><div class="pp-gap"></div>`;
 }
 
 /* ---------- on the floor together: two-man pairings from the team's lineup stints (data/teams/<code>.json) ---------- */
@@ -970,11 +1026,12 @@ async function show(id, el){
       el.querySelector("#ppBack2").onclick = () => { location.hash = window.PE_BACK || ""; };
       return;
     }
-    REC = rec; SEL = null; LOGS_ALL = {};
+    REC = rec; SEL = null; LOGS_ALL = {}; TRSEL = 0;
   }
   if(REC && REC.team) loadTeamFile(REC.team).then(() => { const box = EL.querySelector("#ppPairs"); if(box && REC && REC.id === id) box.outerHTML = pairsCard(); bindPairs(); });
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Injuries.ready;
+  if(window.Traded) await Traded.ready;
   render();
 }
 

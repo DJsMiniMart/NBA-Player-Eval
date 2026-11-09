@@ -81,6 +81,14 @@
   .prof .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c1);border-radius:4px;}
   .prof .bar b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.55;}
   .prof .n{text-align:right;} .prof .n small{display:block;font-size:10.5px;color:var(--dim);}
+  .pk-grades{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 6px;}
+  .pk-g{display:inline-flex;align-items:center;font-size:11.5px;color:var(--dim);font-weight:600;}
+  .rip-sum{display:flex;flex-wrap:wrap;gap:10px 26px;margin:0 0 12px;}
+  .rip-sum span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
+  .rip-sum b{font:700 20px/1.15 "Barlow Condensed",sans-serif;} .rip-sum small{display:block;font-size:11.5px;color:var(--dim);}
+  .rip-bar{position:relative;height:10px;background:var(--row);border-radius:5px;}
+  .rip-bar::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--dim);opacity:.5;}
+  .rip-bar i{position:absolute;top:0;bottom:0;border-radius:5px;} .rip-bar i.up{background:var(--good);} .rip-bar i.dn{background:var(--bad);}
   .big4{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
   tr.game{cursor:pointer;} tr.game:hover td{background:var(--accent-soft);}
   /* box score pop-up */
@@ -217,7 +225,7 @@
 <div class="picker"><div class="picker-in" id="picker"></div></div>
 <div class="hero"><div class="wrap hero-in" id="hero"><div class="empty" style="color:#fff">Loading…</div></div></div>
 <nav class="tabs"><div class="tabs-in" id="tabs">
-  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#defense">Defense</a><a href="#roster">Roster</a><a href="#schedule">Schedule</a>
+  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#defense">Defense</a><a href="#roster">Roster</a><a href="#ripple">Roster ripple</a><a href="#schedule">Schedule</a>
   <a href="#injuries">Injuries</a><a href="#cap">Cap sheet</a><a href="#picks">Draft picks</a>
   <a href="#records">Franchise records</a><a href="#awards">Awards</a><a href="#drafthist">Draft history</a>
 </div></nav>
@@ -250,6 +258,11 @@
     <h2>Roster</h2>
     <p class="note">This season's numbers for this team, using the filters above. Click a name for the player page.</p>
     <div class="card"><div class="tw" id="rosterBody"></div></div>
+  </section>
+  <section id="ripple">
+    <h2>Roster ripple</h2>
+    <p class="note">How each trade this season moved minutes around the roster: who lost playing time, who picked it up, and how much left or arrived with the players in the deal.</p>
+    <div id="rippleBody"></div>
   </section>
   <section id="schedule">
     <h2>Schedule</h2>
@@ -291,6 +304,7 @@
 <script src="nav.js"></script>
 <script src="player.js"></script>
 <script src="cap.js"></script>
+<script src="picks.js"></script>
 <script src="box.js"></script>
 <script src="zones.js"></script>
 <script src="hotstart.js"></script>

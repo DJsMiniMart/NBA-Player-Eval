@@ -158,6 +158,54 @@ function drawLeaders(){
       ${top.length ? `<ol>${top.map((p, i) => `<li><span class="n">${i + 1}</span><span class="who">${nameCell(p)}</span><span class="v">${fmt(per(p, k, m))}</span></li>`).join("")}</ol>` : `<div class="empty" style="padding:16px">No qualified players yet.</div>`}</div>`;
   }).join("");
 }
+/* ---------- team leaders: the same cards as the player leaders, ranking all 30 teams ----------
+   To add or drop a category, edit this list: [key from teamRows(), title, format, 1 = higher is better / -1 = lower is better, note].
+   Whole season, per game (rates and percentages as they are). */
+const TLEADS = [
+  ["winp", "Win %", pc, 1, "record"],
+  ["net", "Net rating", sg, 1, "per 100 possessions"],
+  ["ortg", "Offense", n1, 1, "points per 100 possessions"],
+  ["drtg", "Defense", n1, -1, "allowed per 100 · lowest"],
+  ["pts", "Points", n1, 1, "per game"],
+  ["opp", "Points allowed", n1, -1, "per game · fewest"],
+  ["diff", "Point margin", sg, 1, "per game"],
+  ["pe", "Team Pulse", n3, 1, "per 48 minutes"],
+  ["pace", "Pace", n1, 1, "possessions per 48 · fastest"],
+  ["reb", "Rebounds", n1, 1, "per game"],
+  ["orbp", "Offensive rebound %", pc, 1, "of available boards"],
+  ["ast", "Assists", n1, 1, "per game"],
+  ["tov", "Turnovers", n1, -1, "per game · fewest"],
+  ["stl", "Steals", n1, 1, "per game"],
+  ["blk", "Blocks", n1, 1, "per game"],
+  ["fg3m", "3-pointers made", n1, 1, "per game"],
+  ["fg3p", "3-point %", pc, 1, ""],
+  ["fgp", "Field goal %", pc, 1, ""],
+  ["ts", "True shooting %", pc, 1, ""],
+  ["ftp", "Free throw %", pc, 1, ""],
+  ["ofg3p", "Opponent 3-point %", pc, -1, "lowest"],
+  ["oefg", "Opponent eFG%", pc, -1, "lowest"],
+  ["paint", "Points in the paint", n1, 1, "per game"],
+  ["fast", "Fast-break points", n1, 1, "per game"],
+  ["offTov", "Points off turnovers", n1, 1, "per game"],
+  ["bench", "Bench points", n1, 1, "per game"],
+  ["cwp", "Clutch win %", pc, 1, "games within 5 in the last 5 min"],
+];
+const TL = {all: false};
+function drawTeamLeaders(){
+  const el = $('tleadBody');
+  if(!el) return;
+  if(!LEAGUE || !LEAGUE.games.length){ el.innerHTML = `<div class="empty">No games yet this season.</div>`; return; }
+  const keep = {...T}; Object.assign(T, {games: "all", loc: "all", conf: "all", mode: "pg"});
+  const rows = teamRows().filter(r => r.n);
+  Object.assign(T, keep);
+  const show = TL.all ? 30 : 10;
+  el.innerHTML = TLEADS.map(([k, title, f, better, note]) => {
+    const list = rows.filter(r => r[k] != null && isFinite(r[k])).sort((a, b) => (b[k] - a[k]) * better || b.winp - a.winp);
+    return `<div class="card lead"><h3><span>${esc(title)}</span><small>${esc(note || "")}</small></h3>
+      <ol>${list.slice(0, show).map((r, i) => `<li><span class="n">${i + 1}</span><span class="who tlw"><img src="${logo(r.c)}" alt="" onerror="this.remove()"><span><a href="team.html#${r.c}">${esc(TEAMS[r.c].n)}</a><small>${r.w}-${r.l}</small></span></span><span class="v">${f(r[k])}</span></li>`).join("")}</ol></div>`;
+  }).join("");
+}
+
 const PCOLS = [["g","GP",n0,0],["gs","GS",n0,0],["min","MIN",n1,1],["pts","PTS",n1,1],["reb","REB",n1,1],["oreb","OREB",n1,1],["dreb","DREB",n1,1],
   ["ast","AST",n1,1],["stl","STL",n1,1],["blk","BLK",n1,1],["tov","TOV",n1,-1],["fgm","FGM",n1,1],["fga","FGA",n1,0],["fgp","FG%",pc,1],
   ["fg3m","3PM",n1,1],["fg3a","3PA",n1,0],["fg3p","3P%",pc,1],["ftm","FTM",n1,1],["fta","FTA",n1,0],["ftp","FT%",pc,1],
@@ -197,10 +245,11 @@ async function init(){
   $('tLoc').onchange = e => { T.loc = e.target.value; drawTeams(); };
   $('tConf').onchange = e => { T.conf = e.target.value; drawTeams(); };
   seg('tMode', T, drawTeams); seg('lMode', L, drawLeaders); seg('pMode', P, drawPlayers);
+  document.querySelectorAll('#tlShow button').forEach(b => b.onclick = () => { TL.all = b.dataset.m === "all"; document.querySelectorAll('#tlShow button').forEach(x => x.classList.toggle("on", x === b)); drawTeamLeaders(); });
   $('pQ').oninput = e => { P.q = e.target.value; drawPlayers(); };
   $('pTeam').onchange = e => { P.team = e.target.value; drawPlayers(); };
   $('pQual').onchange = e => { P.qual = e.target.checked; drawPlayers(); };
-  drawTeams(); drawLeaders(); drawPlayers();
+  drawTeams(); drawLeaders(); drawTeamLeaders(); drawPlayers();
   topScroll('teamTable'); topScroll('playerTable');
 }
 /* a scroll bar above a wide table, always visible (phones and Macs hide the normal one), kept in step with the table */
