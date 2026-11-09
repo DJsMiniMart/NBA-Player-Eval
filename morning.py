@@ -208,6 +208,22 @@ def update(now, current_year):
     save(OUT, out)
 
 
+
+def refresh_tx():
+    """Hourly: just the transaction log and headlines, so a trade shows up (with its stories) the same day."""
+    import datetime as _dt
+    out = load(OUT, {}) or {}
+    if not out:
+        return
+    at = _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+    tx = transactions()
+    if tx:
+        out["transactions"], out["txAt"] = tx, at
+    n = news()
+    if n:
+        out["news"], out["newsAt"] = n, at
+    save(OUT, out)
+
 LINES_LOG = os.path.join(HERE, "data", "lines_log.json")
 
 

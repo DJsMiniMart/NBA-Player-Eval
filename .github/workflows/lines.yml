@@ -27,6 +27,11 @@ jobs:
         run: python injury_feed.py || echo "Injury report not refreshed this time"
       - name: Game highlight clips
         run: python highlights.py || echo "Highlights not refreshed this time"
+      - name: Trades (transactions, headlines, the full deal and its stories)
+        run: |
+          pip install -q beautifulsoup4 || true
+          python -c "import morning; morning.refresh_tx()" || echo "Transactions not refreshed this time"
+          python trades.py || echo "Trades not refreshed this time"
       - name: Re-pick with the new injury report
         run: python predict.py || echo "Picks not refreshed this time"
       - name: Save them

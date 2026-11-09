@@ -333,6 +333,7 @@ def main():
     # The NBA's own feed (nba_games.py) turns away GitHub's servers, so games come from ESPN
     run_step("games (box scores + play-by-play, from ESPN)", lambda: __import__("espn_games").update(now, year))
     run_step("morning page (recaps, headlines, transactions)", lambda: __import__("morning").update(now, year))
+    run_step("trades (full deal, players, stories)", lambda: __import__("trades").update(now))
     run_step("player pages", lambda: __import__("build_players").build(now, year))
     run_step("team extras (coach, picks, injuries)", lambda: __import__("teams_extra").update(now, year))
     run_step("injury report with timetables", lambda: __import__("injury_feed").update())
