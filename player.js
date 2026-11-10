@@ -337,11 +337,12 @@ function statLineCard(s, title, sub, extra, rk){
   const items = [["G", g], ["MIN", f1(per(s.mp,g))], ["PTS", f1(per(s.pts,g))], ["REB", f1(per(trb,g))], ["AST", f1(per(s.ast,g))],
     ["STL", f1(per(s.stl,g))], ["BLK", f1(per(s.blk,g))], ["TOV", s.tov != null ? f1(per(s.tov,g)) : "—"],
     ["FG%", s.fga != null ? pct(s.fg, s.fga) : "—"], ["3P%", s.fg3a != null ? pct(s.fg3, s.fg3a) : "—"], ["FT%", s.fta != null ? pct(s.ft, s.fta) : "—"]];
-  const R = k => { const r = rk && rk[k]; return r ? `<div class="pp-rk" title="${ordinal(r[0])} of ${r[1]} in the NBA · ${ordinal(r[2])} of ${r[3]} ${esc(POS_NAMES[rk.pos] || rk.pos)}"><span>#${r[0]} NBA</span><span>#${r[2]} ${esc(rk.pos)}</span></div>` : ""; };
+  const R = k => { const r = rk && rk[k]; if(!r || (r[0] > 25 && r[2] > 10)) return "";   // only notable ranks: top 25 in the NBA, top 10 at his position
+    return `<div class="pp-rk" title="${ordinal(r[0])} of ${r[1]} in the NBA · ${ordinal(r[2])} of ${r[3]} ${esc(POS_NAMES[rk.pos] || rk.pos)}">${r[0] <= 25 ? `<span>#${r[0]} NBA</span>` : ""}${r[2] <= 10 ? `<span>#${r[2]} ${esc(rk.pos)}</span>` : ""}</div>`; };
   return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
     <div class="pp-line">${items.map(([k,v])=>`<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div>${R(k)}</div>`).join("")}
     <div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(s.value)}</div>${R("Pulse")}</div></div>
-    ${rk ? `<div class="pp-note" style="margin-top:8px">Ranks: #NBA among the ${rk.MIN ? rk.MIN[1] : ""} players who qualify for the Pulse ranking${rk.qualified ? "" : " (he doesn't yet, so his are unofficial)"}, and #${esc(rk.pos)} among ${esc(POS_NAMES[rk.pos] || rk.pos)}. Shooting ranks need 3+ shots, 1.5+ threes or 1.5+ free throws a game.</div>` : ""}${extra || ""}</div>`;
+    ${rk ? `<div class="pp-note" style="margin-top:8px">Ranks shown when he's top 25 in the NBA (among the ${rk.MIN ? rk.MIN[1] : ""} players who qualify for the Pulse ranking${rk.qualified ? "" : "; he doesn't yet, so his are unofficial"}) or top 10 among ${esc(POS_NAMES[rk.pos] || rk.pos)}. Shooting ranks need 3+ shots, 1.5+ threes or 1.5+ free throws a game.</div>` : ""}${extra || ""}</div>`;
 }
 /* Career totals across every season (percentages only when every season has the shooting numbers) */
 function careerTotals(list){
