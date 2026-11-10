@@ -242,9 +242,14 @@ function contractCard(){
   if(!c || !c.years || !c.years.length){
     body = `<div class="pp-empty">${isRetired() ? `Not on an NBA contract — last played in ${esc(lastSeason().season)}.` : "No contract listed right now (free agent, two-way, or not yet posted)."}</div>`;
   } else {
-    body = `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th>Salary</th><th class="l">Note</th></tr></thead><tbody>
-      ${c.years.map(([s,amt,opt],i)=>`<tr${i===0?' class="cur"':""}><td class="l">${esc(s)}</td><td>${esc(amt)}</td><td class="l">${esc(opt ? opt[0].toUpperCase()+opt.slice(1) : "")}</td></tr>`).join("")}
+    const CR = window.CAP_RULES, y0 = CR ? +String(CR.season).slice(0, 4) : null;
+    const capFor = s => { if(!CR) return null; const y = +String(s).slice(0, 4); return y >= y0 ? CR.cap * Math.pow(1.07, y - y0) : null; };
+    const capPct = (s, amt) => { const cap = capFor(s), n = +String(amt).replace(/[^\d]/g, ""); return cap && n ? (100 * n / cap).toFixed(1) + "%" + (+String(s).slice(0, 4) > y0 ? "*" : "") : "—"; };
+    const est = c.years.some(([s]) => +String(s).slice(0, 4) > y0);
+    body = `<div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Season</th><th>Salary</th><th title="Share of that season's salary cap">% of cap</th><th class="l">Note</th></tr></thead><tbody>
+      ${c.years.map(([s,amt,opt],i)=>`<tr${i===0?' class="cur"':""}><td class="l">${esc(s)}</td><td>${esc(amt)}</td><td>${capPct(s, amt)}</td><td class="l">${esc(opt ? opt[0].toUpperCase()+opt.slice(1) : "")}</td></tr>`).join("")}
       </tbody></table></div>
+      ${CR ? `<div class="pp-note">% of cap: share of the ${esc(CR.season)} salary cap (${money(CR.cap)}). A max contract starts at 25%, 30% or 35% depending on years of service.${est ? " *Later seasons use an estimated cap growing 7% a year; the real figure is set each July." : ""}</div>` : ""}
       ${c.guaranteed ? `<div class="pp-note">Guaranteed money remaining: <b>${esc(c.guaranteed)}</b>${c.team ? " · " + esc(c.team) : ""}</div>` : ""}`;
   }
   const e = REC.earnings;
@@ -252,15 +257,91 @@ function contractCard(){
   return `<div class="pp-card c6"><h3>Contract <small>from Basketball-Reference</small></h3>${body}${sofar}</div>`;
 }
 
-function statLineCard(s, title, sub, extra){
+/* ---------- league context for this season: stat ranks and the value tracker (stats.json, contracts.json, schedule.json) ---------- */
+let LG = null, lgP = null;
+function leagueData(){
+  return lgP || (lgP = Promise.all([getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json")]).then(([st, ct, sc]) => {
+    const tg = {}; ((sc && sc.games) || []).forEach(g => { if(g[4] === 3){ tg[g[2]] = (tg[g[2]] || 0) + 1; tg[g[3]] = (tg[g[3]] || 0) + 1; } });
+    LG = {players: (st && st.players) || [], season: st && st.season, contracts: (ct && ct.players) || {}, teamG: tg}; return LG;
+  }).catch(() => null));
+}
+const NBA_OF = {BRK: "BKN", CHO: "CHA", PHO: "PHX"};
+const RANKED = [["MIN", p => p.mp / p.g], ["PTS", p => p.pts / p.g], ["REB", p => p.trb / p.g], ["AST", p => p.ast / p.g], ["STL", p => p.stl / p.g], ["BLK", p => p.blk / p.g],
+  ["FG%", p => p.fga / p.g >= 3 ? p.fg / p.fga : null], ["3P%", p => p.fg3a / p.g >= 1.5 ? p.fg3 / p.fg3a : null], ["FT%", p => p.fta / p.g >= 1.5 ? p.ft / p.fta : null], ["Pulse", p => p.value]];
+/* where he ranks in each stat: among qualified players (the Pulse ranking's games and minutes bar), and among his position */
+function statRanks(line){
+  if(!LG || !line) return null;
+  const me = LG.players.find(p => p.id === REC.id); if(!me || !me.g) return null;
+  const q = line.qual || [5, 15], ok = p => p.g >= q[0] && p.mp / p.g >= q[1];
+  const pool = LG.players.filter(p => p.g && (ok(p) || p === me));
+  const out = {qualified: ok(me), pos: me.pos};
+  RANKED.forEach(([k, f]) => {
+    const v = f(me); if(v == null || isNaN(v)) return;
+    const vals = pool.map(p => [p, f(p)]).filter(x => x[1] != null && !isNaN(x[1]));
+    const better = list => list.filter(x => x[1] > v).length + 1;
+    const posL = vals.filter(x => x[0].pos === me.pos);
+    out[k] = [better(vals), vals.length, better(posL), posL.length];
+  });
+  return out;
+}
+const TIERS_V = [[0, 3e6, "a minimum-contract"], [3e6, 10e6, "a bench"], [10e6, 25e6, "a rotation"], [25e6, 40e6, "a starter"], [40e6, 1e12, "a max"]];
+const tierName = v => (TIERS_V.find(t => v >= t[0] && v < t[1]) || TIERS_V[0])[2];
+const salNum = y => y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0;
+const med = a => { if(!a.length) return 0; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+const prodOf = p => (p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 4 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0);
+/* Value tracker: what the league pays for production like his this season (same method as the Pulse$ board):
+   the median salary of the 15 qualified players whose production per team game is closest to his. */
+function valueInfo(){
+  if(!LG || !LG.players.length) return null;
+  const season = LG.season, salOf = id => { const c = LG.contracts[id]; return salNum(c && (c.years || []).find(r => r[0] === season)); };
+  const most = Math.max(1, ...LG.players.map(p => p.g || 0)), minG = Math.max(1, Math.ceil(most / 2));
+  const rows = LG.players.filter(p => p.g && p.mp).map(p => { const tg = Math.max(p.g, LG.teamG[NBA_OF[p.team] || p.team] || 0);
+    return {p, sal: salOf(p.id), pace: prodOf(p) / tg, q: p.g >= minG && p.mp / p.g >= 10}; });
+  const pool = rows.filter(r => r.q && r.sal);
+  const me = rows.find(r => r.p.id === REC.id);
+  if(!me || pool.length < 30) return {me, minG, none: true};
+  const like = pace => med(pool.filter(r => r.p.id !== REC.id).sort((a, b) => Math.abs(a.pace - pace) - Math.abs(b.pace - pace)).slice(0, 15).map(r => r.sal));
+  const out = {me, minG, sal: me.sal || salNum(REC.contract && REC.contract.years && REC.contract.years[0]), like: like(me.pace), pace: me.pace, pool};
+  // last 10 games: his production per game in them, priced the same way
+  const L = ((REC.games || {})[currentLabel()] || {}).logs || [];
+  if(L.length >= 10 && L.length > me.p.g * 0.6){ const t = L.slice(-10), pr = t.reduce((a, l) => a + (+l[5] || 0) + 2 * (+l[6] || 0) + 2 * ((+l[7] || 0) + (+l[8] || 0)) + 4 * (+l[9] || 0) + (+l[10] || 0) - 4 * (+l[11] || 0), 0) / 10;
+    out.l10 = {pace: pr, like: like(pr)}; }
+  const sorted = pool.slice().sort((a, b) => b.pace - a.pace); out.rank = sorted.findIndex(r => r.p.id === REC.id) + 1; out.of = sorted.length;
+  return out;
+}
+function valueCard(){
+  const v = valueInfo();
+  if(!v) return "";
+  const M = n => "$" + (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : Math.round(n / 1e3) + "K");
+  if(v.none || !v.me || !v.me.q) return `<div class="pp-card c12" id="ppValue"><h3>Value tracker <small>what contract level he's playing at</small></h3><div class="pp-empty">${v.me ? `Needs ${v.minG}+ games and 10+ minutes a game to price his play (he's at ${v.me.p.g} game${v.me.p.g === 1 ? "" : "s"}, ${f1(v.me.p.mp / v.me.p.g)} minutes).` : "Shows up once he plays this season."}</div></div>`;
+  const sal = v.sal, like = v.like, d = like - sal, top = Math.max(60e6, sal, like) * 1.05, pc = x => Math.min(100, x / top * 100).toFixed(1);
+  const verdict = !sal ? `Playing like ${tierName(like)} player.` : Math.abs(d) < Math.max(2e6, sal * 0.1) ? "Playing right at his contract." : d > 0 ? `Outplaying his contract by ${M(d)}.` : `Playing ${M(-d)} below his contract.`;
+  const ticks = [[3e6, "Min"], [10e6, "$10M"], [25e6, "$25M"], [40e6, "$40M"], [CAP_PCT_MAX(), "Max"]].filter(t => t[0] < top);
+  return `<div class="pp-card c12" id="ppValue"><h3>Value tracker <small>what contract level he's playing at this season</small></h3>
+    <div class="pp-vt">
+      <div class="pp-vt-big"><span>Playing like</span><b>${M(like)}</b><em>${esc(tierName(like))} player</em></div>
+      <div class="pp-vt-big"><span>Paid</span><b>${sal ? M(sal) : "—"}</b><em>${sal ? esc(tierName(sal)) + " contract" : "no salary listed"}</em></div>
+      <div class="pp-vt-big ${!sal ? "" : d >= 0 ? "up" : "down"}"><span>Difference</span><b>${sal ? (d >= 0 ? "+" : "−") + M(Math.abs(d)) : "—"}</b><em>${esc(verdict)}</em></div>
+    </div>
+    <div class="pp-vbar" aria-hidden="true"><i class="paid" style="left:${pc(sal)}%" title="Paid"></i><i class="like" style="left:${pc(like)}%" title="Playing like"></i>
+      <span class="fill ${d >= 0 ? "up" : "down"}" style="left:${Math.min(pc(sal), pc(like))}%;width:${Math.abs(pc(like) - pc(sal))}%"></span>
+      ${ticks.map(t => `<s style="left:${pc(t[0])}%">${t[1]}</s>`).join("")}</div>
+    <div class="pp-vkey"><span><i class="paid"></i>Paid</span><span><i class="like"></i>Playing like</span>${v.l10 ? `<span>Last 10 games: playing like <b>${M(v.l10.like)}</b></span>` : ""}<span>Production #${v.rank} of ${v.of} qualified</span></div>
+    <div class="pp-note">"Playing like" is what the league actually pays for his level of play this season: the median salary of the 15 qualified players whose production per team game (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4, missed games count as zero) is closest to his. A max player having a rough year can price out at $20M; a cheap player having a breakout can price out at $30M. Same method as the Pulse$ board. Early in the season it swings a lot.</div></div>`;
+}
+const CAP_PCT_MAX = () => window.CAP_RULES ? CAP_RULES.cap * 0.30 : 49.5e6;
+
+function statLineCard(s, title, sub, extra, rk){
   if(!s) return `<div class="pp-card c12"><h3>${esc(title)}</h3><div class="pp-empty">No games played yet.</div></div>`;
   const g = s.g || 0, trb = s.trb != null ? s.trb : (s.drb||0)+(s.orb||0);
   const items = [["G", g], ["MIN", f1(per(s.mp,g))], ["PTS", f1(per(s.pts,g))], ["REB", f1(per(trb,g))], ["AST", f1(per(s.ast,g))],
     ["STL", f1(per(s.stl,g))], ["BLK", f1(per(s.blk,g))], ["TOV", s.tov != null ? f1(per(s.tov,g)) : "—"],
     ["FG%", s.fga != null ? pct(s.fg, s.fga) : "—"], ["3P%", s.fg3a != null ? pct(s.fg3, s.fg3a) : "—"], ["FT%", s.fta != null ? pct(s.ft, s.fta) : "—"]];
+  const R = k => { const r = rk && rk[k]; return r ? `<div class="pp-rk" title="${ordinal(r[0])} of ${r[1]} in the NBA · ${ordinal(r[2])} of ${r[3]} ${esc(POS_NAMES[rk.pos] || rk.pos)}"><span>#${r[0]} NBA</span><span>#${r[2]} ${esc(rk.pos)}</span></div>` : ""; };
   return `<div class="pp-card c12"><h3>${esc(title)} <small>${esc(sub || "per game")}</small></h3>
-    <div class="pp-line">${items.map(([k,v])=>`<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}
-    <div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(s.value)}</div></div></div>${extra || ""}</div>`;
+    <div class="pp-line">${items.map(([k,v])=>`<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div>${R(k)}</div>`).join("")}
+    <div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(s.value)}</div>${R("Pulse")}</div></div>
+    ${rk ? `<div class="pp-note" style="margin-top:8px">Ranks: #NBA among the ${rk.MIN ? rk.MIN[1] : ""} players who qualify for the Pulse ranking${rk.qualified ? "" : " (he doesn't yet, so his are unofficial)"}, and #${esc(rk.pos)} among ${esc(POS_NAMES[rk.pos] || rk.pos)}. Shooting ranks need 3+ shots, 1.5+ threes or 1.5+ free throws a game.</div>` : ""}${extra || ""}</div>`;
 }
 /* Career totals across every season (percentages only when every season has the shooting numbers) */
 function careerTotals(list){
@@ -756,7 +837,8 @@ function render(){
     const curPO = (REC.playoffs || []).find(x => x.season === label);
     const sim = REC.similarSeason;
     seasonHtml = sectionHead(`${esc(label)} season`, "This season only. Updated every morning.", "pj-season")
-      + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur))}</div><div class="pp-gap"></div>`
+      + `<div class="pp-grid">${statLineCard(cur, `${label} stat line`, "this season, per game", rankChips(cur), statRanks(cur))}</div><div class="pp-gap"></div>`
+      + (valueCard() ? `<div class="pp-grid">${valueCard()}</div><div class="pp-gap"></div>` : "")
       + (storiesCard() ? `<div class="pp-grid">${storiesCard()}</div><div class="pp-gap"></div>` : "")
       + `<div class="pp-grid">${clipsCard()}</div><div class="pp-gap"></div>`
       + tradeHtml()
@@ -1044,6 +1126,7 @@ async function show(id, el){
   if(window.HotStart) await HotStart.ready;
   if(window.Injuries) await Promise.all([Injuries.ready, Injuries.logReady()]);
   if(window.Traded) await Traded.ready;
+  await leagueData();
   render();
 }
 
