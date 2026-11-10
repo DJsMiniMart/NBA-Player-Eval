@@ -208,3 +208,6 @@
 .pk-nums b{font:700 22px/1.1 "Barlow Condensed",sans-serif;}
 .pk-nums b.pos{color:#2f9e44;} .pk-nums b.neg{color:#e03131;}
 @media (max-width:760px){.pk-cmp{grid-template-columns:1fr;}}
+
+.pp-injst{cursor:pointer;border-radius:8px;} .pp-injst:hover{background:var(--row,rgba(127,127,127,.08));}
+.pp-injmore{color:var(--accent,#C8102E);font-size:12.5px;white-space:nowrap;}

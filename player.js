@@ -198,7 +198,7 @@ function injuryLine(){
   const e = Injuries.find(REC.team, REC.name);
   if(!e || /^active$/i.test(e.status || "")) return "";
   const what = [e.side, e.type, e.detail].filter(Boolean).join(" "), wh = Injuries.when(e);
-  return `<a class="pp-inj" href="${esc(e.link)}" target="_blank" rel="noopener" title="${esc(e.note || e.long || "")}">🩹 <b>${esc(e.status)}</b>${what ? " · " + esc(what) : ""}${wh ? " · " + esc(wh) : ""} <span>${e.story ? "Read the story →" : "More on ESPN →"}</span></a>`;
+  return `<a class="pp-inj" href="#" data-inj="${esc(REC.team)}|${esc(REC.name)}" title="${esc(e.note || e.long || "")}">🩹 <b>${esc(e.status)}</b>${what ? " · " + esc(what) : ""}${wh ? " · " + esc(wh) : ""} <span>Injury details →</span></a>`;
 }
 function bioCard(){
   const b = REC.bio || {}, d = REC.draft;
@@ -696,12 +696,24 @@ function matesCard(I){
     <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l">Teammate</th><th>Games with</th><th>His Pulse with</th><th>Games without</th><th>His Pulse without</th><th>When he sits</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="pp-note">"When he sits" is how ${esc(REC.name.split(" ").slice(-1)[0])}'s Pulse changes in games that teammate missed, pulled toward no change when there are only a few such games (8 games' worth). Positive means he does more without that teammate (more shots and touches); negative means he's better with him. Only teammates averaging 15+ minutes who missed 4+ games count, and the other players out those nights aren't separated, so small numbers here are noise.</div></div>`;
 }
+/* injury storylines: on the report now, and earlier stints this season (data/injury_log.json); each opens InjuryPop */
+function injuryStories(){
+  if(!window.Injuries || !REC.team) return [];
+  const e = Injuries.find(REC.team, REC.name), cur = e && !/^active$/i.test(e.status || "") ? e : null;
+  const st = Injuries.stints(REC.name, e && e.id), md = Injuries.md, what = x => [x.side, x.type, x.detail].filter(Boolean).join(" ") || "an injury";
+  const out = [], key = `${REC.team}|${REC.name}`, open = st.find(s => !s.cleared);
+  const today = new Date().toISOString().slice(0, 10), dd = (a, b) => Math.max(0, Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5));
+  if(cur){ const wh = Injuries.when(cur), since = (open && open.first) || cur.date, n = since ? dd(since, today) : null;
+    out.push(["inj", "🩹", `${cur.status}: ${what(cur)}${since ? `, on the injury report since ${md(since)}${n ? ` (${n} day${n === 1 ? "" : "s"})` : ""}` : ""}.${wh ? " " + wh + "." : ""}${cur.note ? " " + cur.note : ""}`, key]); }
+  st.filter(s => s.cleared).slice(0, 3).forEach(s => out.push(["injback", "✅", `Back from ${what(s)}: on the report ${md(s.first)} to ${md(s.cleared)} (${dd(s.first, s.cleared)} days).`, key]));
+  return out;
+}
 function storiesCard(){
-  const st = (REC.insights && REC.insights.stories) || [];
+  const inj = injuryStories(), st = inj.concat((REC.insights && REC.insights.stories) || []);
   if(!st.length) return "";
   return `<div class="pp-card c12"><h3>Storylines <small>what's going on with him this season</small></h3>
-    <ul class="pp-stories">${st.map(([k, icon, t]) => `<li class="k-${esc(k)}"><span>${icon}</span><div>${esc(t)}</div></li>`).join("")}</ul>
-    <div class="pp-note">Built every morning from his contract, minutes, starts, game log, career totals and schedule. "Usual Pulse" is his expected level from the hot-start check (this season blended with last).</div></div>`;
+    <ul class="pp-stories">${st.map(([k, icon, t, ik]) => ik ? `<li class="k-${esc(k)} pp-injst" role="button" tabindex="0" data-inj="${esc(ik)}" title="Tap for the full injury details"><span>${icon}</span><div>${esc(t)} <b class="pp-injmore">Injury details →</b></div></li>` : `<li class="k-${esc(k)}"><span>${icon}</span><div>${esc(t)}</div></li>`).join("")}</ul>
+    <div class="pp-note">Built every morning from his contract, minutes, starts, game log, career totals and schedule; injury lines come from ESPN's report, checked hourly (tap one for the details). "Usual Pulse" is his expected level from the hot-start check (this season blended with last).</div></div>`;
 }
 function clipsCard(){
   const C = (REC.insights && REC.insights.clips) || [];
@@ -1030,7 +1042,7 @@ async function show(id, el){
   }
   if(REC && REC.team) loadTeamFile(REC.team).then(() => { const box = EL.querySelector("#ppPairs"); if(box && REC && REC.id === id) box.outerHTML = pairsCard(); bindPairs(); });
   if(window.HotStart) await HotStart.ready;
-  if(window.Injuries) await Injuries.ready;
+  if(window.Injuries) await Promise.all([Injuries.ready, Injuries.logReady()]);
   if(window.Traded) await Traded.ready;
   render();
 }

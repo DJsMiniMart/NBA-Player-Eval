@@ -354,9 +354,9 @@ async function drawInjuries(){
       const what = [x.side, x.type, x.detail].filter(Boolean).join(" ");
       const wh = window.Injuries && x.tl ? Injuries.when(x) : "";
       const note = x.long && x.long.length > (x.note || "").length ? x.long : x.note;
-      return `<div class="inj"><span class="who">${window.playerLink ? window.playerLink(x.name, CODE) : esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
+      return `<div class="inj injc" role="button" tabindex="0" data-inj="${esc(CODE)}|${esc(x.name)}" title="Tap for the full injury details"><span class="who">${window.playerLink ? window.playerLink(x.name, CODE) : esc(x.name)}${x.pos ? ` <span class="note">${esc(x.pos)}</span>` : ""}</span><span class="st ${cls}">${esc(x.status || "")}</span>
         ${wh ? `<span class="tl"><span>⏱ ${esc(wh)}</span></span>` : ""}
-        <span class="why">${what ? esc(what) + ". " : ""}${esc(note || "")}${x.date ? ` <span class="note">(${esc(md(x.date))})</span>` : ""}${x.link ? ` <a class="more" href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Read the story →" : "More on ESPN →"}</a>` : ""}</span></div>`;
+        <span class="why">${what ? esc(what) + ". " : ""}${esc(note || "")}${x.date ? ` <span class="note">(${esc(md(x.date))})</span>` : ""}${x.link ? ` <a class="more" href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Read the story →" : "More on ESPN →"}</a>` : ""} <span class="more">Details →</span></span></div>`;
     }).join("") + `<div class="note pad" style="margin:0">${src}</div>` : `<div class="empty">No injuries reported.<br><span class="note">${src}</span></div>`;
   };
   const saved = TEAM ? TEAM.injuries : null;
@@ -364,10 +364,29 @@ async function drawInjuries(){
   const d = window.Injuries ? await Injuries.ready : null;
   if(window.PlayerIndex) await PlayerIndex.ready;
   if(d && d.teams){
-    show(d.teams[CODE] || [], `ESPN injury report as of ${new Date(d.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}, refreshed hourly. Timetables come from the latest team and beat-writer news (e.g. "out 2–3 weeks", "re-evaluated in a week"); tap a name for his page, or the story link for the news.`);
+    drawInjHistory();
+    show(d.teams[CODE] || [], `ESPN injury report as of ${new Date(d.at).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})}, refreshed hourly. Timetables come from the latest team and beat-writer news (e.g. "out 2–3 weeks", "re-evaluated in a week"); tap a player for the full details (updates, games he'll miss, who steps in), or his name for his page.`);
   } else {
     show(saved, TEAM && TEAM.injuriesAt ? `As of ${new Date(TEAM.injuriesAt).toLocaleString("en-US", {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"})} (ESPN, saved during the morning update).` : "The injury report is saved during the morning update.");
   }
+}
+
+/* this season's injury history for the team (data/injury_log.json): who's been out, for how long, and who's back */
+async function drawInjHistory(){
+  if(!window.Injuries || !$('injHist')) return;
+  const L = await Injuries.logReady(); const all = ((L && L.stints) || []).filter(s => s.team === CODE);
+  if(!all.length){ $('injHist').innerHTML = ""; return; }
+  const today = new Date().toISOString().slice(0, 10), dd = (a, b) => Math.max(0, Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5));
+  const back = all.filter(s => s.cleared).sort((a, b) => b.cleared.localeCompare(a.cleared));
+  const byP = {}; all.forEach(s => { const k = s.name; (byP[k] = byP[k] || {name: k, days: 0, n: 0, open: false}); byP[k].days += dd(s.first, s.cleared || today); byP[k].n++; if(!s.cleared) byP[k].open = true; });
+  const top = Object.values(byP).sort((a, b) => b.days - a.days);
+  const lost = top.reduce((a, p) => a + p.days, 0);
+  const what = s => [s.side, s.type, s.detail].filter(Boolean).join(" ") || "Injury";
+  $('injHist').innerHTML = `<h3 class="injh">This season</h3>
+    <div class="note pad" style="margin:0 0 6px">${top.length} player${top.length === 1 ? "" : "s"} on the report so far, ${lost} player-days in all. Days count from when he went on the report to when he came off it.</div>
+    <div class="tw"><table><thead><tr><th class="l">Player</th><th>Days on the report</th><th>Times</th><th class="l">Now</th></tr></thead><tbody>
+    ${top.slice(0, 12).map(p => `<tr class="injc" role="button" tabindex="0" data-inj="${esc(CODE)}|${esc(p.name)}"><td class="l">${window.playerLink ? window.playerLink(p.name, CODE) : esc(p.name)}</td><td>${p.days}</td><td>${p.n}</td><td class="l">${p.open ? `<span class="st out" style="font-size:11px">On the report</span>` : "Back"}</td></tr>`).join("")}</tbody></table></div>
+    ${back.length ? `<h3 class="injh">Back from injury</h3>${back.slice(0, 6).map(s => `<div class="inj injc" role="button" tabindex="0" data-inj="${esc(CODE)}|${esc(s.name)}"><span class="who">${window.playerLink ? window.playerLink(s.name, CODE) : esc(s.name)}</span><span class="st oth" style="background:rgba(22,163,74,.14);color:#15803d">Back</span><span class="why">${esc(what(s))}. Out ${esc(Injuries.md(s.first))} to ${esc(Injuries.md(s.cleared))} (${dd(s.first, s.cleared)} days). <span class="more">Details →</span></span></div>`).join("")}` : ""}`;
 }
 
 /* ---------- cap sheet ---------- */

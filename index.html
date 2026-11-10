@@ -241,6 +241,15 @@
   .more[hidden]{display:none;}
   .foot{margin:28px 0 40px;color:var(--dim);font-size:12px;text-align:center;}
   @media (max-width:560px){ .hero h1{font-size:32px;} .tx td.k{display:none;} .news{grid-template-columns:1fr 84px;} .news img{width:84px;height:48px;} }
+  .injrow{display:grid;grid-template-columns:28px minmax(0,1.3fr) auto minmax(0,2fr);gap:4px 10px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .injrow:hover,.injrow:focus-visible{background:var(--row);outline:none;}
+  .injrow img{width:26px;height:26px;}
+  .injrow .who{font-weight:700;min-width:0;} .injrow .who small{display:block;font-weight:500;color:var(--dim);font-size:12px;}
+  .injrow .ist{font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:999px;white-space:nowrap;justify-self:start;}
+  .injrow .ist.out{background:rgba(200,16,46,.13);color:#c8102e;} .injrow .ist.dtd{background:rgba(217,119,6,.15);color:#b45309;} .injrow .ist.oth{background:var(--row);color:var(--dim);} .injrow .ist.back{background:rgba(22,163,74,.14);color:#15803d;}
+  .injrow .wh{font-size:13px;min-width:0;} .injrow .wh b{font-weight:600;} .injrow .wh span{color:var(--dim);}
+  .injrow .new{font:700 10px Inter,sans-serif;color:#fff;background:var(--accent,#C8102E);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px;}
+  @media (max-width:640px){.injrow{grid-template-columns:28px minmax(0,1fr) auto;} .injrow .wh{grid-column:2 / -1;}}
 </style>
 </head>
 <body>
@@ -256,7 +265,7 @@
 </div></header>
 <nav class="jumps" aria-label="Jump to a section"><div class="jumps-in" id="jumps">
   <a href="#scoresSec">Scores</a><a href="#hlSec">Highlights</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
-  <a href="#otdSec">On this day</a><a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#txSec">Transactions</a>
+  <a href="#otdSec">On this day</a><a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#injSec">Injuries</a><a href="#txSec">Transactions</a>
 </div></nav>
 
 <main class="wrap">
@@ -315,6 +324,18 @@
     </aside>
   </div>
 
+  <section class="sec" id="injSec">
+    <div class="sec-h"><h2>Injury report</h2><small id="injAt">Tap an injury for the timetable, updates, games he'll miss and who steps in</small></div>
+    <div class="card">
+      <div class="txbar">
+        <div class="tabs" id="injTabs" role="tablist"><button data-v="key" class="on">Key players</button><button data-v="new">New</button><button data-v="back">Back</button><button data-v="all">Everyone</button></div>
+        <select id="injTeam" aria-label="Team"><option value="">All teams</option></select>
+      </div>
+      <div id="injList"><div class="empty" style="padding:14px">Loading the injury report…</div></div>
+      <button class="more" id="injMore" hidden>Show more</button>
+    </div>
+  </section>
+
   <section class="sec" id="txSec">
     <div class="sec-h"><h2>Transaction tracker</h2><small id="txAt"></small></div>
     <div class="card">
@@ -342,6 +363,7 @@
 <script src="cap.js"></script>
 <script src="picks.js"></script>
 <script src="tradepop.js"></script>
+<script src="injpop.js"></script>
 <script src="search.js"></script>
 <script src="clips.js"></script>
 <script>
@@ -584,11 +606,11 @@ function injHtml(u){
     return `<div><span>${esc(t)}</span>${rows.slice(0, 4).map(r => { const st = String(r[1]).toLowerCase();
       const cls = st === "out" ? "out" : st === "doubtful" ? "dbt" : "q";
       const e = window.Injuries ? Injuries.find(t, r[0]) : null, tg = e ? Injuries.tag(e) : "", wh = e ? Injuries.when(e) : "";
-      const tip = `${esc(r[0])}: ${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}${wh ? " · " + esc(wh) : ""}${e && (e.note || e.long) ? " — " + esc(e.note || e.long) : ""}${e ? " (tap the status for the story)" : ""}`;
+      const tip = `${esc(r[0])}: ${esc(r[1])}${r[2] ? " · " + esc(r[2]) : ""}${wh ? " · " + esc(wh) : ""}${e && (e.note || e.long) ? " — " + esc(e.note || e.long) : ""}${e ? " (tap the status for the full injury details)" : ""}`;
       const inner = `${esc(lastName(r[0]))} <b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b>${tg ? `<small>${esc(tg)}</small>` : ""}`;
       const nameLink = window.playerLink ? playerLink(r[0], t, lastName(r[0])) : esc(lastName(r[0]));
       const badge = `<b>${st === "out" ? "OUT" : st === "doubtful" ? "D" : st === "questionable" ? "Q" : st === "day-to-day" ? "DTD" : esc(r[3] || r[1])}</b>${tg ? `<small>${esc(tg)}</small>` : ""}`;
-      return `<i class="${cls}" title="${tip}">${nameLink} ${e && e.link ? `<a class="injs" href="${esc(e.link)}" target="_blank" rel="noopener" title="${tip}">${badge}</a>` : badge}</i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
+      return `<i class="${cls}" title="${tip}">${nameLink} ${e ? `<a class="injs" href="#" data-inj="${esc(t)}|${esc(r[0])}" title="${tip}">${badge}</a>` : badge}</i>`; }).join("")}${rows.length > 4 ? `<i class="more">+${rows.length - 4}</i>` : ""}</div>`;
   };
   return `<div class="inj">${side(u.away)}${side(u.home)}</div>${lineupHtml(u)}`;
 }
@@ -753,6 +775,54 @@ function setupTx(){
   $("txMore").onclick = () => { TX.shown += 50; renderTx(); };
 }
 
+
+/* ---------- injury report (data/injuries.json + data/injury_log.json; tap a row for InjuryPop) ---------- */
+const INJ = {view: "key", team: "", shown: 20, rows: null};
+async function setupInjuries(){
+  $("injTeam").innerHTML += Object.keys(TEAMS).sort((a, b) => TEAMS[a].n.localeCompare(TEAMS[b].n)).map(c => `<option value="${c}">${esc(TEAMS[c].n)}</option>`).join("");
+  $("injTabs").onclick = e => { const b = e.target.closest("button"); if(!b) return; INJ.view = b.dataset.v; INJ.shown = 20; $("injTabs").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderInjuries(); };
+  $("injTeam").onchange = e => { INJ.team = e.target.value; INJ.shown = 20; renderInjuries(); };
+  $("injMore").onclick = () => { INJ.shown += 40; renderInjuries(); };
+  if(!window.Injuries) return;
+  const [d, , st, ct] = await Promise.all([Injuries.ready, Injuries.logReady(), getJSON("data/stats.json"), getJSON("data/contracts.json"), window.PlayerIndex ? PlayerIndex.ready : null]);
+  const byName = new Map(((st && st.players) || []).map(p => [fold(p.name), p])), C = (ct && ct.players) || {};
+  const weight = (name, team) => { const p = byName.get(fold(name)), pid = window.PlayerIndex ? PlayerIndex.id(name, team) : null, c = pid && C[pid];
+    const sal = c && c.years && c.years[0] ? +String(c.years[0][1]).replace(/[^\d]/g, "") || 0 : 0;
+    return {mpg: p && p.g ? p.mp / p.g : 0, sal, key: (p && p.g && p.mp / p.g >= 20) || sal >= 15e6}; };
+  const now = new Date(), iso = new Date(now - now.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  const ago = s => Math.round((new Date(iso + "T12:00:00") - new Date(String(s).slice(0, 10) + "T12:00:00")) / 864e5);
+  const rows = [];
+  Object.entries((d && d.teams) || {}).forEach(([team, list]) => list.filter(x => !/^active$/i.test(x.status || "")).forEach(x => {
+    const s = Injuries.stints(x.name, x.id).find(z => !z.cleared);
+    rows.push(Object.assign({team, e: x, since: s ? s.first : x.date, isNew: s ? ago(s.first) <= 2 : false}, weight(x.name, team))); }));
+  const back = ((Injuries.log() || {}).stints || []).filter(s => s.cleared && ago(s.cleared) <= 4 && !rows.some(r => r.e.name === s.name))
+    .map(s => Object.assign({team: s.team, back: s, since: s.cleared}, weight(s.name, s.team)));
+  INJ.rows = rows; INJ.back = back;
+  $("injAt").textContent = `${rows.length} players on the report · ESPN, checked ${new Date(d.at).toLocaleString("en-US", {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"})} · tap one for the full picture`;
+  renderInjuries();
+}
+function renderInjuries(){
+  if(!INJ.rows){ return; }
+  const ord = r => ({out: 0, dtd: 1, oth: 2})[Injuries.cls(r.e.status)];
+  let list = INJ.view === "back" ? INJ.back.slice().sort((a, b) => String(b.since).localeCompare(String(a.since)) || b.mpg - a.mpg)
+    : INJ.rows.filter(r => INJ.view === "all" || (INJ.view === "new" ? r.isNew : r.key || INJ.team));
+  if(INJ.team) list = list.filter(r => r.team === INJ.team);
+  if(INJ.view === "new") list.sort((a, b) => String(b.since).localeCompare(String(a.since)) || b.mpg - a.mpg);
+  else if(INJ.view !== "back") list.sort((a, b) => ord(a) - ord(b) || b.mpg - a.mpg || b.sal - a.sal);
+  const md = Injuries.md;
+  const row = r => { const x = r.e || r.back, wh = r.e && r.e.tl ? Injuries.when(r.e) : "", what = [x.side, x.type, x.detail].filter(Boolean).join(" ") || "Injury";
+    const st = r.back ? ["Back", "back"] : [r.e.status, Injuries.cls(r.e.status)];
+    return `<div class="injrow" role="button" tabindex="0" data-inj="${esc(r.team)}|${esc(x.name)}" aria-label="${esc(x.name)} injury details">
+      <img src="${window.teamBadge ? teamBadge(r.team) : ""}" alt="${esc(r.team)}">
+      <div class="who">${window.playerLink ? playerLink(x.name, r.team) : esc(x.name)}${r.isNew ? `<span class="new">NEW</span>` : ""}<small>${esc(TEAMS[r.team] ? TEAMS[r.team].n : r.team)}${r.mpg ? ` · ${r.mpg.toFixed(1)} min` : ""}</small></div>
+      <span class="ist ${st[1]}">${esc(st[0])}</span>
+      <div class="wh"><b>${esc(what)}</b>${r.back ? ` <span>· out ${esc(md(r.back.first))}–${esc(md(r.back.cleared))}</span>` : `${wh ? ` · ${esc(wh)}` : ""} <span>· since ${esc(md(r.since))}</span>`}</div></div>`; };
+  $("injList").innerHTML = list.length ? list.slice(0, INJ.shown).map(row).join("")
+    : `<div class="empty" style="padding:14px">${INJ.view === "new" ? "No new injuries in the last 2 days." : INJ.view === "back" ? "Nobody has come off the report in the last 4 days." : "No injuries here."}</div>`;
+  $("injMore").hidden = list.length <= INJ.shown;
+  $("injMore").textContent = `Show more (${list.length - INJ.shown} left)`;
+}
+
 /* ---------- putting it together ---------- */
 async function showNight(d){
   NIGHT = d;
@@ -772,6 +842,7 @@ async function showNight(d){
 
 async function init(){
   setupTx();
+  setupInjuries();
   [LEAGUE, SCHED, MORNING, PLAYERS, PRED] = await Promise.all([getJSON("data/teams/league.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/teams/players.json"), getJSON("data/predictions.json")]);
   LEAGUE = LEAGUE || {games: []};
   getJSON("data/stats.json").then(s => { IDS = new Map(((s && s.players) || []).map(p => [fold(p.name), p.id])); if(NIGHT) showNight(NIGHT); });

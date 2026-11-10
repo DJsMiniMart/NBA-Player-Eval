@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "data", "injuries.json")
+LOG = os.path.join(HERE, "data", "injury_log.json")
 MORNING = os.path.join(HERE, "data", "morning.json")
 URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/injuries"
 NAMES = {"Atlanta Hawks": "ATL", "Boston Celtics": "BOS", "Brooklyn Nets": "BKN", "Charlotte Hornets": "CHA", "Chicago Bulls": "CHI",
@@ -148,6 +149,59 @@ def build(raw, news):
     return teams
 
 
+def update_log(teams, today=None):
+    """Keep a running history of every injury stint -> data/injury_log.json, so the site can show when a player went
+    on the report, each new update about him, and when he came off it (back from injury).
+    {"at", "stints": [{"id", "name", "team", "first", "last", "cleared", "status", "type", "side", "detail",
+    "updates": [[date, status, note], ...]}]}  One open stint (cleared null) per player at a time."""
+    today = today or dt.date.today().isoformat()
+    try:
+        with open(LOG, encoding="utf-8") as f:
+            log = json.load(f) or {}
+    except (OSError, ValueError):
+        log = {}
+    stints = log.get("stints") or []
+    key = lambda x: x.get("id") or x.get("name", "").lower()   # noqa: E731
+    open_ = {key(s): s for s in stints if not s.get("cleared")}
+    seen = set()
+    for code, rows in teams.items():
+        for r in rows:
+            if str(r.get("status") or "").lower() == "active":
+                continue
+            k = key(r)
+            seen.add(k)
+            s = open_.get(k)
+            if not s:   # back on the report within 2 days of coming off it: same injury, reopen it
+                recent = [x for x in stints if key(x) == k and x.get("cleared") and
+                          (dt.date.fromisoformat(today) - dt.date.fromisoformat(x["cleared"])).days <= 2]
+                if recent:
+                    s = recent[-1]
+                    s["cleared"] = None
+                    open_[k] = s
+            if not s:
+                s = {"id": r.get("id"), "name": r["name"], "team": code, "first": min(r.get("date") or today, today),
+                     "cleared": None, "updates": []}
+                stints.append(s)
+                open_[k] = s
+            s.update({"name": r["name"], "team": code, "last": today, "status": r.get("status"), "type": r.get("type"),
+                      "side": r.get("side"), "detail": r.get("detail")})
+            note = (r.get("note") or "").strip()
+            up = s["updates"]
+            if note and not any(u[2] == note for u in up):
+                up.append([r.get("date") or today, r.get("status"), note])
+                del up[:-8]
+            elif not up:
+                up.append([r.get("date") or today, r.get("status"), ""])
+    for k, s in open_.items():
+        if k not in seen:
+            s["cleared"] = today
+    cut = (dt.date.fromisoformat(today) - dt.timedelta(days=240)).isoformat()
+    stints = [s for s in stints if not s.get("cleared") or s["cleared"] >= cut]
+    with open(LOG, "w", encoding="utf-8") as f:
+        json.dump({"at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "stints": stints}, f, separators=(",", ":"))
+    return stints
+
+
 def update():
     try:
         with urlopen(Request(URL, headers={"User-Agent": "Mozilla/5.0"}), timeout=60) as r:
@@ -166,6 +220,11 @@ def update():
         return
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "teams": teams}, f, separators=(",", ":"))
+    try:
+        st = update_log(teams)
+        print(f"Injury log: {sum(1 for x in st if not x.get('cleared'))} open, {sum(1 for x in st if x.get('cleared'))} cleared")
+    except Exception as e:  # noqa: BLE001
+        print(f"Injury log not updated ({e})")
     n = sum(len(v) for v in teams.values())
     print(f"Injuries: {n} players, {sum(1 for v in teams.values() for x in v if x['tl'])} with a timetable")
 

@@ -79,6 +79,7 @@
 <script src="player.js"></script>
 <script src="hotstart.js"></script>
 <script src="injuries.js"></script>
+<script src="injpop.js"></script>
 <script src="mypicks.js"></script>
 <script src="clips.js"></script>
 <script>
@@ -251,7 +252,7 @@ function injHtml(t, U){
   const d = window.Injuries && Injuries.data(), list = ((d && d.teams && d.teams[t]) || []).filter(x => !/^active$/i.test(x.status || ""));
   const rows = list.map(x => { const s = String(x.status || "").toLowerCase(), cls = s.includes("out") ? "out" : "dtd";
     const what = [x.side, x.type, x.detail].filter(Boolean).join(" "), wh = Injuries.when(x);
-    return `<div class="inj">${playerLink(x.name, t)}<span class="st ${cls}">${esc(x.status)}</span>${wh ? `<span class="tl">⏱ ${esc(wh)}</span>` : ""}<span class="why">${what ? esc(what) + ". " : ""}${esc(x.note || "")} ${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Story →" : "ESPN →"}</a>` : ""}</span></div>`; }).join("");
+    return `<div class="inj" role="button" tabindex="0" style="cursor:pointer" data-inj="${esc(t)}|${esc(x.name)}" title="Tap for the full injury details">${playerLink(x.name, t)}<span class="st ${cls}">${esc(x.status)}</span>${wh ? `<span class="tl">⏱ ${esc(wh)}</span>` : ""}<span class="why">${what ? esc(what) + ". " : ""}${esc(x.note || "")} ${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener">${x.story ? "Story →" : "ESPN →"}</a>` : ""} <b style="color:var(--accent,#C8102E);font-size:12px">Details →</b></span></div>`; }).join("");
   return `<div class="card"><div class="tmhead"><img src="${logo(t)}" alt="">${esc(nick(t))}</div>${rows || `<div class="empty">No injuries reported.</div>`}</div>`;
 }
 function playersHtml(PL, t){

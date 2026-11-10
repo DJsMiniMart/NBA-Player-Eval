@@ -164,6 +164,7 @@
   .gcard .o img{width:28px;height:28px;object-fit:contain;}
   .gcard .t{font-size:12px;color:var(--dim);}
   /* injuries */
+  .injc{cursor:pointer;} .injc:hover{background:var(--row);} #injHist:empty{display:none;} .injh{margin:12px 14px 6px;font:700 17px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;}
   .inj{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:12px 16px;border-bottom:1px solid var(--line);}
   .inj:last-child{border-bottom:0;}
   .inj .who{font-weight:600;}
@@ -271,6 +272,7 @@
   <section id="injuries">
     <h2>Injury report</h2>
     <div class="card" id="injBody"></div>
+    <div class="card" id="injHist" style="margin-top:12px"></div>
   </section>
   <section id="cap">
     <h2>Cap sheet</h2>
@@ -309,6 +311,7 @@
 <script src="zones.js"></script>
 <script src="hotstart.js"></script>
 <script src="injuries.js"></script>
+<script src="injpop.js"></script>
 <script src="clips.js"></script>
 <script src="ticker.js"></script>
 <script src="team.js"></script>

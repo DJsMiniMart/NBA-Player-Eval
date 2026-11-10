@@ -31,5 +31,14 @@ function when(e){
   if(t.reevalLabel && t.kind !== "reeval") s += ` · ${t.reevalLabel}`;
   return s;
 }
-window.Injuries = {ready, find, tag, when, data: () => DATA};
+/* the running history (data/injury_log.json, injury_feed.update_log): every stint on the report, its updates, and when it cleared */
+let LOG = null, logP = null;
+const logReady = () => logP || (logP = fetch("data/injury_log.json?t=" + Math.floor(Date.now() / 3e5)).then(r => r.ok ? r.json() : null).then(d => { LOG = d; return d; }).catch(() => null));
+function stints(name, id){
+  if(!LOG || !LOG.stints) return [];
+  const k = fold(name);
+  return LOG.stints.filter(s => (id && s.id === String(id)) || fold(s.name) === k).sort((a, b) => String(b.first).localeCompare(String(a.first)));
+}
+const cls = st => { st = String(st || "").toLowerCase(); return st.includes("out") ? "out" : /day|question|doubt|probable/.test(st) ? "dtd" : "oth"; };
+window.Injuries = {ready, find, tag, when, data: () => DATA, logReady, stints, log: () => LOG, cls, md};
 })();
