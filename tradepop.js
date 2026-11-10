@@ -199,5 +199,5 @@ async function open(row){
   box.scrollTop = 0;
 }
 function close(){ const box = document.getElementById("tpModal"); if(box){ box.classList.remove("open"); document.body.style.overflow = ""; } }
-window.TradePop = {ready, find, open, close};
+window.TradePop = {ready, find, open, close, byId: id => DATA && (DATA.trades || []).find(t => t.id === id) || null};
 })();

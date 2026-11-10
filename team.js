@@ -559,63 +559,175 @@ function drawShooting(){
   el.querySelectorAll("[data-side]").forEach(b => b.onclick = () => { shotSide = b.dataset.side; drawShooting(); });
 }
 
-/* ---------- roster ripple: whose minutes moved after each trade this season (window.Traded from nav.js) ---------- */
-let ripSel = 0, PREVSEASON = null;
+/* ---------- team trades: every trade this season as a collapsible card (window.Traded from nav.js, data/trades.json via TradePop).
+   Closed: the basics (date, who came and went). Open: the full deal, salary & cap (did anyone cross the tax or an apron),
+   the team's results before and after, and the ripple effect: any stat for every player before and after the trade,
+   including the players who left (their numbers with the new team). ---------- */
+let PREVSEASON = null;
+const RIP = {}, TF = {};
 async function loadPrevSeason(){
   if(PREVSEASON) return PREVSEASON;
   const y = +String((LEAGUE && LEAGUE.season) || "").slice(0, 4);
   PREVSEASON = (y && await getJSON(`data/season-${y}.json`)) || {players: []};
   return PREVSEASON;
 }
-function drawRipple(){
+const teamFile = c => c === CODE ? Promise.resolve(TEAM) : (TF[c] || (TF[c] = getJSON(`data/teams/${c}.json`)));
+const tmd = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", year: "numeric", timeZone: "UTC"});
+const tbadge = c => window.teamBadge ? `<img class="trd-lg" src="${teamBadge(c)}" alt="${esc(c)}">` : "";
+const tnm = c => (TEAMS[c] && TEAMS[c].n) || c;
+const RSTATS = [["min", "Minutes"], ["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["stl", "Steals"], ["blk", "Blocks"], ["tov", "Turnovers"],
+  ["fg", "FG%"], ["fg3", "3P%"], ["ft", "FT%"], ["pm", "Plus-minus"], ["pulse", "Pulse"], ["gp", "Games"]];
+const RPCT = {fg: [9, 10], fg3: [11, 12], ft: [13, 14]};
+function tot(games){ const t = Array(17).fill(0); games.forEach(x => x.forEach((v, i) => { if(i) t[i] += +v || 0; })); return t; }
+function statOf(k, t, n, N){
+  if(k === "gp") return n;
+  if(!n) return null;
+  if(RPCT[k]){ const [a, b] = RPCT[k]; return t[b] >= Math.max(3, n) ? t[a] / t[b] * 100 : null; }
+  if(k === "pulse") return t[1] >= 20 ? (t[2] + 2 * t[3] + 2 * (t[4] + t[5]) + 4 * t[6] + t[7] - 4 * t[8]) / t[1] : null;
+  if(k === "pm" && t.noPm) return null;
+  const v = {min: t[1], pts: t[2], reb: t[4] + t[5], ast: t[3], stl: t[6], blk: t[7], tov: t[8], pm: t[15]}[k];
+  return v / (N || n);
+}
+const fmtStat = (k, v) => v == null ? "—" : k === "gp" ? String(v) : k === "pulse" ? v.toFixed(3) : RPCT[k] ? v.toFixed(1) + "%" : k === "pm" ? (v > 0 ? "+" : "") + v.toFixed(1) : v.toFixed(1);
+const gamesOf = c => ((LEAGUE && LEAGUE.games) || []).filter(g => g[2] === c || g[3] === c);
+function seasonRow(name, code){   // last season's line from season-YYYY.json, as a totals array like tot()
+  const bbr = NBA_TO_BBR[code] || code, k = fold(name), rows = ((PREVSEASON && PREVSEASON.players) || []).filter(p => fold(p.name) === k);
+  const p = rows.find(r => r.team === bbr) || rows.find(r => r.team === "TOT") || rows[0];
+  if(!p) return null;
+  const t = [0, p.mp || 0, p.pts || 0, p.ast || 0, p.drb || 0, p.orb || 0, p.stl || 0, p.blk || 0, p.tov || 0, p.fg || 0, p.fga || 0, p.fg3 || 0, p.fg3a || 0, p.ft || 0, p.fta || 0, 0, p.gs || 0];
+  t.noPm = true; return {t, n: p.g || 0, team: p.team};
+}
+function tradeMoves(id){
+  const out = [];
+  Object.entries(TRADED_ALL()).forEach(([pid, l]) => l.forEach(x => { if(x[3] === id) out.push({pid, name: x[4], from: x[1], to: x[2]}); }));
+  return out;
+}
+/* cap: payroll today from contracts.json, and before the trade = today − salary that came in + salary that went out */
+const salOfPid = pid => { const c = CT && CT.players && CT.players[pid]; const y = c && (c.years || []).find(r => r[0] === RULES.season); return y ? num(y[1]) : 0; };
+const payrollOf = c => { const bbr = NBA_TO_BBR[c] || c; return Object.values((CT && CT.players) || {}).filter(p => p.team === bbr).reduce((a, p) => { const y = (p.years || []).find(r => r[0] === RULES.season); return a + (y ? num(y[1]) : 0); }, 0); };
+const LINES = () => [["Under the cap", 0], ["Over the cap", RULES.cap], ["Over the tax", RULES.tax], ["Over the 1st apron", RULES.apron1], ["Over the 2nd apron", RULES.apron2]];
+const lineIx = v => { const L = LINES(); let i = 0; L.forEach((l, k) => { if(v >= l[1]) i = k; }); return i; };
+const mny = n => (n < 0 ? "−" : "") + "$" + (Math.abs(n) / 1e6).toFixed(1) + "M";
+function capHtml(t, moves){
+  if(!RULES || !CT) return `<p class="note">Cap numbers load with the contracts file.</p>`;
+  const rows = t.teams.map(c => {
+    const out = moves.filter(m => m.from === c), inn = moves.filter(m => m.to === c);
+    const so = out.reduce((a, m) => a + salOfPid(m.pid), 0), si = inn.reduce((a, m) => a + salOfPid(m.pid), 0);
+    const now = payrollOf(c), before = now - si + so, i0 = lineIx(before), i1 = lineIx(now), L = LINES();
+    const moved = i1 > i0 ? `<b class="neg">Went over: ${esc(L[i1][0].replace(/^Over the /, "the "))}</b>` : i1 < i0 ? `<b class="pos">Got under ${esc(L[i0][0].replace(/^Over the /, "the "))}</b>` : `Stayed ${esc(L[i1][0].toLowerCase())}`;
+    const room = now < RULES.tax ? `${mny(RULES.tax - now)} under the tax` : now < RULES.apron1 ? `${mny(RULES.apron1 - now)} under the 1st apron` : now < RULES.apron2 ? `${mny(RULES.apron2 - now)} under the 2nd apron` : `${mny(now - RULES.apron2)} over the 2nd apron`;
+    const net = si - so;
+    return `<div class="tt-cap${c === CODE ? " me" : ""}"><div class="h">${tbadge(c)} <b>${esc(tnm(c))}</b></div>
+      <div class="kv"><span>Salary out</span><b>${mny(so)}</b></div><div class="kv"><span>Salary in</span><b>${mny(si)}</b></div>
+      <div class="kv"><span>Net</span><b class="${net > 0 ? "neg" : net < 0 ? "pos" : ""}">${net >= 0 ? "+" : "−"}${mny(Math.abs(net))}</b></div>
+      <div class="kv"><span>Payroll</span><b>${mny(before)} → ${mny(now)}</b></div>
+      <div class="ln">${moved}</div><div class="note" style="margin:2px 0 0">${room}</div></div>`;
+  }).join("");
+  return `<div class="tt-caps">${rows}</div>
+    <p class="note" style="margin:8px 0 0">This season's salaries (${esc(RULES.season)}): cap ${mny(RULES.cap)}, tax ${mny(RULES.tax)}, 1st apron ${mny(RULES.apron1)}, 2nd apron ${mny(RULES.apron2)}. "Payroll now" is every contract on the books today; "before" takes this trade back out, so later signings and trades count in both. Cash and draft picks aren't salary.</p>`;
+}
+function resultsHtml(date){
+  const g = gamesOf(CODE).filter(x => x[7] === 1 || (x[4] && x[5])), side = (x, a) => (x[2] === CODE) === a ? x[4][0] : x[5][0];
+  const sum = list => { const w = list.filter(x => side(x, true) > side(x, false)).length, pf = list.reduce((a, x) => a + side(x, true), 0), pa = list.reduce((a, x) => a + side(x, false), 0);
+    return {n: list.length, w, l: list.length - w, pf: list.length ? pf / list.length : 0, pa: list.length ? pa / list.length : 0}; };
+  const b = sum(g.filter(x => x[1] < date)), a = sum(g.filter(x => x[1] >= date));
+  const cell = (lab, r) => r.n ? `<div><span>${lab}</span><b>${r.w}–${r.l}</b><small>${r.pf.toFixed(1)} scored · ${r.pa.toFixed(1)} allowed · ${(r.pf - r.pa) >= 0 ? "+" : "−"}${Math.abs(r.pf - r.pa).toFixed(1)} a game</small></div>` : `<div><span>${lab}</span><b>—</b><small>${lab === "Before" ? "the trade came before the season" : "no games yet"}</small></div>`;
+  return `<div class="rip-sum">${cell("Before", b)}${cell("Since", a)}</div>`;
+}
+async function rippleRows(t, moves, date){
+  const ins = new Map(moves.filter(m => m.to === CODE).map(m => [fold(m.name), m])), outs = new Map(moves.filter(m => m.from === CODE).map(m => [fold(m.name), m]));
+  const inSeason = gamesOf(CODE).some(g => g[1] < date);
+  if(!inSeason) await loadPrevSeason();
+  const files = {}; await Promise.all(t.teams.map(async c => { files[c] = await teamFile(c); }));
+  const dateOf = new Map(((LEAGUE && LEAGUE.games) || []).map(g => [g[0], g[1]]));
+  const nGames = (c, before) => gamesOf(c).filter(g => before ? g[1] < date : g[1] >= date).length;
+  const split = (file, name, before) => { const p = Object.values((file && file.players) || {}).find(x => fold(x.n) === fold(name)); const gs = p ? p.g.filter(x => { const d = dateOf.get(x[0]); return d && (before ? d < date : d >= date); }) : []; return {t: tot(gs), n: gs.length}; };
+  const rows = [];
+  const names = new Set(Object.values((TEAM && TEAM.players) || {}).map(p => p.n)); ins.forEach(m => names.add(m.name)); outs.forEach(m => names.add(m.name));
+  names.forEach(name => {
+    const k = fold(name), mi = ins.get(k), mo = outs.get(k);
+    const beforeTeam = mi ? mi.from : CODE, afterTeam = mo ? mo.to : CODE;
+    let B, NB;
+    if(inSeason){ B = files[beforeTeam] ? split(files[beforeTeam], name, true) : {t: tot([]), n: 0}; NB = nGames(beforeTeam, true); }
+    else { const r = seasonRow(name, beforeTeam); B = r || {t: tot([]), n: 0}; NB = 82; }
+    const A = files[afterTeam] ? split(files[afterTeam], name, false) : {t: tot([]), n: 0}, NA = nGames(afterTeam, false);
+    if(!B.n && !A.n) return;
+    rows.push({name, tag: mi ? "in" : mo ? "out" : null, beforeTeam, afterTeam, B, A, NB, NA});
+  });
+  return {rows, inSeason};
+}
+function rippleTable(id, R){
+  const st = RIP[id] || (RIP[id] = {stat: "min", mode: "game"}), k = st.stat;
+  const perTeam = st.mode === "team" && !RPCT[k] && !["pulse", "gp"].includes(k);
+  const list = R.rows.map(r => { const b = statOf(k, r.B.t, r.B.n, perTeam ? r.NB : 0), a = statOf(k, r.A.t, r.A.n, perTeam ? r.NA : 0); return Object.assign({b, a, d: a != null && b != null ? a - b : null}, r); })
+    .filter(r => (r.b != null || r.a != null) && (r.tag || (r.B.n && r.A.n) || k === "gp" || k === "min"));
+  const lowBad = k === "tov";
+  list.sort((x, y) => (y.tag ? 1 : 0) - (x.tag ? 1 : 0) || Math.abs(y.d || 0) - Math.abs(x.d || 0));
+  const max = Math.max(1e-9, ...list.map(r => Math.abs(r.d || 0)));
+  const where = (r, bef) => { const c = bef ? r.beforeTeam : r.afterTeam, n = bef ? r.B.n : r.A.n; return c !== CODE ? ` <small class="note">${n ? "with" : "no games yet with"} ${esc(c)}</small>` : n ? "" : ` <small class="note">no games yet</small>`; };
+  return `<div class="rip-ctl"><label>Stat <select data-ripstat="${esc(id)}">${RSTATS.map(([v, l]) => `<option value="${v}"${v === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+      ${RPCT[k] || k === "pulse" || k === "gp" ? "" : `<div class="chips"><button class="chip ${st.mode === "game" ? "on" : ""}" data-ripmode="${esc(id)}|game">Per game played</button><button class="chip ${st.mode === "team" ? "on" : ""}" data-ripmode="${esc(id)}|team">Per team game</button></div>`}</div>
+    <div class="tw"><table><thead><tr><th class="l">Player</th><th>${R.inSeason ? "Before" : "Last season"}</th><th>G</th><th>${R.inSeason ? "After" : "This season"}</th><th>G</th><th>Change</th><th class="l" style="width:30%"></th></tr></thead><tbody>
+    ${list.slice(0, 22).map(r => { const good = r.d == null ? 0 : (lowBad ? -r.d : r.d);
+      return `<tr><td class="l nm">${window.playerLink ? window.playerLink(r.name, r.afterTeam) : esc(r.name)}${r.tag === "in" ? ` <span class="tag" style="color:var(--good)">ACQUIRED</span>` : r.tag === "out" ? ` <span class="tag" style="color:var(--bad)">TRADED AWAY</span>` : ""}</td>
+        <td>${r.B.n || !r.tag ? fmtStat(k, r.b) : ""}${r.tag ? where(r, true) : ""}</td><td class="note">${r.B.n || ""}</td><td>${r.A.n || !r.tag ? fmtStat(k, r.a) : ""}${r.tag ? where(r, false) : ""}</td><td class="note">${r.A.n || ""}</td>
+        <td class="${good > 0 ? "pos" : good < 0 ? "neg" : ""}"><b>${r.d == null ? "—" : (r.d > 0 ? "+" : r.d < 0 ? "−" : "") + fmtStat(k === "pm" ? "pts" : k, Math.abs(r.d))}</b></td>
+        <td class="l">${r.d == null ? "" : `<div class="rip-bar"><i class="${good >= 0 ? "up" : "dn"}" style="${r.d >= 0 ? "left:50%" : "right:50%"};width:${(Math.abs(r.d) / max * 50).toFixed(1)}%"></i></div>`}</td></tr>`; }).join("")}</tbody></table></div>
+    <p class="note" style="margin:8px 0 0">${R.inSeason ? "Before = his games this season before the trade (with his old team if he came over in it); after = since the trade (with his new team if he left)." : "The trade was in the offseason, so “last season” is his full 2025-26 line (with his old team) and “this season” is since."} ${perTeam ? "Per team game: games he missed count as zero, so injuries and lost rotation spots show up." : "Per game he played."} Players in the deal first, then the biggest changes. ${RPCT[k] ? "Shooting needs a few attempts on each side." : ""}</p>`;
+}
+async function openTrade(det){
+  const id = det.dataset.trade, body = det.querySelector(".ttb");
+  if(body.dataset.done) return;
+  body.dataset.done = "1";
+  body.innerHTML = `<p class="note">Loading the trade…</p>`;
+  if(window.TradePop) await TradePop.ready;
+  const t = (window.TradePop && TradePop.byId(id)) || null, e = ((window.Traded && Traded.team(CODE)) || []).find(x => x[1] === id);
+  const date = (t && t.date) || (e && e[0]), teams = (t && t.teams) || [CODE, ...((e && e[2]) || [])];
+  const tt = {id, date, teams: [CODE, ...teams.filter(c => c !== CODE)], rows: (t && t.rows) || []};
+  const moves = tradeMoves(id);
+  const R = await rippleRows(tt, moves, date);
+  det._R = R;
+  const deal = tt.rows.length ? tt.rows.map(r => `<div class="tt-row">${tbadge(r[1])}<div><b>${esc(tnm(r[1]))}:</b> ${esc(r[2])}</div></div>`).join("") : `<p class="note">The full deal text is added during the next update.</p>`;
+  const news = ((t && t.news) || []).slice(0, 3);
+  body.innerHTML = `<div class="tt-jump"><a href="#" data-ttgo="deal">The deal</a><a href="#" data-ttgo="cap">Salary &amp; cap</a><a href="#" data-ttgo="res">Results</a><a href="#" data-ttgo="rip">Ripple effect</a></div>
+    <div class="tt-sec" data-tts="deal"><h3>The deal</h3>${deal}
+      ${t ? `<div class="row" style="margin-top:8px"><button class="chip" data-ttpop="${esc(id)}">Open the full trade card (players, pick grades, news) →</button></div>` : ""}
+      ${news.length ? `<ul class="tt-news">${news.map(n => `<li><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.h)}</a></li>`).join("")}</ul>` : ""}</div>
+    <div class="tt-sec" data-tts="cap"><h3>Salary &amp; cap</h3>${capHtml(tt, moves)}</div>
+    <div class="tt-sec" data-tts="res"><h3>${esc(tnm(CODE))} before and after</h3>${resultsHtml(date)}</div>
+    <div class="tt-sec" data-tts="rip"><h3>Ripple effect</h3><div class="ttrip">${rippleTable(id, R)}</div></div>`;
+}
+async function drawRipple(){
   const el = $('rippleBody');
+  if(window.TradePop && el) await TradePop.ready;
   if(!el) return;
   const list = (window.Traded && Traded.team(CODE)) || [];
   const T = TEAMS[CODE] || {n: CODE};
   if(!list.length){ el.innerHTML = `<div class="card empty">${esc(T.n)} haven't made a trade this season.</div>`; return; }
-  if(ripSel >= list.length) ripSel = 0;
-  const trades = list.slice().sort((x, y) => x[0] < y[0] ? 1 : x[0] > y[0] ? -1 : 0), e = trades[ripSel], date = e[0];   // latest first
-  const games = ((LEAGUE && LEAGUE.games) || []).filter(g => g[2] === CODE || g[3] === CODE);
-  const dateOf = new Map(games.map(g => [g[0], g[1]]));
-  const inSeason = games.some(g => g[1] < date);
-  if(!inSeason && !PREVSEASON){ el.innerHTML = `<div class="card empty">Loading…</div>`; loadPrevSeason().then(drawRipple); return; }
-  // who moved in this trade (traded.json player entries carry the trade id)
-  const moved = {};
-  Object.entries((window.Traded && Traded.ready && TRADED_ALL()) || {}).forEach(([pid, l]) => l.forEach(x => { if(x[3] === e[1]) moved[fold(x[4])] = x[1] === CODE ? "out" : x[2] === CODE ? "in" : null; }));
-  const rows = {};
-  const row = (name) => rows[fold(name)] || (rows[fold(name)] = {name, b: 0, a: 0, gb: 0, ga: 0});
-  const nB = inSeason ? games.filter(g => g[1] < date).length : 82, nA = games.filter(g => g[1] >= date).length;
-  Object.values((TEAM && TEAM.players) || {}).forEach(p => p.g.forEach(g => {
-    const d = dateOf.get(g[0]); if(!d) return;
-    const r = row(p.n);
-    if(d >= date){ r.a += g[1]; r.ga++; } else if(inSeason){ r.b += g[1]; r.gb++; }
-  }));
-  if(!inSeason){
-    const bbr = NBA_TO_BBR[CODE] || CODE;
-    (PREVSEASON.players || []).filter(p => p.team === bbr).forEach(p => { const r = row(p.name); r.b += p.mp || 0; r.gb += p.g || 0; });
-  }
-  const out = Object.values(rows).map(r => ({...r, mb: nB ? r.b / nB : 0, ma: nA ? r.a / nA : 0, tag: moved[fold(r.name)] || null}))
-    .filter(r => r.mb >= 0.5 || r.ma >= 0.5).map(r => ({...r, d: r.ma - r.mb}));
-  out.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
-  const max = Math.max(1, ...out.map(r => Math.abs(r.d)));
-  const freed = out.filter(r => r.tag === "out").reduce((s, r) => s + r.mb, 0), added = out.filter(r => r.tag === "in").reduce((s, r) => s + r.ma, 0);
-  const up = out.filter(r => !r.tag && r.d > 0).slice(0, 3), down = out.filter(r => !r.tag && r.d < 0).slice(0, 3);
-  const md = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", timeZone: "UTC"});
-  const short = n => n.replace(/\s+(Jr\.?|Sr\.?|II|III|IV)$/, "").split(" ").slice(-1)[0];
-  const f1 = v => v.toFixed(1);
-  el.innerHTML = `<div class="card pad">
-      ${trades.length > 1 ? `<div class="chips" style="margin-bottom:12px">${trades.map((x, i) => `<button class="chip ${i === ripSel ? "on" : ""}" data-rip="${i}">${md(x[0])} · with ${esc(x[2].join(", ") || "?")}</button>`).join("")}</div>` : ""}
-      <div class="note" style="margin:0 0 10px">${inSeason ? `Minutes per team game in the ${nB} games before the ${md(date)} trade vs. the ${nA} since.` : `The ${md(date)} trade was in the offseason, so this compares minutes per team game last season with ${esc(T.n)} (82 games) vs. this season (${nA} games); other offseason moves show up here too.`}
-        ${nA < 5 ? " Only a few games since, so this will move a lot." : ""}</div>
-      <div class="rip-sum">${freed ? `<div><span>Minutes that left</span><b>${f1(freed)}</b><small>per game, with players traded away</small></div>` : ""}${added ? `<div><span>Minutes that arrived</span><b>${f1(added)}</b><small>per game, from players acquired</small></div>` : ""}
-        ${up.length ? `<div><span>Biggest gains</span><b>${up.map(r => `${esc(short(r.name))} +${f1(r.d)}`).join(", ")}</b></div>` : ""}${down.length ? `<div><span>Biggest drops</span><b>${down.map(r => `${esc(short(r.name))} −${f1(-r.d)}`).join(", ")}</b></div>` : ""}</div>
-      <div class="tw"><table><thead><tr><th class="l">Player</th><th>${inSeason ? "Before" : "Last season"}</th><th>${inSeason ? "After" : "This season"}</th><th>Change</th><th class="l" style="width:40%"></th></tr></thead><tbody>
-      ${out.slice(0, 18).map(r => `<tr><td class="l nm">${esc(r.name)}${r.tag === "in" ? ` <span class="tag" style="color:var(--good)">ACQUIRED</span>` : r.tag === "out" ? ` <span class="tag" style="color:var(--bad)">TRADED AWAY</span>` : ""}</td>
-        <td>${f1(r.mb)}</td><td>${f1(r.ma)}</td><td class="${r.d > 0.2 ? "pos" : r.d < -0.2 ? "neg" : ""}"><b>${r.d > 0 ? "+" : r.d < 0 ? "−" : ""}${f1(Math.abs(r.d))}</b></td>
-        <td class="l"><div class="rip-bar"><i class="${r.d >= 0 ? "up" : "dn"}" style="${r.d >= 0 ? "left:50%" : `right:50%`};width:${(Math.abs(r.d) / max * 50).toFixed(1)}%"></i></div></td></tr>`).join("")}</tbody></table></div>
-      <div class="note" style="margin:10px 0 0">Minutes per team game (games he missed count as 0), so injuries and rest show up too. Biggest changes first.</div></div>`;
-  el.querySelectorAll("[data-rip]").forEach(b => b.onclick = () => { ripSel = +b.dataset.rip; drawRipple(); });
+  const trades = list.slice().sort((x, y) => x[0] < y[0] ? 1 : x[0] > y[0] ? -1 : 0);
+  el.innerHTML = trades.map((e, i) => {
+    const moves = tradeMoves(e[1]), got = moves.filter(m => m.to === CODE), sent = moves.filter(m => m.from === CODE);
+    const names = l => l.map(m => esc(m.name)).join(", ");
+    return `<details class="card tt" data-trade="${esc(e[1])}"${i === 0 && trades.length === 1 ? " open" : ""}>
+      <summary><span class="tt-d">${esc(tmd(e[0]))}</span><span class="tt-w">with ${(e[2] || []).map(c => `${tbadge(c)}${esc(c)}`).join(" ") || "?"}</span>
+        <span class="tt-m">${(() => { const t = window.TradePop && TradePop.byId(e[1]), r = t && (t.rows || []).find(x => x[1] === CODE); const txt = r ? (String(r[2]).match(/[^.]+(?:\.(?!\s*[A-Z][a-z]+\s)|$)[^.]*\.?/g) || [r[2]]).map(x => x.trim()).filter(x => /acquir|traded|exchange/i.test(x)).join(" ") : ""; return txt ? `<span class="tt-txt">${esc(txt)}</span>` : ""; })()}${got.length ? `<span><b class="pos">Got</b> ${names(got)}</span>` : ""}${sent.length ? `<span><b class="neg">Sent</b> ${names(sent)}</span>` : ""}${(() => { const t = window.TradePop && TradePop.byId(e[1]); if(t && (t.rows || []).some(x => x[1] === CODE)) return ""; return !got.length && !sent.length ? `<span class="note">Picks, rights or cash only</span>` : !got.length || !sent.length ? `<span class="note">for picks or cash</span>` : ""; })()}</span>
+        <span class="tt-chev" aria-hidden="true">▾</span></summary>
+      <div class="ttb"></div></details>`; }).join("");
+  el.querySelectorAll("details.tt").forEach(d => { d.addEventListener("toggle", () => { if(d.open) openTrade(d); }); if(d.open) openTrade(d); });
 }
+document.addEventListener("change", ev => {
+  const s = ev.target.closest && ev.target.closest("[data-ripstat]"); if(!s) return;
+  const id = s.dataset.ripstat, det = s.closest("details.tt"); (RIP[id] = RIP[id] || {mode: "game"}).stat = s.value;
+  det.querySelector(".ttrip").innerHTML = rippleTable(id, det._R);
+});
+document.addEventListener("click", ev => {
+  const m = ev.target.closest && ev.target.closest("[data-ripmode]");
+  if(m){ const [id, mode] = m.dataset.ripmode.split("|"), det = m.closest("details.tt"); (RIP[id] = RIP[id] || {stat: "min"}).mode = mode; det.querySelector(".ttrip").innerHTML = rippleTable(id, det._R); return; }
+  const g = ev.target.closest && ev.target.closest("[data-ttgo]");
+  if(g){ ev.preventDefault(); const sec = g.closest(".ttb").querySelector(`[data-tts="${g.dataset.ttgo}"]`); if(sec) sec.scrollIntoView({behavior: "smooth", block: "start"}); return; }
+  const p = ev.target.closest && ev.target.closest("[data-ttpop]");
+  if(p && window.TradePop){ const t = TradePop.byId(p.dataset.ttpop); if(t) TradePop.open(t.rows[0] ? [t.rows[0][0], t.rows[0][1], t.rows[0][2], "trade"] : null); }
+});
 const TRADED_ALL = () => { try{ return window.Traded && Traded._all ? Traded._all() : {}; }catch(_){ return {}; } };
 
 /* ---------- defense: ball pressure + opponents' shot profile ---------- */

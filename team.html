@@ -83,6 +83,27 @@
   .prof .n{text-align:right;} .prof .n small{display:block;font-size:10.5px;color:var(--dim);}
   .pk-grades{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 6px;}
   .pk-g{display:inline-flex;align-items:center;font-size:11.5px;color:var(--dim);font-weight:600;}
+  details.tt{margin-bottom:10px;padding:0;} details.tt > summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:12px 14px;cursor:pointer;}
+  details.tt > summary::-webkit-details-marker{display:none;}
+  details.tt[open] > summary{border-bottom:1px solid var(--line);}
+  .tt-d{font:700 17px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;}
+  .tt-w{display:flex;align-items:center;gap:5px;font-weight:600;font-size:13px;color:var(--dim);}
+  .trd-lg{width:20px;height:20px;vertical-align:-5px;}
+  .tt-m{flex:1 1 260px;display:flex;flex-direction:column;gap:2px;font-size:13.5px;min-width:0;}
+  .tt-chev{margin-left:auto;color:var(--dim);transition:transform .2s;} details.tt[open] .tt-chev{transform:rotate(180deg);}
+  .ttb{padding:12px 14px 14px;}
+  .tt-jump{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;} .tt-jump a{font:600 12.5px Inter,sans-serif;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none;}
+  .tt-sec{margin-top:16px;scroll-margin-top:110px;} .tt-sec h3{margin:0 0 8px;font:700 18px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;}
+  .tt-row{display:flex;gap:8px;align-items:flex-start;margin:5px 0;font-size:13.5px;} .tt-row img{width:22px;height:22px;flex:none;}
+  .tt-txt{color:var(--dim);font-size:12.5px;}
+  .tt-caps{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+  .tt-cap{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;} .tt-cap.me{border-color:var(--court,#1D428A);}
+  .tt-cap .h{display:flex;align-items:center;gap:6px;margin-bottom:6px;} .tt-cap .h img{width:22px;height:22px;}
+  .tt-cap .kv{display:flex;justify-content:space-between;gap:8px;padding:2px 0;} .tt-cap .kv span{color:var(--dim);}
+  .tt-cap .ln{margin-top:6px;}
+  .tt-news{margin:8px 0 0;padding-left:18px;font-size:13px;}
+  .tt-sec tr.me td{background:var(--row);}
+  .rip-ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:10px;} .rip-ctl label{font-weight:600;font-size:13px;display:flex;gap:6px;align-items:center;}
   .rip-sum{display:flex;flex-wrap:wrap;gap:10px 26px;margin:0 0 12px;}
   .rip-sum span{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);font-weight:600;}
   .rip-sum b{font:700 20px/1.15 "Barlow Condensed",sans-serif;} .rip-sum small{display:block;font-size:11.5px;color:var(--dim);}
@@ -226,7 +247,7 @@
 <div class="picker"><div class="picker-in" id="picker"></div></div>
 <div class="hero"><div class="wrap hero-in" id="hero"><div class="empty" style="color:#fff">Loading…</div></div></div>
 <nav class="tabs"><div class="tabs-in" id="tabs">
-  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#defense">Defense</a><a href="#roster">Roster</a><a href="#ripple">Roster ripple</a><a href="#schedule">Schedule</a>
+  <a href="#stats">Team stats</a><a href="#lineups">Lineups</a><a href="#shooting">Shooting</a><a href="#defense">Defense</a><a href="#roster">Roster</a><a href="#ripple">Team trades</a><a href="#schedule">Schedule</a>
   <a href="#injuries">Injuries</a><a href="#cap">Cap sheet</a><a href="#picks">Draft picks</a>
   <a href="#records">Franchise records</a><a href="#awards">Awards</a><a href="#drafthist">Draft history</a>
 </div></nav>
@@ -261,8 +282,8 @@
     <div class="card"><div class="tw" id="rosterBody"></div></div>
   </section>
   <section id="ripple">
-    <h2>Roster ripple</h2>
-    <p class="note">How each trade this season moved minutes around the roster: who lost playing time, who picked it up, and how much left or arrived with the players in the deal.</p>
+    <h2>Team trades</h2>
+    <p class="note">Every trade this season. Tap one for the full deal, the salary and cap effect (did anyone cross the tax or an apron), the team's record before and after, and the ripple effect: pick a stat and see every player before and after the trade.</p>
     <div id="rippleBody"></div>
   </section>
   <section id="schedule">
@@ -312,6 +333,7 @@
 <script src="hotstart.js"></script>
 <script src="injuries.js"></script>
 <script src="injpop.js"></script>
+<script src="tradepop.js"></script>
 <script src="clips.js"></script>
 <script src="ticker.js"></script>
 <script src="team.js"></script>
