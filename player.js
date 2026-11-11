@@ -190,6 +190,7 @@ function heroHtml(team){
         <div class="v">${f3(last ? last.value : null)}</div>
         <div class="s">Career ${f3(career)}</div>
         <button class="pp-back" id="ppCompare" style="margin-top:8px">Compare with another player</button>
+        <button class="pp-back" id="ppRot" style="margin-top:8px"></button>
       </div>
     </div>
   </div></div>`;
@@ -899,6 +900,12 @@ function render(){
   if(window.Ticker){ if(retired) Ticker.hide(); else Ticker.show(REC.team, {player: REC.name}); }
   EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
+  { const b = EL.querySelector("#ppRot"), K = "fcgp.rotation", get = () => { try{ return JSON.parse(localStorage.getItem(K) || "[]") || []; }catch(_){ return []; } };
+    const paint = () => { const on = get().includes(REC.id); b.textContent = on ? "★ In The Rotation" : "☆ Add to The Rotation"; b.title = on ? "Tap to remove him from your Rotation" : "Follow him on The Rotation page"; };
+    paint();
+    b.onclick = () => { let l = get(); const on = l.includes(REC.id);
+      if(on) l = l.filter(x => x !== REC.id); else if(l.length >= 10){ if(window.fcToast) fcToast("Your Rotation is full (10 players)"); return; } else l.push(REC.id);
+      try{ localStorage.setItem(K, JSON.stringify(l)); }catch(_){} paint(); if(window.fcToast) fcToast(on ? "Removed from The Rotation" : "Added to The Rotation · see it in the menu"); }; }
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
   bindPairs();
   EL.querySelectorAll("[data-trsel]").forEach(b => b.onclick = () => { TRSEL = +b.dataset.trsel; const y = window.scrollY; render(); window.scrollTo(0, y); });

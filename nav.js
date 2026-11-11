@@ -42,6 +42,7 @@ const PAGES = [
   {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$|matchup\.html$/.test(p.path)},
   {label:"The Pulse Board", sub:"Leaderboard, Pulse$, rookie report",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"The Locker Room", sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
+  {label:"The Rotation", sub:"Your 10 favorite players, 2K-style cards", href:"rotation.html", match:p => /rotation\.html$/.test(p.path)},
   {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
   {label:"Franchise Files", sub:"Every team: stats, lineups, cap, picks, history",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
