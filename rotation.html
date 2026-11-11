@@ -183,7 +183,7 @@
     <div class="chips" id="gSort"></div>
     <div class="cards" id="gColl"></div>
     </div>
-    <h2 data-jump="How it works">How it works</h2>
+    <h2 data-jump="How it works">How it works <small><a href="card-rules.html">Full rules →</a></small></h2>
     <div class="card" style="padding:12px 14px" id="gRules"></div>
     <p class="note foot">The card game is just for fun: points have no cash value and can't be bought. Everything is saved in this browser (move it with Menu → Settings → Move my setup).</p>
   </div>
@@ -605,7 +605,7 @@ function drawGame(){
   const today = ymd(); $("gDaily").disabled = G.daily === today; $("gDaily").textContent = G.daily === today ? "Daily bonus claimed ✓" : `Claim daily bonus (+${DAILY})`;
   const started = !!G.started;
   $("gPlay").hidden = !started;
-  $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.</p><button class="gbtn" data-startteam>Open my 5 starter packs</button></div>`;
+  $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.</p><button class="gbtn" data-startteam>Open my 5 starter packs</button> <a href="card-rules.html" style="color:inherit;font-weight:600;margin-left:8px">How the game works →</a></div>`;
   if(!started){ drawRules(); return; }
   const free = G.free.length;
   $("gPacks").innerHTML = (free ? `<div class="pack t-${G.free[0]}"><b>Free pack${free > 1 ? "s" : ""}</b><div class="cost">${free}<small>waiting</small></div><p>Earned on the weekly ladder.</p><button data-freepack>Open free ${(PACKS.find(x => x.id === G.free[0]) || PACKS[0]).name}</button></div>` : "")
@@ -629,7 +629,7 @@ function drawGame(){
   drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
-  $("gRules").innerHTML = `<ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
+  $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
     <li><b>Start your team</b> with 5 free packs (15 cards) and fill a 10-man roster: 5 starters and 5 on the bench.</li>
     <li><b>Daily bonus:</b> <b>+${DAILY}</b> for checking in each day.</li>
     <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
@@ -637,7 +637,7 @@ function drawRules(){
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
       Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.</li>
     <li><b>Earn points from nightly games</b> (scored the morning after, from the real box scores), using the lineup you had before the night's first tip-off:
-      <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's Pulse production (PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV). Bench players sub in, in order, for starters who don't play. Hit ${FF_TARGET}: <b>+${WIN_PTS}</b>.</li>
+      <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's Pulse production (PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV). When a starter sits, the first bench player at his position subs in. Hit ${FF_TARGET}: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs Pulse:</b> Pulse builds a five from that night's players with about your starters' total OVR. Outscore it: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs a real team:</b> your five against the NBA starting five closest to yours in OVR that night. Win: <b>+${WIN_PTS}</b>; beat a better-rated five: another <b>+${WIN_PTS}</b>.</li></ol></li>
     <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
@@ -646,6 +646,7 @@ function drawRules(){
     <li><b>Packs:</b> Gold 150, Ruby 300, Galaxy 500 points. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his Pulse ranks this season.</li>
     <li><b>Card values move with Pulse.</b> A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
     ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded pick games: ${EARN.list.map(g => `${esc(g.away)} @ ${esc(g.home)}: ${g.w} of ${g.n} right, +${g.line} + ${g.bonus} bonus = ${g.p}`).slice(0, 6).join(" · ")}${EARN.list.length > 6 ? "…" : ""} <a href="picks.html">All picks →</a></p>` : ""}
+    <p style="margin:10px 0 0"><a href="card-rules.html" style="font-weight:700">Full rules →</a></p>
     ${document.documentElement.classList.contains("nobet") ? `<p class="note" style="margin:8px 0 0">You have betting lines hidden, so pick buttons don't show; you can still earn from the nightly games.</p>` : ""}`;
 }
 function showOpen(title, cards, dupes){

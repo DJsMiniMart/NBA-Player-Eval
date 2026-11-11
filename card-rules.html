@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card Game Rules · The Rotation · Full Court Geek Press</title>
+<meta name="description" content="The full rules for The Rotation card game: cards, packs, points, nightly games, chemistry, bench balance, the weekly ladder and saving your team.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --court:#1D428A; --good:#2f9e44; --bad:#d6336c; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --court:#7aa2ff; --good:#51cf66; --bad:#ff6b9a; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  .nba-band{color:#fff;}
+  .band-in{max-width:860px;margin:0 auto;padding:30px 16px 28px;}
+  .band-in .eyebrow{font:700 13px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#ff4d63;margin-bottom:10px;}
+  h1{font:700 48px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:0;}
+  h1 span{background:#C8102E;padding:0 8px;border-radius:4px;margin-left:4px;}
+  .lede{font-size:17px;opacity:.9;margin:12px 0 0;max-width:640px;}
+  main{max-width:860px;margin:0 auto;padding:10px 16px 60px;}
+  h2{font:700 26px/1.1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:34px 0 10px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:12px 0;}
+  .formula{font:600 clamp(16px,3.4vw,22px)/1.4 "Barlow Condensed",sans-serif;letter-spacing:.3px;text-align:center;padding:18px 12px;background:#0b0b0d;color:#fff;border-radius:12px;border-bottom:4px solid;border-image:linear-gradient(90deg,#1D428A 50%,#C8102E 50%) 1;}
+  .formula small{display:block;font:500 12.5px Inter,sans-serif;opacity:.75;margin-top:6px;letter-spacing:0;}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);}
+  td.w{font-weight:700;white-space:nowrap;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;}
+  .grid .card{margin:0;}
+  .grid h3{margin:0 0 6px;font:700 19px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;}
+  .grid p{margin:0;color:var(--dim);font-size:14px;}
+  .big{font:700 40px/1 "Barlow Condensed",sans-serif;color:var(--accent);}
+  .note{color:var(--dim);font-size:13px;}
+  ul{padding-left:20px;} li{margin:4px 0;}
+  .tw{overflow-x:auto;}
+  @media (max-width:560px){ h1{font-size:38px;} }
+
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 0;} .toc a{font:600 13px Inter,sans-serif;padding:6px 11px;border-radius:999px;background:var(--panel);border:1px solid var(--line);text-decoration:none;color:var(--ink);}
+  h3{font:700 19px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;margin:18px 0 6px;}
+  .card h3:first-child{margin-top:0;}
+  .ex{background:var(--row);border-left:4px solid var(--court);border-radius:8px;padding:10px 14px;margin:10px 0;font-size:14px;}
+  .ex b.r{color:var(--good);} .ex b.l{color:var(--bad);}
+  .tip{border-left-color:var(--good);} .warn{border-left-color:var(--accent);}
+  .t-gold{color:#b8860b;} .t-ruby{color:#c0263d;} .t-amethyst{color:#8e44ad;} .t-diamond{color:#1c7ed6;} .t-opal{background:linear-gradient(90deg,#ff6ec7,#7873f5,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .back{display:inline-block;margin-top:14px;color:#fff;font-weight:600;}
+  details{border-top:1px solid var(--line);padding:8px 0;} details summary{cursor:pointer;font-weight:600;} details p{margin:6px 0 2px;}
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="band-in">
+  <div class="eyebrow">The Rotation · Card game</div>
+  <h1>The full <span>rules</span></h1>
+  <p class="lede">Collect player cards, build a 10-man roster, and let real NBA box scores decide your nights. Here's every rule, number and tiebreaker.</p>
+  <a class="back" href="rotation.html#game">← Back to the card game</a>
+</div></div>
+
+<main>
+  <nav class="toc" aria-label="On this page">
+    <a href="#quick">Quick start</a><a href="#roster">Roster</a><a href="#cards">Cards</a><a href="#packs">Packs</a><a href="#points">Earning points</a><a href="#nightly">Nightly games</a><a href="#chem">Chemistry</a><a href="#bench">Bench balance</a><a href="#example">A full night</a><a href="#ladder">Weekly ladder</a><a href="#saving">Record &amp; saving</a><a href="#tips">Strategy</a><a href="#faq">FAQ</a>
+  </nav>
+
+  <h2 id="quick">Quick start</h2>
+  <div class="card"><ol style="margin:0;padding-left:20px">
+    <li><b>Open your 5 free starter packs.</b> That's 15 cards. Your best 10 fill your lineup automatically: 5 starters, 5 on the bench.</li>
+    <li><b>Set your lineup</b> before the first game tips off each night. Make sure your five fit together (see <a href="#chem">Chemistry</a>) and your bench covers every position (see <a href="#bench">Bench balance</a>).</li>
+    <li><b>Wake up to results.</b> Once every game from the night is final, your five plays three games against real box scores: Fantasy Five, vs Pulse, and vs a real NBA team.</li>
+    <li><b>Earn points</b> from those games, from your picks on The Morning Press, and from a daily check-in bonus.</li>
+    <li><b>Spend points on packs</b>, sell cards whose value has gone up, and climb the weekly ladder for free packs.</li>
+  </ol></div>
+
+  <h2 id="roster">Your roster</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><b>10 spots:</b> a starting five and a five-man bench. Any other cards you own sit in your collection and don't play.</li>
+      <li><b>One of each player in the lineup.</b> You can own duplicates, but the same player can't be in your lineup twice.</li>
+      <li><b>Your first lineup is set for you:</b> the best guard and best center from your starter packs start, then the three next-best players; the next five go to the bench. Change it any time with the Start, Bench and Out buttons on each card.</li>
+      <li><b>Lineup lock:</b> a night is played with the lineup you had <b>before that night's first tip-off</b>. Changes after the first game starts count from the next night. The page tells you which night your changes count for.</li>
+      <li><b>No hard position rules.</b> You can start any five. But lineups that don't fit together are penalized heavily (see <a href="#chem">Chemistry</a>).</li>
+    </ul>
+  </div>
+
+  <h2 id="cards">Cards</h2>
+  <div class="card">
+    <h3>Overall rating (OVR)</h3>
+    <p style="margin:0">Every card's OVR comes from where the player's <a href="about.html">Pulse</a> ranks this season among qualified players (at least half as many games as the league leader, and 15+ minutes a game). It runs from about 60 to 99, steepest at the top, and <b>updates as the season goes</b>: a player who heats up gets a higher OVR on every copy of his card. Early in the season, players with few minutes are pulled toward the league middle so one hot night doesn't make a 95.</p>
+    <h3>Five tiers</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Tier</th><th>OVR</th><th>About who</th></tr></thead>
+      <tbody>
+        <tr><td class="w t-opal">Galaxy Opal</td><td>95+</td><td>Roughly the top 15 players in the league</td></tr>
+        <tr><td class="w t-diamond">Diamond</td><td>90–94</td><td>Roughly players 15–40: All-Star level</td></tr>
+        <tr><td class="w t-amethyst">Amethyst</td><td>84–89</td><td>Roughly players 40–70: quality starters</td></tr>
+        <tr><td class="w t-ruby">Ruby</td><td>77–83</td><td>Roughly players 70–110: solid starters and sixth men</td></tr>
+        <tr><td class="w t-gold">Gold</td><td>Under 77</td><td>Everyone else in the rotation</td></tr>
+      </tbody></table></div>
+    <h3>Card value and selling</h3>
+    <p style="margin:0 0 8px">Every card has a points value, set by the same Pulse ranking. Like a real market, the stars are worth far more than everyone else:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Player's Pulse rank</th><th>Typical OVR</th><th>Card value</th></tr></thead>
+      <tbody>
+        <tr><td>#1</td><td>99</td><td>about 400 points</td></tr>
+        <tr><td>#5</td><td>98</td><td>about 315</td></tr>
+        <tr><td>#10</td><td>97</td><td>about 230</td></tr>
+        <tr><td>#25</td><td>93</td><td>about 100</td></tr>
+        <tr><td>#50</td><td>88</td><td>about 30</td></tr>
+        <tr><td>#75</td><td>83</td><td>about 15</td></tr>
+        <tr><td>#100 and below</td><td>78 and below</td><td>5 to 10</td></tr>
+      </tbody></table></div>
+    <ul>
+      <li><b>Values move with play.</b> Each card shows its value now and how much it has gained or lost since you got it.</li>
+      <li><b>Sell any card</b> for its current value (tap Sell, then confirm). Selling a player in your lineup removes him from it.</li>
+      <li><b>Sell duplicates</b> in one tap: it keeps your best copy of each player and sells the rest, never touching your lineup.</li>
+      <li><b>Sell high or hold:</b> a bench guy on a hot streak can be worth 5 times what he was when you pulled him. Sell before he cools off, or keep him and risk selling low later.</li>
+    </ul>
+    <p class="note" style="margin:0">The numbers above are from this season's rankings and shift as Pulse rankings change.</p>
+  </div>
+
+  <h2 id="packs">Packs</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">Every pack has 3 cards. Cards come from the same qualified-player pool (ranked by Pulse). Within each range, every player is equally likely, so a top-150 card could be the MVP or the 150th-best player.</p>
+    <div class="tw"><table>
+      <thead><tr><th>Pack</th><th>Cost</th><th>Card 1</th><th>Cards 2 and 3</th></tr></thead>
+      <tbody>
+        <tr><td class="w t-gold">Gold</td><td>150</td><td>A top-150 player</td><td>Anyone in the pool</td></tr>
+        <tr><td class="w t-ruby">Ruby</td><td>300</td><td>A top-75 player</td><td>Top 200</td></tr>
+        <tr><td class="w t-opal">Galaxy</td><td>500</td><td>A top-25 player</td><td>Top 150</td></tr>
+      </tbody></table></div>
+    <p class="note" style="margin:8px 0 0">Cards are shuffled before you flip them, so the best card could be in any spot. Duplicates are marked when you open a pack. Free packs from the <a href="#ladder">weekly ladder</a> work the same way.</p>
+  </div>
+
+  <h2 id="points">Earning points</h2>
+  <div class="card">
+    <h3>1 · Daily bonus: +20</h3>
+    <p style="margin:0">Tap "Claim daily bonus" once a day.</p>
+    <h3>2 · Picks on The Morning Press</h3>
+    <p style="margin:0 0 6px">Under Coming up → Your pick, each game has three lines: the winner (moneyline), the spread and the total (over/under). Each game you pick pays two ways, added together:</p>
+    <ul style="margin:0">
+      <li><b>Every winning line pays:</b> spread right = <b>25</b>; total right = <b>25</b>; winner right = <b>25 × the payout</b> (at least 10). A push (exactly on the line) pays <b>5</b>.</li>
+      <li><b>Plus a bonus</b> for how many of that game's lines you got right: 1 = <b>+10</b>, 2 = <b>+25</b>, all 3 = <b>+50</b>.</li>
+    </ul>
+    <div class="tw"><table style="margin-top:8px">
+      <thead><tr><th>Winner pick</th><th>Payout</th><th>Points if right</th></tr></thead>
+      <tbody><tr><td>−300 favorite</td><td>bet 300 to win 100</td><td>10 (the minimum)</td></tr><tr><td>−150 favorite</td><td>0.67×</td><td>17</td></tr><tr><td>+150 underdog</td><td>1.5×</td><td>38</td></tr><tr><td>+200 underdog</td><td>2×</td><td>50</td></tr></tbody></table></div>
+    <div class="ex"><b>Example:</b> you take a +150 underdog to win, the underdog +2.5 and the under. All three hit: 38 + 25 + 25 = 88 for the lines, plus the 50 bonus = <b class="r">138 points</b>. If only the spread had hit: 25 + 10 = <b>35</b>.</div>
+    <p class="note" style="margin:0">Picks are graded when the game is final. If you hide betting lines in Settings, the pick buttons disappear but you can still earn from everything else.</p>
+    <h3>3 · Nightly games: +10 per win</h3>
+    <p style="margin:0">Up to <b>40 points a night</b>: 10 each for winning Fantasy Five, vs Pulse and vs a real team, plus 10 for an upset. Details below.</p>
+  </div>
+
+  <h2 id="nightly">Nightly games</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">Every night with NBA games, your lineup plays three games, all decided by that night's real box scores. Results show up once <b>every</b> game from that night is final (usually the next morning). Nights with no games, or before your team existed, don't count.</p>
+    <h3>Your score: Fantasy Five production</h3>
+    <p style="margin:0 0 6px">Each of your five players earns his <b>Pulse production</b> for the night (game totals, not per minute):</p>
+    <div class="formula" style="font:600 18px/1.4 'Barlow Condensed',sans-serif;text-align:center;padding:14px;background:#0b0b0d;color:#fff;border-radius:12px">PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV</div>
+    <div class="ex">A 30-point, 10-rebound, 5-assist, 2-steal, 1-block, 3-turnover night = 30 + 10 + 20 + 8 + 1 − 12 = <b>57</b>.</div>
+    <p style="margin:0">Add up your five, then apply your <a href="#chem">chemistry</a> bonus or penalty. That's your <b>Fantasy Five score</b>, and it's the number used in all three games.</p>
+    <h3>Who plays: subs</h3>
+    <p style="margin:0">A starter who doesn't play that night (injured, resting, or no game) is replaced by the <b>first bench player at his position</b> who did play: a guard for a guard, a wing for a wing, a big for a big. If there's nobody at that position, the first bench player who played comes in. A sub's production is adjusted by your <a href="#bench">bench balance</a>. If you run out of subs, the empty spot scores 0.</p>
+    <h3>Game 1 · Fantasy Five</h3>
+    <p style="margin:0">Reach <b>120</b>: <b class="r" style="color:var(--good)">+10</b>. Most nights land somewhere between 80 and 160, so it takes a good night from a well-built five.</p>
+    <h3>Game 2 · vs Pulse</h3>
+    <p style="margin:0">Pulse builds a five from players who played that night (none of yours), with about the same total OVR as your starters. Beat its total production: <b style="color:var(--good)">+10</b>. Pulse's five gets no chemistry adjustment, so a well-built lineup has the edge.</p>
+    <h3>Game 3 · vs a real team</h3>
+    <p style="margin:0">Your five against the <b>actual starting five</b> of the NBA team whose starters' average OVR was closest to yours that night. Beat their total production: <b style="color:var(--good)">+10</b>. If their starters were rated higher than yours and you still won, that's an <b>upset: another +10</b>. Their five gets no chemistry adjustment either.</p>
+    <p class="note" style="margin:8px 0 0"><b>Ties count as losses</b> in the head-to-head games: you have to outscore the other five.</p>
+  </div>
+
+  <h2 id="chem">Chemistry</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">You can start any five you want, but they have to work together on a real court. Chemistry rates your five from 0 to 100, based on their season averages, and it's measured against real NBA starting fives (which score about 70 to 86).</p>
+    <div class="tw"><table>
+      <thead><tr><th>Part</th><th>Weight</th><th>What scores well</th></tr></thead>
+      <tbody>
+        <tr><td class="w">Positions</td><td>30%</td><td>About 2 guards (PG/SG), 2 bigs (PF/C) and a wing (SF). Each guard or big too many or too few costs a quarter of this part.</td></tr>
+        <tr><td class="w">Touches</td><td>25%</td><td>One ball to share. The five's shots + free-throw trips + turnovers per game should total about 65 to 85. Above 85, it falls off fast and reaches zero at 110: five stars who all need the ball fight over it.</td></tr>
+        <tr><td class="w">Playmaking</td><td>15%</td><td>Assists: none below 12 a game combined, full marks at 20.</td></tr>
+        <tr><td class="w">Spacing</td><td>15%</td><td>Threes made: none below 5 a game combined, full marks at 10.</td></tr>
+        <tr><td class="w">Rim &amp; boards</td><td>15%</td><td>Half blocks (1.5 to 4 a game combined), half rebounds (20 to 32).</td></tr>
+      </tbody></table></div>
+    <h3>What it does to your score</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Chemistry</th><th>Fantasy Five score</th></tr></thead>
+      <tbody>
+        <tr><td>80–100</td><td style="color:var(--good);font-weight:700">+10%</td></tr>
+        <tr><td>65–79</td><td style="color:var(--good);font-weight:700">+5%</td></tr>
+        <tr><td>50–64</td><td>no change</td></tr>
+        <tr><td>35–49</td><td style="color:var(--bad);font-weight:700">−20%</td></tr>
+        <tr><td>20–34</td><td style="color:var(--bad);font-weight:700">−35%</td></tr>
+        <tr><td>Under 20</td><td style="color:var(--bad);font-weight:700">−50%</td></tr>
+        <tr><td><b>No guard</b> in the five</td><td style="color:var(--bad);font-weight:700">another −20%</td></tr>
+        <tr><td><b>No center</b> in the five</td><td style="color:var(--bad);font-weight:700">another −20%</td></tr>
+      </tbody></table></div>
+    <p class="note">The total penalty can't go past −60%. Chemistry is figured on <b>the five who actually played that night</b>, subs included, so the lineup card on the game page is a preview.</p>
+    <div class="ex warn"><b>A center and four star forwards:</b> great players, but no guard, too few assists and too many shots. Chemistry 38 (−20%) plus no guard (−20%) = <b class="l">−40%</b>. They'd need 200 production just to reach 120.</div>
+    <div class="ex warn"><b>The five best guards:</b> no center, almost no rim protection, and five players who all need the ball. Chemistry 38 plus no center = <b class="l">−40%</b>.</div>
+    <div class="ex tip"><b>Balanced stars</b> (a point guard, a shooting guard, a wing, a power forward and a center): chemistry 75 = <b class="r">+5%</b>. <b>A balanced lineup of role players</b> can hit 80+ and get the full <b class="r">+10%</b>, because they don't fight over the ball.</div>
+  </div>
+
+  <h2 id="bench">Bench balance</h2>
+  <div class="card">
+    <p style="margin:0 0 8px">Your bench only plays when a starter sits, but when it does, it has to cover the right position. Bench balance rates your five bench players from 0 to 100. It starts at 100 and loses points for:</p>
+    <div class="tw"><table>
+      <thead><tr><th>Problem</th><th>Points lost</th></tr></thead>
+      <tbody>
+        <tr><td>No guard (PG/SG)</td><td>−30</td></tr>
+        <tr><td>No big (PF/C)</td><td>−30</td></tr>
+        <tr><td>No wing (SF)</td><td>−10</td></tr>
+        <tr><td>No center</td><td>−10</td></tr>
+        <tr><td>More than 3 guards, wings or bigs</td><td>−20 for each one over 3</td></tr>
+        <tr><td>Empty bench spots</td><td>−10 each</td></tr>
+      </tbody></table></div>
+    <h3>What it does</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Bench balance</th><th>Each sub's production</th></tr></thead>
+      <tbody>
+        <tr><td>80–100</td><td style="color:var(--good);font-weight:700">+5%</td></tr>
+        <tr><td>55–79</td><td>no change</td></tr>
+        <tr><td>30–54</td><td style="color:var(--bad);font-weight:700">−25%</td></tr>
+        <tr><td>Under 30</td><td style="color:var(--bad);font-weight:700">−40%</td></tr>
+      </tbody></table></div>
+    <p>It only affects players who sub in; your starters are never touched by it. But the bigger risk is indirect: if your starting center sits and your bench has no big, a guard comes in, your five has no center that night, and chemistry takes the extra −20%.</p>
+    <div class="ex tip"><b>Good:</b> 2 guards, a wing, a power forward and a backup center = 100 → <b class="r">+5% on subs</b>.</div>
+    <div class="ex warn"><b>All guards:</b> 5 guards, no big, no wing, no center, 2 too many guards = 100 − 30 − 10 − 10 − 40 = 10 → <b class="l">−40% on subs</b>.</div>
+  </div>
+
+  <h2 id="example">A full night, start to finish</h2>
+  <div class="card">
+    <p style="margin:0">Your starters: a PG, an SG, an SF, a PF and a C. Chemistry 72. Bench balance 100. Your starting SG sits with a sore ankle.</p>
+    <ol>
+      <li><b>Sub:</b> the first guard on your bench who played comes in for the SG. He has 22 production; bench balance +5% makes it <b>23</b>.</li>
+      <li><b>Production:</b> 23 + your other four (38, 29, 31, 24) = <b>145</b>.</li>
+      <li><b>Chemistry</b> is rechecked with the sub in the five: still 72, so +5% → <b>152</b>.</li>
+      <li><b>Fantasy Five:</b> 152 beats 120 → <b class="r" style="color:var(--good)">+10</b>.</li>
+      <li><b>vs Pulse:</b> Pulse's five had 138 → you win, <b style="color:var(--good)">+10</b>.</li>
+      <li><b>vs a real team:</b> the closest starting five by OVR was rated a little higher than yours and had 149 → you win <b style="color:var(--good)">+10</b> and the upset <b style="color:var(--good)">+10</b>.</li>
+    </ol>
+    <p style="margin:0">That's a perfect 3–0 night and <b>40 points</b>. The 152 also goes toward your weekly ladder total.</p>
+  </div>
+
+  <h2 id="ladder">Weekly ladder</h2>
+  <div class="card">
+    <p style="margin:0 0 6px">Your Fantasy Five scores add up from Monday to Sunday (the score itself, not the 10-point wins). Hit a rung and claim a free pack:</p>
+    <div class="tw"><table><thead><tr><th>Weekly total</th><th>Reward</th></tr></thead>
+      <tbody><tr><td>400</td><td>Free <span class="t-gold"><b>Gold</b></span> pack</td></tr><tr><td>700</td><td>Free <span class="t-ruby"><b>Ruby</b></span> pack</td></tr><tr><td>1,000</td><td>Free <span class="t-opal"><b>Galaxy</b></span> pack</td></tr></tbody></table></div>
+    <p class="note" style="margin:6px 0 0">You can claim all three in a big week. The ladder resets every Monday; unclaimed rungs from past weeks can't be claimed later, so tap Claim when you get there.</p>
+  </div>
+
+  <h2 id="saving">Your record and saving your team</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><b>Scoreboard:</b> your win-loss record in each of the three games, your last 10 nights, current and best streaks, this week's record, best night, average score, perfect nights and upsets.</li>
+      <li><b>Every night is saved</b>, so you can scroll back through past results. If you don't open the page for a few days, those nights are scored when you come back, using the lineup you had for each night.</li>
+      <li><b>Saving:</b> your team stays saved when you close the browser. <b>Sign in</b> (Menu → Settings, or the button under the scoreboard) to keep it in your account and play from any device. Without signing in, it lives only on that device; use <b>Backup code</b> to keep a copy.</li>
+    </ul>
+  </div>
+
+  <h2 id="tips">Strategy</h2>
+  <div class="card"><ul style="margin:0">
+    <li><b>Fit beats stars.</b> A balanced five with chemistry 80 gets +10%; five stars at chemistry 38 with no center lose 40%. That's a 50% swing.</li>
+    <li><b>Count touches.</b> Two or three players who need the ball, plus a passer, a shooter and a rim protector who don't, is the sweet spot.</li>
+    <li><b>Check the injury report</b> before tip-off. A starter who sits is replaced from your bench, so a healthy starter beats a slightly better one who's questionable.</li>
+    <li><b>Keep a backup center.</b> It's the bench spot that saves the most nights.</li>
+    <li><b>Watch values.</b> Sell a hot bench card at its peak and put the points toward a Galaxy pack.</li>
+    <li><b>Hit the picks.</b> All three lines right in one game (138 in the example above) is worth almost a full Gold pack.</li>
+  </ul></div>
+
+  <h2 id="faq">FAQ</h2>
+  <div class="card">
+    <details><summary>My starter's team didn't play tonight. What happens?</summary><p>Same as an injury: the first bench player at his position who played subs in.</p></details>
+    <details><summary>Can I change my lineup during the night's games?</summary><p>Yes, but the change counts from the next night. The night already underway uses the lineup you had before its first tip-off.</p></details>
+    <details><summary>A player got traded. Is my card still good?</summary><p>Yes. Cards follow the player, and his rating and value keep updating on his new team.</p></details>
+    <details><summary>Why did a card's OVR change?</summary><p>OVR follows the player's Pulse rank, which moves every day. Every copy of his card updates together.</p></details>
+    <details><summary>Why doesn't my result show up yet?</summary><p>A night is scored only when every game from that night is final, so a late West Coast game can push results to the next morning.</p></details>
+    <details><summary>Can I play against a friend?</summary><p>Not yet. Head-to-head between friends is on the way.</p></details>
+  </div>
+  <p class="note">Full Court Geek Press is an independent fan site and isn't affiliated with the NBA or its teams. The card game uses points only; nothing in it costs or pays money.</p>
+</main>
+<script src="nav.js"></script>
+<script src="jumps.js"></script>
+</body>
+</html>
