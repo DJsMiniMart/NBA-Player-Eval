@@ -164,6 +164,18 @@
   .tn .live{color:var(--accent);font-weight:700;}
 
   /* coming up */
+  .daynav{display:flex;align-items:flex-start;gap:6px;margin-bottom:10px;}
+  .daynav .daytabs{flex:1;min-width:0;margin-bottom:0;}
+  .daynav .arr{flex:none;width:34px;height:46px;padding:0;border-radius:10px;font-size:22px;line-height:1;}
+  .daynav .cal{flex:none;position:relative;display:flex;align-items:center;justify-content:center;width:44px;height:46px;border:1px solid var(--line);border-radius:10px;background:var(--panel);cursor:pointer;font-size:18px;}
+  .daynav .cal input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:0;padding:0;}
+  .daytabs button.past small{color:var(--dim);} .daytabs button.empty{opacity:.55;}
+  .up.past .tm{grid-template-columns:30px 1fr auto auto;}
+  .up.past .tm .sc{font:700 22px "Barlow Condensed",sans-serif;min-width:34px;text-align:right;grid-column:4;}
+  .up.past .tm.lost{opacity:.6;}
+  .up.past .pk.hit{background:var(--good,#16a34a);color:#fff;} .up.past .pk.miss{background:var(--bad,#c8102e);color:#fff;}
+  .up .acts{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px 12px;}
+  .up .acts button,.up .acts a{font:600 12.5px Inter,sans-serif;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;cursor:pointer;}
   .daytabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:thin;}
   .daytabs button{flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 12px;border-radius:10px;min-width:64px;}
   .daytabs button b{font-size:13px;} .daytabs button small{font-size:11px;color:var(--dim);}
@@ -280,8 +292,14 @@
   </section>
 
   <section class="sec" id="upSec">
-    <div class="sec-h"><h2>Coming up</h2><small id="upNote">The next 7 days · Pulse picks the winner · storylines for every game</small></div>
-    <div class="daytabs" id="upDays"></div>
+    <div class="sec-h"><h2>Coming up</h2><small id="upNote">Pulse picks the winner · storylines for every game · use the arrows or the calendar to look back</small></div>
+    <div class="daynav">
+      <button class="arr" id="upPrev" aria-label="Previous day">‹</button>
+      <div class="daytabs" id="upDays"></div>
+      <button class="arr" id="upNext" aria-label="Next day">›</button>
+      <label class="cal" title="Pick a date"><span aria-hidden="true">📅</span><input type="date" id="upCal" aria-label="Pick a date"></label>
+    </div>
+    <p class="note" id="upDaySum" style="margin:-4px 2px 10px" hidden></p>
     <div class="upgrid" id="upcoming"><div class="card empty">Loading the schedule…</div></div>
     <p class="note" id="upLines" style="margin:8px 2px 0"></p>
   </section>
@@ -712,22 +730,59 @@ function alertNote(msg){ const n = $("upLines"); if(n){ n.textContent = msg; n.s
 
 /* ---------- coming up: next 7 days with Pulse picks and storylines (data/predictions.json, built by predict.py) ---------- */
 const STORY_ICON = {rivalry:"⚔️", division:"🏟️", rematch:"🔁", streak:"📈", race:"🏁", revenge:"🔄", stars:"⭐", rookies:"🆕", rest:"😴", preview:"📰", note:"💬"};
-let upDay = null;
+let upDay = null, upWin = null;
+const localDay = iso => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const addDay = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return localDay(x.toISOString()); };
+function setUpDay(d){
+  upDay = d;
+  if(!upWin || d < upWin || d > addDay(upWin, 6)) upWin = d < (upWin || d) ? addDay(d, -6) : d;
+  renderUpcoming(); paintLive();
+}
+/* a game that's over (or one past the week Pulse has picked), from the season schedule */
+function pastCard(g, R){
+  const [gid, iso, home, away, st, hs, as, arena, tv] = g, fin = st === 3;
+  const pk = PRED && PRED.picks && PRED.picks[gid], ats = PRED && PRED.ats && PRED.ats[gid];
+  const time = new Date(iso).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
+  const win = fin ? (hs > as ? home : away) : null;
+  const row = (t, sc) => `<div class="tm${fin && t !== win ? " lost" : ""}">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>
+      ${pk && pk[0] === t ? `<span class="pk ${fin ? (pk[2] ? "hit" : "miss") : ""}" title="Pulse's pick">Pulse pick · ${Math.round(pk[1] * 100)}%${fin ? (pk[2] ? " ✓" : " ✗") : ""}</span>` : ""}${fin ? `<span class="sc">${sc}</span>` : ""}</div>`;
+  const atsLine = ats ? `<div class="vegas ats">📏 Against the spread Pulse took <b>${esc(ats[0])} ${ats[2] === 0 ? "PK" : sgnNum(ats[0] === home ? ats[2] : -ats[2])}</b>${fin ? (ats[3] === 1 ? " · covered ✓" : ats[3] === 0 ? " · didn't cover ✗" : " · push") : ""}</div>` : "";
+  return `<div class="card up past"><div class="when"><span>${fin ? "Final" : time}${arena ? " · " + esc(arena) : ""}</span><span>${esc((tv || "").split(",").slice(0, 2).join(", "))}</span></div>
+    ${row(away, as)}${row(home, hs)}${atsLine}
+    ${!fin && !pk ? `<ul><li class="none"><span>•</span><div>Pulse picks, lines and storylines show up a week before the game.</div></li></ul>` : ""}
+    <div class="acts">${fin ? `<button data-box="${esc(gid)}">Box score</button>` : ""}<a href="matchup.html#${encodeURIComponent(gid)}">${fin ? "Matchup page →" : "Full matchup →"}</a></div></div>`;
+}
 function renderUpcoming(){
-  const list = ((PRED && PRED.upcoming) || []).filter(u => new Date(u.t) > new Date(Date.now() - 4 * 36e5));
-  if(!list.length){ $("upSec").hidden = true; return; }
+  const all = (SCHED && SCHED.games) || [];
+  const preds = ((PRED && PRED.upcoming) || []).filter(u => new Date(u.t) > new Date(Date.now() - 4 * 36e5));
+  if(!all.length && !preds.length){ $("upSec").hidden = true; return; }
   $("upSec").hidden = false;
-  const localDay = iso => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-  const days = [...new Set(list.map(u => localDay(u.t)))].sort();
-  if(!days.includes(upDay)) upDay = days[0];
-  const today = localDay(new Date().toISOString());
-  const tomorrow = localDay(new Date(Date.now() + 864e5).toISOString());
-  $("upDays").innerHTML = days.map(d => { const dt = new Date(d + "T12:00:00"); const n = list.filter(u => localDay(u.t) === d).length;
-    return `<button class="${d === upDay ? "on" : ""}" data-d="${d}"><b>${d === today ? "Today" : d === tomorrow ? "Tomorrow" : dt.toLocaleDateString("en-US", {weekday:"short"})}</b><small>${dt.toLocaleDateString("en-US", {month:"short", day:"numeric"})} · ${n}</small></button>`; }).join("");
-  $("upDays").querySelectorAll("button").forEach(b => b.onclick = () => { upDay = b.dataset.d; renderUpcoming(); paintLive(); });
+  const gameDays = [...new Set(all.map(g => localDay(g[1])).concat(preds.map(u => localDay(u.t))))].sort();
+  const today = localDay(new Date().toISOString()), tomorrow = addDay(today, 1), yesterday = addDay(today, -1);
+  if(!upDay){ upDay = preds.length ? localDay(preds[0].t) : (gameDays.find(d => d >= today) || gameDays[gameDays.length - 1]); upWin = upDay < today ? addDay(upDay, -6) : (upDay > today ? today : upDay); }
+  if(!upWin) upWin = upDay;
+  const cal = $("upCal"); if(gameDays.length){ cal.min = gameDays[0]; cal.max = gameDays[gameDays.length - 1]; } cal.value = upDay;
+  const predIds = new Set(preds.map(u => u.id));
+  const onDay = d => { const p = preds.filter(u => localDay(u.t) === d), s = all.filter(g => localDay(g[1]) === d && !(predIds.has(g[0]) && g[4] !== 3)); return {p: p.filter(u => !s.some(g => g[0] === u.id)), s}; };
+  const win = Array.from({length: 7}, (_, i) => addDay(upWin, i));
+  $("upDays").innerHTML = win.map(d => { const dt = new Date(d + "T12:00:00"), o = onDay(d), n = o.p.length + o.s.length;
+    return `<button class="${d === upDay ? "on" : ""}${d < today ? " past" : ""}${n ? "" : " empty"}" data-d="${d}"><b>${d === today ? "Today" : d === tomorrow ? "Tomorrow" : d === yesterday ? "Yesterday" : dt.toLocaleDateString("en-US", {weekday:"short"})}</b><small>${dt.toLocaleDateString("en-US", {month:"short", day:"numeric"})} · ${n}</small></button>`; }).join("");
+  $("upDays").querySelectorAll("button").forEach(b => b.onclick = () => setUpDay(b.dataset.d));
+  { const on = $("upDays").querySelector("button.on"), bar = $("upDays"); if(on){ const r = on.getBoundingClientRect(), br = bar.getBoundingClientRect(); if(r.left < br.left || r.right > br.right) bar.scrollLeft += r.left - br.left - (br.width - r.width) / 2; } }
+  $("upPrev").disabled = !!gameDays.length && upDay <= gameDays[0];
+  $("upNext").disabled = !!gameDays.length && upDay >= gameDays[gameDays.length - 1];
+  const day = onDay(upDay);
+  // how Pulse did on a finished day
+  const fins = day.s.filter(g => g[4] === 3), picked = fins.filter(g => PRED && PRED.picks && PRED.picks[g[0]]);
+  const hits = picked.filter(g => PRED.picks[g[0]][2]).length, atsG = fins.filter(g => PRED && PRED.ats && PRED.ats[g[0]]);
+  const aw = atsG.filter(g => PRED.ats[g[0]][3] === 1).length, al = atsG.filter(g => PRED.ats[g[0]][3] === 0).length;
+  $("upDaySum").hidden = !picked.length;
+  $("upDaySum").innerHTML = picked.length ? `<b>Pulse went ${hits}–${picked.length - hits}</b> picking winners on ${esc(new Date(upDay + "T12:00:00").toLocaleDateString("en-US", {weekday: "long", month: "long", day: "numeric"}))}${atsG.length ? ` · ${aw}–${al} against the spread` : ""}.` : "";
+  const list = day.p;
+  const Rpast = standings(addDay(upDay, -1));
   const R = standings();
   const color = t => (TEAMS[t] && TEAMS[t].c1) || "#888";
-  $("upcoming").innerHTML = list.filter(u => localDay(u.t) === upDay).map(u => {
+  $("upcoming").innerHTML = day.s.filter(g => g[4] === 3).map(g => pastCard(g, Rpast)).join("") + list.map(u => {
     const time = new Date(u.t).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
     const pa = u.pick === u.away ? u.p : 1 - u.p, ph = 1 - pa;
     const row = (t, chance) => `<div class="tm">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>${u.pick === t ? `<span class="pk" title="Pulse's pick: ${Math.round(chance * 100)}% to win">Pulse pick · ${Math.round(chance * 100)}%</span>` : `<span style="color:var(--dim);font-size:12px">${Math.round(chance * 100)}%</span>`}</div>`;
@@ -740,7 +795,8 @@ function renderUpcoming(){
       <div class="odds" title="Pulse win chances"><i style="width:${(pa * 100).toFixed(1)}%;background:${color(u.away)}"></i><i style="width:${(ph * 100).toFixed(1)}%;background:${color(u.home)}"></i></div>
       <ul>${stories || `<li class="none"><span>•</span><div>No big storyline yet. ESPN's preview usually shows up the morning of the game.</div></li>`}</ul>
       <a class="mlink" href="matchup.html#${encodeURIComponent(u.id)}">Full matchup: tale of the tape, rest, players, head-to-head →</a></div>`;
-  }).join("");
+  }).join("") + day.s.filter(g => g[4] !== 3).map(g => pastCard(g, R)).join("") || `<div class="card empty">No games on ${esc(new Date(upDay + "T12:00:00").toLocaleDateString("en-US", {weekday: "long", month: "long", day: "numeric"}))}.</div>`;
+  $("upcoming").querySelectorAll("[data-box]").forEach(b => b.onclick = () => window.BoxScore && BoxScore.open(b.dataset.box));
   const rec = PRED.record || [0, 0];
   const book = Object.values((MORNING && MORNING.odds) || {})[0];
   $("upLines").innerHTML = book ? `Lines from ${esc(book.book || "the sportsbook")} via ESPN${MORNING.oddsAt ? `, as of ${new Date(MORNING.oddsAt).toLocaleString("en-US", {weekday:"short", hour:"numeric", minute:"2-digit"})}` : ""}; they move, so check your book before betting. For information only, 21+. Gambling problem? Call 1-800-GAMBLER.` : "";
@@ -764,6 +820,12 @@ function renderTx(){
     tr.onkeydown = e => { if(e.key === "Enter" && window.TradePop) TradePop.open(r); }; });
   $("txMore").hidden = list.length <= TX.shown;
   $("txMore").textContent = `Show more (${list.length - TX.shown} left)`;
+}
+function setupUpNav(){
+  $("upPrev").onclick = () => upDay && setUpDay(addDay(upDay, -1));
+  $("upNext").onclick = () => upDay && setUpDay(addDay(upDay, 1));
+  $("upCal").onchange = e => { if(e.target.value) setUpDay(e.target.value); };
+  $("upCal").parentElement.onclick = e => { const c = $("upCal"); if(e.target !== c && c.showPicker){ try{ c.showPicker(); }catch(_){} } };
 }
 function setupTx(){
   $("txTeam").innerHTML += Object.keys(TEAMS).sort((a, b) => TEAMS[a].n.localeCompare(TEAMS[b].n)).map(c => `<option value="${c}">${esc(TEAMS[c].n)}</option>`).join("");
@@ -842,6 +904,7 @@ async function showNight(d){
 
 async function init(){
   setupTx();
+  setupUpNav();
   setupInjuries();
   [LEAGUE, SCHED, MORNING, PLAYERS, PRED] = await Promise.all([getJSON("data/teams/league.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/teams/players.json"), getJSON("data/predictions.json")]);
   LEAGUE = LEAGUE || {games: []};
