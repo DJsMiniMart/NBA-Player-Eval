@@ -95,6 +95,12 @@
   .modes{display:flex;gap:6px;margin:16px 0 4px;} .modes button{flex:1;max-width:240px;font-weight:700;border-radius:999px;padding:9px 14px;}
   .modes button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
   @media (prefers-color-scheme: dark){ .modes button.on{background:#e8edf6;color:#0b1220;border-color:#e8edf6;} }
+  .sb{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;} @media (max-width:640px){ .sb{grid-template-columns:1fr;} }
+  .sb .card{padding:12px 14px;} .sb h4{margin:0 0 4px;font:700 12px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  .sb .rec{font:700 34px/1 "Barlow Condensed",sans-serif;} .sb .rec small{font-size:15px;color:var(--dim);margin-left:6px;}
+  .sb .form{display:flex;gap:3px;margin:8px 0 4px;} .sb .form i{width:18px;height:18px;border-radius:4px;font:700 10px/18px Inter,sans-serif;text-align:center;color:#fff;font-style:normal;}
+  .sb .form i.w{background:var(--good);} .sb .form i.l{background:var(--bad);}
+  .sbtot{display:flex;flex-wrap:wrap;gap:8px 18px;padding:12px 14px;margin-top:10px;align-items:center;} .sbtot div span{display:block;font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);} .sbtot div b{font:700 22px "Barlow Condensed",sans-serif;}
   .wallet{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;margin-top:14px;}
   .wallet span{display:block;font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
   .wallet b{font:700 36px/1 "Barlow Condensed",sans-serif;} .wallet small{display:block;color:var(--dim);font-size:12px;}
@@ -162,6 +168,8 @@
     <div id="gStart"></div>
     <div id="gOpen"></div>
     <div id="gPlay">
+    <h2 data-jump="Scoreboard">Scoreboard <small id="gScoreNote"></small></h2>
+    <div id="gScore"></div>
     <h2 data-jump="Last night">Nightly games <small id="gNightNote"></small></h2>
     <div class="nights" id="gNights"></div>
     <h2 data-jump="Season ladder">Weekly ladder <small id="gLadderNote"></small></h2>
@@ -369,6 +377,7 @@ const DAILY = 20;
 const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
 const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(_){} };
 const balance = () => EARN.pts + G.game + G.bonus + G.sold - G.spent;
 const ymd = d => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -558,6 +567,35 @@ function drawLadder(){
   $("gLadder").innerHTML = `<div class="row" style="justify-content:space-between"><b style="font:700 26px 'Barlow Condensed',sans-serif">${L.total} pts</b><span class="note">Fantasy Five points this week (${L.n} night${L.n === 1 ? "" : "s"})</span></div>
     <div class="ladder"><i style="width:${pc(L.total)}%"></i>${LADDER.map(([n, pk]) => `<s style="left:${pc(n)}%">${n}</s>`).join("")}</div>${rungs}`;
 }
+/* scoreboard: win-loss record for each nightly game, streaks, bests; built from every saved night */
+function record(list, key){
+  const ns = list.filter(n => key !== "oWin" || n.opp), w = ns.filter(n => n[key]).length;
+  let cur = 0, curW = null, best = 0, run = 0;
+  ns.forEach(n => { run = n[key] ? run + 1 : 0; best = Math.max(best, run); });
+  for(let i = ns.length - 1; i >= 0; i--){ const v = !!ns[i][key]; if(curW == null) curW = v; if(v !== curW) break; cur++; }
+  return {w, l: ns.length - w, cur, curW, best, form: ns.slice(-10).map(n => !!n[key])};
+}
+function drawScore(){
+  const all = Object.values(G.nights).filter(n => !n.none && n.ff != null).sort((a, b) => a.d < b.d ? -1 : 1);
+  if(!all.length){ $("gScoreNote").textContent = ""; $("gScore").innerHTML = `<div class="card note" style="padding:12px 14px">Your record starts the morning after your first full night of games. Every night is saved, so your record keeps building all season.</div>${backupHtml()}`; return; }
+  const wk = weekOf(ymd()), week = all.filter(n => weekOf(n.d) === wk);
+  const md2 = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"});
+  const box = (title, key) => { const R = record(all, key), W = record(week, key), pct = R.w + R.l ? Math.round(R.w / (R.w + R.l) * 1000) / 1000 : 0;
+    return `<div class="card"><h4>${title}</h4><div class="rec">${R.w}–${R.l}<small>${pct.toFixed(3).replace(/^0/, "")}</small></div>
+      <div class="form" title="Last ${R.form.length} nights, oldest first">${R.form.map(v => `<i class="${v ? "w" : "l"}">${v ? "W" : "L"}</i>`).join("")}</div>
+      <div class="note">${R.cur ? `${R.curW ? "Won" : "Lost"} ${R.cur} straight` : ""}${R.best ? ` · best win streak ${R.best}` : ""} · this week ${W.w}–${W.l}</div></div>`; };
+  const best = all.reduce((a, n) => n.ff > a.ff ? n : a, all[0]), avg = Math.round(all.reduce((a, n) => a + n.ff, 0) / all.length);
+  const wins = all.reduce((a, n) => a + (n.ffWin ? 1 : 0) + (n.pWin ? 1 : 0) + (n.oWin ? 1 : 0), 0), games = all.reduce((a, n) => a + 2 + (n.opp ? 1 : 0), 0);
+  const perfect = all.filter(n => n.ffWin && n.pWin && n.oWin).length, upsets = all.filter(n => n.upset).length, pts = all.reduce((a, n) => a + (n.pts || 0), 0);
+  $("gScoreNote").textContent = `${all.length} night${all.length === 1 ? "" : "s"} played since ${md2(all[0].d)}`;
+  $("gScore").innerHTML = `<div class="sb">${box("Fantasy Five", "ffWin")}${box("vs Pulse", "pWin")}${box("vs a real team", "oWin")}</div>
+    <div class="card sbtot"><div><span>Overall</span><b>${wins}–${games - wins}</b></div><div><span>Best night</span><b>${best.ff}</b> <small class="note">${md2(best.d)}</small></div><div><span>Avg Fantasy Five</span><b>${avg}</b></div><div><span>Perfect nights (3–0)</span><b>${perfect}</b></div><div><span>Upsets</span><b>${upsets}</b></div><div><span>Points won</span><b>${pts}</b></div></div>${backupHtml()}`;
+}
+function backupHtml(){
+  const last = G.backup, days = last ? Math.floor((Date.now() - new Date(last + "T12:00:00")) / 864e5) : null;
+  const stale = !last || days >= 7;
+  return `<div class="card row" style="padding:10px 14px;margin-top:10px;justify-content:space-between;gap:10px;${stale ? "border-color:#f59f00" : ""}"><span class="note" style="flex:1;min-width:200px">💾 Your team and record are saved in this browser and stay put when you close it. ${last ? `Last backup ${days === 0 ? "today" : days + " day" + (days === 1 ? "" : "s") + " ago"}.` : "Make a backup code in case you clear your browser or switch devices."}</span><button class="gbtn" id="gBackup">Back up my team</button></div>`;
+}
 function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
@@ -586,7 +624,7 @@ function drawGame(){
   $("gCollNote").textContent = `${G.cards.length} card${G.cards.length === 1 ? "" : "s"} · ${rest.length} not in your lineup`;
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gColl").innerHTML = rest.length ? rest.map(c => gCard(c)).join("") : `<div class="note">Every card you own is in your lineup. Open packs for more.</div>`;
-  drawNights(); drawLadder(); drawRules();
+  drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
   $("gRules").innerHTML = `<ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
@@ -646,6 +684,7 @@ function setupGame(){
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
     if("startteam" in d) return startTeam();
+    if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
     if("freepack" in d){ const id = G.free.shift(); gSave(); return openPack(PACKS.find(x => x.id === id), true); }
     if(d.claim){ const [key, pk] = d.claim.split("|"); if(G.claimed[key]) return; G.claimed[key] = 1; G.free.push(pk); gSave(); drawGame(); toast("Free pack added: open it under Card packs"); return; }
