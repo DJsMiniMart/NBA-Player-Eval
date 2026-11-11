@@ -92,6 +92,31 @@
     .pc-line{font-size:11px;padding:5px 6px;} .pc-acts button{font-size:11px;}
     .empty-slot{min-height:140px;font-size:13px;}
   }
+  .modes{display:flex;gap:6px;margin:16px 0 4px;} .modes button{flex:1;max-width:240px;font-weight:700;border-radius:999px;padding:9px 14px;}
+  .modes button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
+  @media (prefers-color-scheme: dark){ .modes button.on{background:#e8edf6;color:#0b1220;border-color:#e8edf6;} }
+  .wallet{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;margin-top:14px;}
+  .wallet span{display:block;font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  .wallet b{font:700 36px/1 "Barlow Condensed",sans-serif;} .wallet small{display:block;color:var(--dim);font-size:12px;}
+  .wallet > div{margin-right:auto;}
+  .gbtn{display:inline-block;font:700 13px Inter,sans-serif;padding:8px 14px;border-radius:999px;border:0;background:var(--accent);color:#fff;text-decoration:none;cursor:pointer;}
+  .gbtn.alt{background:var(--panel);color:var(--ink);border:1px solid var(--line);} .gbtn:disabled{opacity:.45;cursor:default;}
+  .packs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+  .pack{border-radius:16px;padding:14px;color:#fff;background:var(--tierbg);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+  .pack b{font:700 24px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;} .pack p{margin:0;font-size:13px;opacity:.92;}
+  .pack .cost{font:700 30px/1 "Barlow Condensed",sans-serif;} .pack .cost small{font-size:14px;opacity:.85;margin-left:3px;}
+  .pack button{margin-top:auto;border:0;border-radius:999px;padding:9px;font-weight:700;background:#fff;color:#0b0b0d;} .pack button:disabled{opacity:.5;cursor:default;}
+  .opening{margin:14px 0;padding:14px;border-radius:16px;background:#0b0b0d;color:#fff;}
+  .opening h3{margin:0 0 10px;font:700 20px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;}
+  .reveal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  @media (max-width:560px){ .reveal{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;} .reveal .pc-name{font-size:13px;} .reveal .pc-ovr{font-size:24px;} .reveal .pc-stats,.reveal .pc-line{display:none;} }
+  .flip{perspective:900px;} .flip .inner{transition:transform .7s;transform-style:preserve-3d;position:relative;}
+  .flip.shown .inner{transform:rotateY(180deg);}
+  .flip .back,.flip .front{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  .flip .back{position:absolute;inset:0;border-radius:16px;background:repeating-linear-gradient(45deg,#C8102E 0 10px,#1D428A 10px 20px);display:grid;place-items:center;font:700 26px "Barlow Condensed",sans-serif;color:#fff;cursor:pointer;}
+  .flip .front{transform:rotateY(180deg);}
+  .gtag{font:700 10px Inter,sans-serif;padding:2px 7px;border-radius:999px;background:#ffd43b;color:#0b0b0d;} .gtag.dupe{background:#adb5bd;}
+  .lineup-ovr{font:700 13px Inter,sans-serif;color:var(--dim);}
   .legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;} .legend span{font:700 10.5px Inter,sans-serif;padding:3px 8px;border-radius:999px;color:#fff;background:var(--tierbg);}
 </style>
 </head>
@@ -103,6 +128,8 @@
   <div class="row"><button id="shareBtn" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.3);border-radius:999px;font-weight:600">Share my Rotation</button></div>
 </div></div>
 <main class="wrap">
+  <div class="modes" role="tablist"><button role="tab" data-mode="follow" class="on">⭐ Follow my players</button><button role="tab" data-mode="game">🃏 Card game</button></div>
+  <div id="followMode">
   <div id="shared"></div>
   <div class="add"><input type="search" id="addQ" placeholder="Add a player: type a name…" autocomplete="off" aria-label="Add a player to your Rotation"><span class="note" id="count"></span><ul id="addList" hidden></ul></div>
   <div class="quick" id="quick"></div>
@@ -115,12 +142,28 @@
       <h2 data-jump="Card tiers">Card tiers</h2><p class="note" style="margin:0">Each card's rating (OVR) comes from where his Pulse ranks among qualified players this season, on a 2K-style scale: the league's best is a 99, a typical rotation player is in the low 70s. "Early" means he hasn't played enough yet to qualify, so his rating is pulled toward average until he has.</p><div class="legend" id="legend"></div></div>
   </div>
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
+  </div>
+  <div id="gameMode" hidden>
+    <div class="wallet card"><div><span>Your points</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">Daily bonus</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
+    <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
+    <div class="packs" id="gPacks"></div>
+    <div id="gOpen"></div>
+    <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
+    <section class="lineup" id="gLineup"></section>
+    <h2 data-jump="Collection">Collection <small id="gCollNote"></small></h2>
+    <div class="chips" id="gSort"></div>
+    <div class="cards" id="gColl"></div>
+    <h2 data-jump="How points work">How points work</h2>
+    <div class="card" style="padding:12px 14px" id="gRules"></div>
+    <p class="note foot">The card game is just for fun: points have no cash value and can't be bought. Everything is saved in this browser (move it with Menu → Settings → Move my setup).</p>
+  </div>
 </main>
 <script src="nav.js"></script>
 <script src="jumps.js"></script>
 <script src="player.js"></script>
 <script src="injuries.js"></script>
 <script src="injpop.js"></script>
+<script src="mypicks.js"></script>
 <script>
 (function(){
 "use strict";
@@ -294,6 +337,131 @@ function setupShare(){
       $("useShared").onclick = () => { save(ROT); history.replaceState(null, "", location.pathname); $("shared").innerHTML = ""; if(window.fcToast) fcToast("Saved as your Rotation"); };
       $("backMine").onclick = () => { ROT = mineIds; history.replaceState(null, "", location.pathname); $("shared").innerHTML = ""; drawAll(); }; } }
 }
+/* ================= the card game: earn points from your picks, open packs, build a lineup ================= */
+const GKEY = "fcgp.cards", WELCOME = 300, DAILY = 20;
+const PACKS = [{id: "gold", cost: 100, top: 150, name: "Gold pack", cls: "gold", desc: "3 cards · at least one top-150 player"},
+  {id: "ruby", cost: 200, top: 75, name: "Ruby pack", cls: "ruby", desc: "3 cards · at least one top-75 player"},
+  {id: "opal", cost: 300, top: 25, name: "Galaxy pack", cls: "opal", desc: "3 cards · at least one top-25 player"}];
+const SELL = {bronze: 10, silver: 15, gold: 25, emerald: 35, sapphire: 50, ruby: 70, amethyst: 90, diamond: 120, pink: 160, opal: 220};
+const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "{}") || {}; return Object.assign({spent: 0, sold: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], n: 0}, g); }catch(_){ return {spent: 0, sold: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], n: 0}; } };
+let G = gLoad(), EARN = {pts: 0, w: 0, list: []}, OPEN = null, GSORT = "ovr";
+const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(_){} };
+const balance = () => WELCOME + EARN.pts + G.bonus + G.sold - G.spent;
+/* points for picks you got right (from My Picks, graded on final scores) */
+async function earnings(){
+  if(!window.MyPicks){ EARN = {pts: 0, w: 0, list: []}; return; }
+  const F = await MyPicks.finals(SCHED); const list = MyPicks.graded(F).filter(x => x.res && x.res.you);
+  let pts = 0, w = 0; const out = [];
+  list.forEach(x => { const r = x.res.you; let p = 0;
+    if(r === "W"){ w++; p = x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25; } else if(r === "P") p = 5;
+    pts += p; out.push({x, r, p}); });
+  EARN = {pts, w, list: out, n: list.length};
+}
+/* the card pool: qualified players ranked by Pulse (rank 1 = best) */
+function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => (b.value || 0) - (a.value || 0)) : []; }
+function pull(top){
+  const P = pool(); if(!P.length) return [];
+  const pick = n => P[Math.floor(Math.random() * Math.min(n, P.length))];
+  const cards = [pick(top), pick(P.length), pick(P.length)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, at: new Date().toISOString().slice(0, 10)}; });
+  return cards.sort(() => Math.random() - .5);
+}
+const statOf = id => STATS && STATS.players.find(p => p.id === id);
+function gCard(c, opts){
+  opts = opts || {};
+  const st = statOf(c.id), r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier}, team = st ? st.team : "", g = st && st.g, per = k => g ? (st[k] / g).toFixed(1) : "—";
+  const inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid);
+  return `<div class="pc t-${r.cls}"><div class="pc-in">
+    <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR${r.ovr !== c.ovr ? ` · pulled ${c.ovr}` : ""}</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div></div>
+    <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div>
+    <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div>
+    <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.value != null ? (+st.value).toFixed(2) : "—"}</b><span>PULSE</span></div></div>
+    ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
+    ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
+      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>`}<button data-gsell="${c.cid}" title="Quick sell for ${SELL[r.cls] || 10} points">Sell ${SELL[r.cls] || 10}</button></div>`}
+  </div></div>`;
+}
+function drawGame(){
+  const bal = balance();
+  $("gPts").textContent = bal.toLocaleString();
+  $("gPtsNote").textContent = `${WELCOME} to start · ${EARN.pts} from ${EARN.w} winning pick${EARN.w === 1 ? "" : "s"} · ${G.bonus} bonus · ${G.sold} from sales · ${G.spent} spent on packs`;
+  const today = new Date().toISOString().slice(0, 10);
+  $("gDaily").disabled = G.daily === today; $("gDaily").textContent = G.daily === today ? "Daily bonus claimed ✓" : `Claim daily bonus (+${DAILY})`;
+  $("gPacks").innerHTML = PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p><button data-pack="${k.id}"${bal < k.cost ? " disabled" : ""}>${bal < k.cost ? `Need ${k.cost - bal} more` : "Open pack"}</button></div>`).join("");
+  // lineup
+  const byId = Object.fromEntries(G.cards.map(c => [c.cid, c]));
+  G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
+  const lineupOvr = list => { const r = list.map(x => ratingOf(statOf(byId[x].id))).filter(Boolean); return r.length ? Math.round(r.reduce((a, b) => a + b.ovr, 0) / r.length) : null; };
+  const so = lineupOvr(G.start);
+  $("gLineupNote").textContent = so ? `starting five OVR ${so}` : "put 5 starters and 5 on the bench";
+  const empty = (n, w) => Array.from({length: n}, () => `<div class="empty-slot" style="cursor:default;min-height:110px">${w}</div>`).join("");
+  $("gLineup").innerHTML = `<h3>Starting five</h3><div class="cards">${G.start.map(x => gCard(byId[x])).join("")}${empty(5 - G.start.length, "Starter slot<br><small>tap Start on a card</small>")}</div>
+    <h3>Bench</h3><div class="cards">${G.bench.map(x => gCard(byId[x])).join("")}${empty(5 - G.bench.length, "Bench slot<br><small>tap Bench on a card</small>")}</div>`;
+  // collection
+  const rest = G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid));
+  const key = c => { const r = ratingOf(statOf(c.id)); return GSORT === "new" ? c.cid : GSORT === "name" ? c.name : String(100 + (r ? r.ovr : c.ovr)); };
+  rest.sort((a, b) => GSORT === "name" ? key(a).localeCompare(key(b)) : key(b).localeCompare(key(a)));
+  $("gCollNote").textContent = `${G.cards.length} card${G.cards.length === 1 ? "" : "s"} · ${rest.length} not in your lineup`;
+  $("gSort").innerHTML = [["ovr", "Best first"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
+  $("gColl").innerHTML = rest.length ? rest.map(c => gCard(c)).join("") : `<div class="note">${G.cards.length ? "Every card you own is in your lineup." : "No cards yet. Open a pack: you start with " + WELCOME + " points."}</div>`;
+  $("gRules").innerHTML = `<ul style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:13.5px">
+    <li><b>Start with ${WELCOME} points</b>, plus <b>+${DAILY}</b> for checking in each day.</li>
+    <li><b>Make picks</b> on The Morning Press (Coming up → Your pick). When a pick wins: <b>+25</b> for a spread or total, and for a winner (moneyline) <b>25 × the payout</b> (at least 10), so upsets pay more: a +200 underdog is worth 50, a −300 favorite 10. Pushes are +5. Points arrive when the game is final.</li>
+    <li><b>Packs</b> hold 3 random cards; each pack promises at least one player from its top group (top 150, 75 or 25 by Pulse this season). The other two can be anyone.</li>
+    <li><b>Cards are live</b>: a card's rating moves with how the player is playing, like 2K's live cards. Quick-sell a card for points by its current tier (Bronze 10 up to Galaxy Opal 220).</li>
+    <li><b>Lineup:</b> 5 starters and 5 on the bench, one card per player.</li></ul>
+    ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded picks: ${EARN.list.filter(e => e.r === "W").length}-${EARN.list.filter(e => e.r === "L").length}${EARN.list.some(e => e.r === "P") ? "-" + EARN.list.filter(e => e.r === "P").length : ""}. <a href="picks.html">See them all in My Picks →</a></p>` : ""}`;
+  if(document.documentElement.classList.contains("nobet")) $("gRules").innerHTML += `<p class="note" style="margin:8px 0 0">You have betting lines hidden, so the pick buttons don't show. Points still come from the daily bonus; turn betting back on in Menu → Settings to earn more.</p>`;
+}
+function openPack(id){
+  const k = PACKS.find(x => x.id === id); if(!k || balance() < k.cost) return;
+  const cards = pull(k.top); if(!cards.length) return;
+  const owned = new Set(G.cards.map(c => c.id));
+  G.spent += k.cost; G.cards.push(...cards); gSave();
+  OPEN = {pack: k, cards, dupes: cards.map(c => owned.has(c.id))};
+  drawGame(); drawOpen();
+}
+function drawOpen(){
+  if(!OPEN){ $("gOpen").innerHTML = ""; return; }
+  const best = Math.max(...OPEN.cards.map(c => c.ovr));
+  $("gOpen").innerHTML = `<div class="opening"><h3>${esc(OPEN.pack.name)}: tap each card to flip it</h3><div class="reveal">${OPEN.cards.map((c, i) => `<div class="flip" data-flip><div class="inner"><div class="back">FCGP</div><div class="front">${gCard(c, {acts: false, tags: `${c.ovr === best ? '<span class="gtag">Best pull</span>' : ""}${OPEN.dupes[i] ? '<span class="gtag dupe">Duplicate</span>' : ""}`})}</div></div></div>`).join("")}</div>
+    <div class="row" style="margin-top:10px"><button class="gbtn alt" data-flipall>Flip all</button><button class="gbtn alt" data-closeopen>Done</button></div></div>`;
+  $("gOpen").scrollIntoView({behavior: "smooth", block: "start"});
+}
+function setupGame(){
+  const tabs = document.querySelectorAll("[data-mode]");
+  const mode = m => { tabs.forEach(b => b.classList.toggle("on", b.dataset.mode === m)); $("followMode").hidden = m !== "follow"; $("gameMode").hidden = m !== "game"; try{ localStorage.setItem("fcgp.rotmode", m); }catch(_){} if(m === "game") drawGame(); };
+  tabs.forEach(b => b.onclick = () => mode(b.dataset.mode));
+  let m0 = "follow"; try{ m0 = localStorage.getItem("fcgp.rotmode") || "follow"; }catch(_){}
+  if(/#game/.test(location.hash)) m0 = "game";
+  mode(m0);
+  $("gDaily").onclick = () => { const today = new Date().toISOString().slice(0, 10); if(G.daily === today) return; G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
+  $("gameMode").addEventListener("click", e => {
+    const t = e.target.closest("button,[data-flip]"); if(!t) return;
+    const d = t.dataset;
+    if(d.pack) return openPack(d.pack);
+    if("flip" in d) return t.classList.add("shown");
+    if("flipall" in d) return document.querySelectorAll("#gOpen .flip").forEach(f => f.classList.add("shown"));
+    if("closeopen" in d){ OPEN = null; drawOpen(); return; }
+    if(d.gsort){ GSORT = d.gsort; drawGame(); return; }
+    const cardOf = cid => G.cards.find(c => c.cid === cid);
+    const sameP = cid => { const c = cardOf(cid); return G.start.concat(G.bench).find(x => x !== cid && cardOf(x) && cardOf(x).id === c.id); };
+    if(d.gstart || d.gbench){ const cid = d.gstart || d.gbench, to = d.gstart ? "start" : "bench";
+      if(sameP(cid)){ if(window.fcToast) fcToast("He's already in your lineup"); return; }
+      if(G[to].length >= 5){ if(window.fcToast) fcToast(to === "start" ? "Starting five is full: take someone out first" : "Bench is full: take someone out first"); return; }
+      G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid); G[to].push(cid); gSave(); drawGame(); return; }
+    if(d.gout){ G.start = G.start.filter(x => x !== d.gout); G.bench = G.bench.filter(x => x !== d.gout); gSave(); drawGame(); return; }
+    if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const r = ratingOf(statOf(c.id)), v = SELL[(r && r.cls) || c.tier] || 10;
+      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
+      G.cards = G.cards.filter(x => x.cid !== c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); G.sold += v; gSave(); drawGame(); if(window.fcToast) fcToast(`Sold ${c.name} for ${v} points`); return; }
+    if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(); let v = 0, n = 0;
+      const sorted = G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr);
+      const drop = new Set();
+      sorted.forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); v += SELL[(ratingOf(statOf(c.id)) || {}).cls || c.tier] || 10; n++; } else seen.add(c.id); });
+      if(!n){ if(window.fcToast) fcToast("No duplicates to sell"); return; }
+      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${n} for ${v}?`; return; }
+      G.cards = G.cards.filter(c => !drop.has(c.cid)); G.sold += v; gSave(); drawGame(); if(window.fcToast) fcToast(`Sold ${n} duplicate${n === 1 ? "" : "s"} for ${v} points`); return; }
+  });
+}
 async function init(){
   setupShare();
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
@@ -303,6 +471,7 @@ async function init(){
   $("legend").innerHTML = TIERS.map(t => `<span class="t-${t[1]}">${t[2]} ${t[0] ? t[0] + "+" : ""}</span>`).join("");
   await Promise.all([window.Injuries ? Injuries.ready : null, window.Injuries ? Injuries.logReady() : null, ...ROT.map(async id => { FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`); })]);
   setupAdd(); drawAll();
+  await earnings(); setupGame();
 }
 document.addEventListener("prefs", () => drawQuick());
 init();
