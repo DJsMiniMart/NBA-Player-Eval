@@ -58,6 +58,7 @@
   .pc-acts{display:flex;gap:4px;margin-top:auto;padding-top:4px;}
   .pc-acts button{flex:1;padding:4px 0;border-radius:7px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:12px;}
   .pc-acts button:hover{background:rgba(0,0,0,.45);}
+  .overcard{border:2px solid #f59f00;padding:12px 14px;margin:0 0 12px;}
   .empty-slot{border:2px dashed var(--line);border-radius:16px;display:grid;place-items:center;min-height:200px;color:var(--dim);font-weight:600;text-align:center;padding:12px;cursor:pointer;background:none;}
   .empty-slot:hover{border-color:var(--court);color:var(--court);}
   /* feed + tonight */
@@ -179,7 +180,9 @@
     <section class="lineup" id="gLineup"></section>
     <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
     <div class="packs" id="gPacks"></div>
-    <h2 data-jump="Collection">Collection <small id="gCollNote"></small></h2>
+    <h2 data-jump="Reserves">Reserves <small id="gCollNote"></small></h2>
+    <p class="note" style="margin:0 0 6px">Reserves are on your team but never play or sub in. Keep them to sell later or move to the bench or starting five.</p>
+    <div id="gOver"></div>
     <div class="chips" id="gSort"></div>
     <div class="cards" id="gColl"></div>
     </div>
@@ -373,9 +376,9 @@ const PACKS = [{id: "gold", cost: 150, top: 150, rest: 0, name: "Gold pack", cls
   {id: "ruby", cost: 300, top: 75, rest: 200, name: "Ruby pack", cls: "ruby", desc: "3 cards · at least one top-75 player; the others are top 200"},
   {id: "opal", cost: 500, top: 25, rest: 150, name: "Galaxy pack", cls: "opal", desc: "3 cards · at least one top-25 player; the others are top 150"}];
 const LADDER = [[400, "gold"], [700, "ruby"], [1000, "opal"]], FF_TARGET = 120, WIN_PTS = 10;
-const DAILY = 20;
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
-const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g) : blank(); }catch(_){ return blank(); } };
+const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
 const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(_){} };
@@ -532,7 +535,7 @@ function ladder(){
 function gCard(c, opts){
   opts = opts || {};
   const st = statOf(c.id), r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier, pc: 0}, team = st ? st.team : "", g = st && st.g, per = k => g ? (st[k] / g).toFixed(1) : "—";
-  const v = valueOf(r), dv = v - (c.val || v), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid);
+  const v = valueOf(r), dv = v - (c.val || v), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid), inRes = G.res.includes(c.cid);
   return `<div class="pc t-${r.cls}"><div class="pc-in">
     <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div></div>
     <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div>
@@ -541,7 +544,7 @@ function gCard(c, opts){
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
-      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>`}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
+      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
   </div></div>`;
 }
 function drawNights(){
@@ -607,11 +610,13 @@ function drawGame(){
   $("gPlay").hidden = !started;
   $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.</p><button class="gbtn" data-startteam>Open my 5 starter packs</button> <a href="card-rules.html" style="color:inherit;font-weight:600;margin-left:8px">How the game works →</a></div>`;
   if(!started){ drawRules(); return; }
-  const free = G.free.length;
+  const free = G.free.length, OVER = overflow().length;
   $("gPacks").innerHTML = (free ? `<div class="pack t-${G.free[0]}"><b>Free pack${free > 1 ? "s" : ""}</b><div class="cost">${free}<small>waiting</small></div><p>Earned on the weekly ladder.</p><button data-freepack>Open free ${(PACKS.find(x => x.id === G.free[0]) || PACKS[0]).name}</button></div>` : "")
-    + PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p><button data-pack="${k.id}"${bal < k.cost ? " disabled" : ""}>${bal < k.cost ? `Need ${k.cost - bal} more` : "Open pack"}</button></div>`).join("");
+    + PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p><button data-pack="${k.id}"${bal < k.cost || OVER ? " disabled" : ""}>${OVER ? "Roster full: make room" : bal < k.cost ? `Need ${k.cost - bal} more` : "Open pack"}</button></div>`).join("");
   const byId = Object.fromEntries(G.cards.map(c => [c.cid, c]));
   G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
+  G.res = G.res.filter(x => byId[x] && !G.start.includes(x) && !G.bench.includes(x));
+  if(G.resNew){ delete G.resNew; fillRes(); gSave(); }   // older saves: best 10 cards outside the lineup become reserves
   const ovrs = G.start.map(x => ratingOf(statOf(byId[x].id))).filter(Boolean);
   $("gLineupNote").textContent = ovrs.length ? `starting five OVR ${Math.round(ovrs.reduce((a, b) => a + b.ovr, 0) / ovrs.length)} · roster value ${G.start.concat(G.bench).reduce((a, x) => a + valueOf(ratingOf(statOf(byId[x].id))), 0)}` : "";
   const tip = firstTip(ymd());
@@ -620,17 +625,19 @@ function drawGame(){
   const startIds = G.start.map(x => byId[x].id);
   $("gLineup").innerHTML = chemHtml(startIds) + `<h3>Starting five</h3><div class="cards">${G.start.map(x => gCard(byId[x])).join("")}${empty(5 - G.start.length, "Starter slot<br><small>tap Start on a card</small>")}</div>
     <h3>Bench</h3>${benchHtml(G.bench.map(x => byId[x].id))}<div class="cards">${G.bench.map(x => gCard(byId[x])).join("")}${empty(5 - G.bench.length, "Bench slot<br><small>tap Bench on a card</small>")}</div>`;
-  const rest = G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid));
+  const over = overflow(), rest = G.res.map(x => byId[x]);
   const sk = c => { const r = ratingOf(statOf(c.id)); return GSORT === "new" ? c.cid : GSORT === "name" ? c.name : GSORT === "gain" ? String(1000 + valueOf(r) - (c.val || 0)).padStart(5, "0") : String(100 + (r ? r.ovr : c.ovr)); };
-  rest.sort((a, b) => GSORT === "name" ? sk(a).localeCompare(sk(b)) : sk(b).localeCompare(sk(a)));
-  $("gCollNote").textContent = `${G.cards.length} card${G.cards.length === 1 ? "" : "s"} · ${rest.length} not in your lineup`;
-  $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
-  $("gColl").innerHTML = rest.length ? rest.map(c => gCard(c)).join("") : `<div class="note">Every card you own is in your lineup. Open packs for more.</div>`;
+  const srt = l => l.sort((a, b) => GSORT === "name" ? sk(a).localeCompare(sk(b)) : sk(b).localeCompare(sk(a)));
+  srt(rest); srt(over);
+  $("gCollNote").textContent = `${rest.length} of ${RES_MAX} · ${G.cards.length} card${G.cards.length === 1 ? "" : "s"} on your team`;
+  $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
+  $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
+  $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
   drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
   $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
-    <li><b>Start your team</b> with 5 free packs (15 cards) and fill a 10-man roster: 5 starters and 5 on the bench.</li>
+    <li><b>Start your team</b> with 5 free packs (15 cards). Your roster holds 20: 5 starters, 5 on the bench and 10 reserves. Reserves never play or sub in; keep them to sell or move up. New cards land in your reserves, and you can't open packs while you're over 20.</li>
     <li><b>Daily bonus:</b> <b>+${DAILY}</b> for checking in each day.</li>
     <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
@@ -657,9 +664,14 @@ function showOpen(title, cards, dupes){
 }
 function openPack(k, free){
   if(!k || (!free && balance() < k.cost)) return;
+  if(overflow().length){ if(window.fcToast) fcToast("Your roster is over 20 cards: sell or place the extras first"); return; }
   const owned = new Set(G.cards.map(c => c.id)), cards = pull(k); if(!cards.length) return;
   if(!free) G.spent += k.cost;
-  G.cards.push(...cards); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)));
+  G.cards.push(...cards); cards.forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); }); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)));
+}
+const overflow = () => G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid) && !G.res.includes(c.cid));
+function fillRes(){   // put cards that aren't on the roster yet into open reserve spots, best first
+  overflow().sort((a, b) => ((ratingOf(statOf(b.id)) || b).ovr) - ((ratingOf(statOf(a.id)) || a).ovr)).forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); });
 }
 function startTeam(){
   if(G.started) return;
@@ -672,7 +684,7 @@ function startTeam(){
   [gd, ct].forEach(c => { if(c) start.push(c); });
   uniq.forEach(c => { if(start.length < 5 && !start.includes(c)) start.push(c); });
   const bench = uniq.filter(c => !start.includes(c)).slice(0, 5);
-  G.start = start.map(c => c.cid); G.bench = bench.map(c => c.cid); snap(); gSave(); drawGame();
+  G.start = start.map(c => c.cid); G.bench = bench.map(c => c.cid); G.res = []; fillRes(); snap(); gSave(); drawGame();
   showOpen("Your 5 starter packs", cards, cards.map(() => false));
 }
 function setupGame(){
@@ -691,7 +703,7 @@ function setupGame(){
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
-    if("freepack" in d){ const id = G.free.shift(); gSave(); return openPack(PACKS.find(x => x.id === id), true); }
+    if("freepack" in d){ if(overflow().length) return toast("Your roster is over 20 cards: sell or place the extras first"); const id = G.free.shift(); gSave(); return openPack(PACKS.find(x => x.id === id), true); }
     if(d.claim){ const [key, pk] = d.claim.split("|"); if(G.claimed[key]) return; G.claimed[key] = 1; G.free.push(pk); gSave(); drawGame(); toast("Free pack added: open it under Card packs"); return; }
     if(d.night){ NSEL = d.night; drawNights(); return; }
     if("flip" in d) return t.classList.add("shown");
@@ -703,17 +715,21 @@ function setupGame(){
     if(d.gstart || d.gbench){ const cid = d.gstart || d.gbench, to = d.gstart ? "start" : "bench";
       if(sameP(cid)) return toast("He's already in your lineup");
       if(G[to].length >= 5) return toast(to === "start" ? "Starting five is full: take someone out first" : "Bench is full: take someone out first");
-      G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid); G[to].push(cid); snap(); gSave(); drawGame(); return; }
-    if(d.gout){ G.start = G.start.filter(x => x !== d.gout); G.bench = G.bench.filter(x => x !== d.gout); snap(); gSave(); drawGame(); return; }
+      G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid); G.res = G.res.filter(x => x !== cid); G[to].push(cid); snap(); gSave(); drawGame(); return; }
+    if(d.gout || d.gres){ const cid = d.gout || d.gres;
+      if(G.res.length >= RES_MAX && !G.res.includes(cid)){ if(d.gres) return toast("Reserves are full: sell a reserve first"); }
+      G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid);
+      if(G.res.length < RES_MAX && !G.res.includes(cid)) G.res.push(cid); else if(!G.res.includes(cid)) toast("Reserves are full, so he's over the roster limit: sell someone or move him back");
+      if(d.gout) snap(); gSave(); drawGame(); return; }
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
-      G.cards = G.cards.filter(x => x.cid !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
+      G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
       G.sold += v; gSave(); drawGame(); return toast(`Sold ${c.name} for ${v} points`); }
     if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(), drop = new Set(); let v = 0;
       G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); v += valueOf(ratingOf(statOf(c.id))); } else seen.add(c.id); });
       if(!drop.size) return toast("No duplicates to sell");
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${drop.size} for ${v}?`; return; }
-      G.cards = G.cards.filter(c => !drop.has(c.cid)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
+      G.cards = G.cards.filter(c => !drop.has(c.cid)); G.res = G.res.filter(x => !drop.has(x)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
   });
 }
 async function init(){
