@@ -416,10 +416,15 @@ async function playNight(d){
   boxes.forEach(b => Object.entries(b.teams || {}).forEach(([t, T]) => (T.players || []).forEach(r => { if(+r[3] > 0){ lines.set(fold(r[1]), r); teamOf.set(fold(r[1]), t); if(r[2]) (starters[t] = starters[t] || []).push(r); } })));
   const nm = id => { const st = statOf(id), ix = IDX.find(x => x[0] === id); return (st && st.name) || (ix && ix[1]) || id; };
   // option 1: Fantasy Five, with bench players subbing in (in bench order) for starters who didn't play
-  const used = new Set(), five = [];
-  L.start.forEach(id => { const r = lines.get(fold(nm(id))); if(r){ five.push({id, name: nm(id), r, sub: false}); used.add(id); } });
-  L.bench.forEach(id => { if(five.length >= 5 || used.has(id)) return; const r = lines.get(fold(nm(id))); if(r){ five.push({id, name: nm(id), r, sub: true}); used.add(id); } });
-  const raw = five.reduce((a, x) => a + prodOf(x.r), 0), CH = chemistry(L.start), ff = Math.round(raw * (1 + (CH.score == null ? 0 : CH.mult)));
+  const used = new Set(), five = [], grpOf = id => posGroup((statOf(id) || {}).pos);
+  const playedBench = L.bench.filter(id => lines.get(fold(nm(id))));
+  L.start.forEach(id => { const r = lines.get(fold(nm(id)));
+    if(r){ five.push({id, name: nm(id), r, sub: false}); used.add(id); return; }
+    const want = grpOf(id), sub = playedBench.find(b => !used.has(b) && grpOf(b) === want) || playedBench.find(b => !used.has(b));   // same position first
+    if(sub){ five.push({id: sub, name: nm(sub), r: lines.get(fold(nm(sub))), sub: true, for: nm(id)}); used.add(sub); } });
+  const BB = benchBalance(L.bench), CH = five.length === 5 ? chemistry(five.map(x => x.id)) : chemistry(L.start);
+  five.forEach(x => { x.p = Math.round(prodOf(x.r) * (x.sub ? 1 + BB.mult : 1)); });
+  const raw = five.reduce((a, x) => a + x.p, 0), ff = Math.round(raw * (1 + (CH.score == null ? 0 : CH.mult)));
   const myOvr = L.start.map(id => (ratingOf(statOf(id)) || {ovr: 70}).ovr), myOvrSum = myOvr.reduce((a, b) => a + b, 0);
   // option 2: vs Pulse: Pulse builds a five from players who played that night with about your starters' total OVR
   const rnd = seeded(d + "|pulse"), cands = [...lines.entries()].map(([k, r]) => { const st = STATS.players.find(p => fold(p.name) === k); return st ? {name: st.name, id: st.id, r, ovr: (ratingOf(st) || {ovr: 70}).ovr} : null; }).filter(x => x && !used.has(x.id));
@@ -432,7 +437,7 @@ async function playNight(d){
   const teams = Object.entries(starters).filter(([, l]) => l.length >= 5).map(([t, l]) => { const o = l.map(r => { const st = STATS.players.find(p => fold(p.name) === fold(r[1])); return (ratingOf(st) || {ovr: 70}).ovr; }); return {t, l, avg: o.reduce((a, b) => a + b, 0) / o.length, prod: l.reduce((a, r) => a + prodOf(r), 0)}; });
   teams.sort((a, b) => Math.abs(a.avg - myAvg) - Math.abs(b.avg - myAvg) || a.t.localeCompare(b.t));
   const opp = teams[0] || null;
-  const res = {d, ff, raw, chem: CH.score, mult: CH.mult, broken: CH.broken, five: five.map(x => ({n: x.name, p: prodOf(x.r), s: x.sub, l: `${x.r[4]} pts, ${(+x.r[6]) + (+x.r[7])} reb, ${x.r[5]} ast`})),
+  const res = {d, ff, raw, chem: CH.score, mult: CH.mult, broken: CH.broken, bench: BB.score, bmult: BB.mult, five: five.map(x => ({n: x.name, p: x.p, s: x.sub, f: x.for || "", l: `${x.r[4]} pts, ${(+x.r[6]) + (+x.r[7])} reb, ${x.r[5]} ast`})),
     ffWin: ff >= FF_TARGET, pf, pulse: pulseFive.map(x => ({n: x.name, p: prodOf(x.r), o: x.ovr})), pWin: ff > pf,
     opp: opp ? {t: opp.t, prod: opp.prod, avg: Math.round(opp.avg), l: opp.l.map(r => ({n: r[1], p: prodOf(r)}))} : null, oWin: opp ? ff > opp.prod : false, upset: opp ? opp.avg > myAvg && ff > opp.prod : false, myAvg: Math.round(myAvg)};
   res.pts = (res.ffWin ? WIN_PTS : 0) + (res.pWin ? WIN_PTS : 0) + (res.oWin ? WIN_PTS : 0) + (res.upset ? WIN_PTS : 0);
@@ -450,7 +455,7 @@ async function playNights(){
   if(changed) gSave();
 }
 /* ---------- lineup chemistry: do these five work on a court together? ----------
-   Rule: the starting five needs at least one guard (PG/SG) and one center (C); the other three spots are flex.
+   No hard rule: any five can start, but a lineup with no guard or no center takes −20% for each one missing.
    Chemistry 0-100 from the five's season per-game numbers, scaled against real NBA starting fives:
    positions (about 2 guards, a wing, 2 bigs), playmaking (assists), spacing (3s made), rim and boards (blocks, rebounds),
    and touches (shots + free throws + turnovers: too many ball-dominant stars fight over one ball). */
@@ -468,8 +473,9 @@ function chemistry(ids){
   const play = lin(ast, 12, 20), space = lin(th, 5, 10), rim = (lin(blk, 1.5, 4) + lin(reb, 20, 32)) / 2;
   const touch = use > 85 ? 1 - lin(use, 85, 110) : use < 65 ? lin(use, 50, 65) : 1;
   const score = Math.round(100 * (0.3 * pos + 0.15 * play + 0.15 * space + 0.15 * rim + 0.25 * touch));
-  let mult = score >= 80 ? 0.10 : score >= 65 ? 0.05 : score >= 50 ? 0 : score >= 35 ? -0.10 : -0.20;
-  if(broken) mult -= 0.15;
+  let mult = score >= 80 ? 0.10 : score >= 65 ? 0.05 : score >= 50 ? 0 : score >= 35 ? -0.20 : score >= 20 ? -0.35 : -0.50;
+  if(!g) mult -= 0.20; if(!c) mult -= 0.20;   // no guard / no center: you can start it, but it's tough to win that way
+  mult = Math.max(-0.6, mult);
   const f1 = v => v.toFixed(1);
   const parts = [
     {k: "Positions", s: pos, v: `${g} guard${g === 1 ? "" : "s"}, ${w} wing${w === 1 ? "" : "s"}, ${bigs} big${bigs === 1 ? "" : "s"}${c ? "" : " (no center)"}`, tip: g < 2 ? "Add a guard" : bigs < 2 ? "Add a big" : bigs > 2 ? "Too many bigs" : g > 2 ? "Too many guards" : ""},
@@ -477,18 +483,36 @@ function chemistry(ids){
     {k: "Spacing", s: space, v: `${f1(th)} threes a game`, tip: space < .5 ? "Needs shooters" : ""},
     {k: "Rim & boards", s: rim, v: `${f1(blk)} blocks, ${f1(reb)} rebounds`, tip: rim < .5 ? "Needs size inside" : ""},
     {k: "Touches", s: touch, v: `${Math.round(use)} shots + trips a game`, tip: use > 95 ? "Too many players who need the ball" : use < 60 ? "Not enough scoring" : ""}];
-  return {score, mult, broken, parts, n: 5};
+  return {score, mult, broken, noG: !g, noC: !c, parts, n: 5};
 }
 window.RotChem = ids => chemistry(ids);
+/* bench balance: the bench covers for starters who sit, so it needs guards, wings and bigs, not five of one kind */
+function benchBalance(ids){
+  const P = ids.map(statOf).filter(Boolean);
+  if(!P.length) return {score: null, mult: 0, v: ""};
+  const gr = P.map(p => posGroup(p.pos)), g = gr.filter(x => x === "g").length, b = gr.filter(x => x === "c" || x === "b").length, w = gr.filter(x => x === "w").length, c = gr.filter(x => x === "c").length;
+  let score = 100 - (g ? 0 : 30) - (b ? 0 : 30) - (w ? 0 : 10) - (c ? 0 : 10) - 20 * Math.max(0, Math.max(g, b, w) - 3) - 10 * Math.max(0, 5 - P.length);
+  score = Math.max(0, score);
+  const mult = score >= 80 ? 0.05 : score >= 55 ? 0 : score >= 30 ? -0.25 : -0.40;
+  return {score, mult, v: `${g} guard${g === 1 ? "" : "s"}, ${w} wing${w === 1 ? "" : "s"}, ${b} big${b === 1 ? "" : "s"} (${c} center${c === 1 ? "" : "s"})`,
+    tip: !g ? "Add a guard" : !b ? "Add a big" : !c ? "A backup center helps" : Math.max(g, b, w) > 3 ? "Too many of one position" : ""};
+}
+window.RotBench = ids => benchBalance(ids);
+function benchHtml(ids){
+  const B = benchBalance(ids); if(B.score == null) return "";
+  const color = B.mult > 0 ? "var(--good)" : B.mult < 0 ? "var(--bad)" : "var(--dim)";
+  return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Bench balance ${B.score}</b><span class="note"> / 100</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${chemLabel(B.mult)} on subs</div></div>
+    <p class="note" style="margin:4px 0 0">${esc(B.v)}${B.tip ? ` · <b>${esc(B.tip)}</b>` : ""}. When a starter sits, the first bench player at his position comes in (any position if there isn't one), and that night's chemistry is worked out on the five who actually played. 80+: +5% on subs · 55-79: no change · 30-54: −25% · under 30: −40%.</p></div>`;
+}
 const chemLabel = m => m > 0 ? `+${Math.round(m * 100)}%` : m < 0 ? `−${Math.round(-m * 100)}%` : "±0%";
 function chemHtml(ids){
   const C = chemistry(ids);
-  if(C.score == null) return `<div class="chem card"><b>Chemistry</b><p class="note" style="margin:4px 0 0">Fill all 5 starting spots (with a guard and a center) to see how they fit.</p></div>`;
+  if(C.score == null) return `<div class="chem card"><b>Chemistry</b><p class="note" style="margin:4px 0 0">Fill all 5 starting spots to see how they fit.</p></div>`;
   const color = C.mult > 0 ? "var(--good)" : C.mult < 0 ? "var(--bad)" : "var(--dim)";
   return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Chemistry ${C.score}</b><span class="note"> / 100</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${chemLabel(C.mult)} nightly score</div></div>
-    ${C.broken ? `<p class="chemwarn">⚠️ Lineup rule: your starting five needs at least one guard and one center (−15%).</p>` : ""}
+    ${C.broken ? `<p class="chemwarn">⚠️ No ${[C.noG && "guard", C.noC && "center"].filter(Boolean).join(" and no ")} in your starting five: −20% for each one missing. You can start it, but it's tough to win that way.</p>` : ""}
     <div class="chemparts">${C.parts.map(x => `<div><span>${x.k}</span><i><em style="width:${Math.round(x.s * 100)}%;background:${x.s >= .66 ? "var(--good)" : x.s >= .4 ? "#f59f00" : "var(--bad)"}"></em></i><small>${esc(x.v)}${x.tip ? ` · <b>${esc(x.tip)}</b>` : ""}</small></div>`).join("")}</div>
-    <p class="note" style="margin:6px 0 0">80+ chemistry: +10% · 65-79: +5% · 50-64: no change · 35-49: −10% · under 35: −20%. Applies to Fantasy Five and both matchups.</p></div>`;
+    <p class="note" style="margin:6px 0 0">80+ chemistry: +10% · 65-79: +5% · 50-64: no change · 35-49: −20% · 20-34: −35% · under 20: −50%. No guard: another −20%; no center: another −20% (−60% at most). Applies to Fantasy Five and both matchups, using the five who actually played that night.</p></div>`;
 }
 /* ---------- weekly ladder (Monday to Sunday): Fantasy Five points add up; hit a rung for a free pack ---------- */
 function weekOf(d){ const x = new Date(d + "T12:00:00"); const dow = (x.getDay() + 6) % 7; return addD(d, -dow); }
@@ -519,8 +543,8 @@ function drawNights(){
   $("gNightNote").textContent = `${md2(NSEL)} · +${N.pts} points`;
   const row = (n, p, extra) => `<tr><td>${esc(n)}${extra || ""}</td><td class="n"><b>${p}</b></td></tr>`;
   $("gNights").innerHTML = `<div class="daypick" style="grid-column:1/-1">${ds.slice(0, 7).map(d => `<button class="${d === NSEL ? "on" : ""}" data-night="${d}">${md2(d)} ${G.nights[d].pts ? `+${G.nights[d].pts}` : ""}</button>`).join("")}</div>
-    <div class="card ng"><h4>1 · Fantasy Five</h4><div class="res ${N.ffWin ? "w" : "l"}">${N.ff} ${N.ffWin ? "✓ beat" : "✗ missed"} ${FF_TARGET}</div><div class="note">${N.ffWin ? `+${WIN_PTS} points` : "No points this time"} · ${N.raw != null && N.raw !== N.ff ? `${N.raw} production ${chemLabel(N.mult)} chemistry${N.broken ? " (lineup rule broken)" : ""}` : "Pulse-formula production of your five"}</div>
-      <table>${N.five.map(x => row(x.n, x.p, `${x.s ? ' <span class="note">(sub)</span>' : ""}<br><span class="note">${esc(x.l)}</span>`)).join("") || `<tr><td class="note">None of your players played.</td></tr>`}</table></div>
+    <div class="card ng"><h4>1 · Fantasy Five</h4><div class="res ${N.ffWin ? "w" : "l"}">${N.ff} ${N.ffWin ? "✓ beat" : "✗ missed"} ${FF_TARGET}</div><div class="note">${N.ffWin ? `+${WIN_PTS} points` : "No points this time"} · ${N.raw != null && N.raw !== N.ff ? `${N.raw} production ${chemLabel(N.mult)} chemistry${N.broken ? " (no guard or no center)" : ""}` : "Pulse-formula production of your five"}</div>
+      <table>${N.five.map(x => row(x.n, x.p, `${x.s ? ` <span class="note">(sub${x.f ? " for " + esc(x.f.split(" ").slice(-1)[0]) : ""}${N.bmult ? ", " + chemLabel(N.bmult) + " bench" : ""})</span>` : ""}<br><span class="note">${esc(x.l)}</span>`)).join("") || `<tr><td class="note">None of your players played.</td></tr>`}</table></div>
     <div class="card ng"><h4>2 · Head-to-head vs Pulse</h4><div class="vs"><div><b>${N.ff}</b>You</div><div class="note">vs</div><div><b>${N.pf}</b>Pulse's five</div></div><div class="res ${N.pWin ? "w" : "l"}" style="font-size:20px;text-align:center">${N.pWin ? `Won · +${WIN_PTS}` : "Lost"}</div>
       <table>${N.pulse.map(x => row(x.n, x.p, ` <span class="note">${x.o} OVR</span>`)).join("")}</table><p class="note" style="margin:6px 0 0">Pulse picked five players from that night with about your starters' total OVR.</p></div>
     <div class="card ng"><h4>3 · vs a real team</h4>${N.opp ? `<div class="vs"><div><b>${N.ff}</b>Your five</div><div class="note">vs</div><div><b>${N.opp.prod}</b>${esc(nick(N.opp.t))} starters</div></div><div class="res ${N.oWin ? "w" : "l"}" style="font-size:20px;text-align:center">${N.oWin ? `Won · +${WIN_PTS}${N.upset ? ` · upset bonus +${WIN_PTS}` : ""}` : "Lost"}</div>
@@ -555,7 +579,7 @@ function drawGame(){
   const empty = (n, w) => Array.from({length: n}, () => `<div class="empty-slot" style="cursor:default;min-height:110px">${w}</div>`).join("");
   const startIds = G.start.map(x => byId[x].id);
   $("gLineup").innerHTML = chemHtml(startIds) + `<h3>Starting five</h3><div class="cards">${G.start.map(x => gCard(byId[x])).join("")}${empty(5 - G.start.length, "Starter slot<br><small>tap Start on a card</small>")}</div>
-    <h3>Bench</h3><div class="cards">${G.bench.map(x => gCard(byId[x])).join("")}${empty(5 - G.bench.length, "Bench slot<br><small>tap Bench on a card</small>")}</div>`;
+    <h3>Bench</h3>${benchHtml(G.bench.map(x => byId[x].id))}<div class="cards">${G.bench.map(x => gCard(byId[x])).join("")}${empty(5 - G.bench.length, "Bench slot<br><small>tap Bench on a card</small>")}</div>`;
   const rest = G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid));
   const sk = c => { const r = ratingOf(statOf(c.id)); return GSORT === "new" ? c.cid : GSORT === "name" ? c.name : GSORT === "gain" ? String(1000 + valueOf(r) - (c.val || 0)).padStart(5, "0") : String(100 + (r ? r.ovr : c.ovr)); };
   rest.sort((a, b) => GSORT === "name" ? sk(a).localeCompare(sk(b)) : sk(b).localeCompare(sk(a)));
@@ -576,7 +600,8 @@ function drawRules(){
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's Pulse production (PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV). Bench players sub in, in order, for starters who don't play. Hit ${FF_TARGET}: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs Pulse:</b> Pulse builds a five from that night's players with about your starters' total OVR. Outscore it: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs a real team:</b> your five against the NBA starting five closest to yours in OVR that night. Win: <b>+${WIN_PTS}</b>; beat a better-rated five: another <b>+${WIN_PTS}</b>.</li></ol></li>
-    <li><b>Lineup rule and chemistry:</b> your starting five needs at least one guard and one center; the other three spots are flex. Chemistry (0-100) rates how well the five fit: positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Good chemistry boosts your nightly score up to +10%; bad chemistry costs up to −20%, and breaking the guard/center rule costs another −15%. Five top-25 forwards won't play well together.</li>
+    <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
+    <li><b>Bench balance:</b> the bench needs guards, wings and bigs (a backup center helps). When a starter sits, the first bench player at his position subs in, and that night's chemistry uses the five who actually played, so an all-guard bench can leave you with no center. Balanced bench: +5% on subs; lopsided: up to −40%.</li>
     <li><b>Weekly ladder:</b> Fantasy Five points add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
     <li><b>Packs:</b> Gold 150, Ruby 300, Galaxy 500 points. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his Pulse ranks this season.</li>
     <li><b>Card values move with Pulse.</b> A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
