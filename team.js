@@ -390,47 +390,64 @@ async function drawInjHistory(){
 }
 
 /* ---------- cap sheet ---------- */
-function zone(p){
-  return p > RULES.apron2 ? ["Above the 2nd apron","var(--z-a2)"] : p > RULES.apron1 ? ["Above the 1st apron","var(--z-a1)"] : p > RULES.tax ? ["Over the tax","var(--z-tax)"] : p > RULES.cap ? ["Over the cap","var(--court)"] : ["Under the cap","var(--z-cap)"];
+let CAPSEL = 0, CAPOPT = {po: true, to: true, eto: true};
+function zone(p, R){
+  R = R || RULES;
+  return p > R.apron2 ? ["Above the 2nd apron","var(--z-a2)"] : p > R.apron1 ? ["Above the 1st apron","var(--z-a1)"] : p > R.tax ? ["Over the tax","var(--z-tax)"] : p > R.cap ? ["Over the cap","var(--court)"] : ["Under the cap","var(--z-cap)"];
 }
 function drawCap(){
   const cts = contractsFor(CODE).sort((a,b) => b.salary - a.salary);
   if(!cts.length){ $('capBody').innerHTML = `<div class="card empty">No contracts found.</div>`; return; }
   const y0 = +RULES.season.slice(0,4);
   const seasons = [0,1,2,3,4].map(i => `${y0+i}-${String(y0+i+1).slice(2)}`);
-  const pay = cts.reduce((t,c) => t + c.salary, 0);
-  const [zl, zc] = zone(pay);
+  if(CAPSEL > 4) CAPSEL = 0;
+  const S = seasons[CAPSEL], grow = Math.pow(1.07, CAPSEL);
+  // the selected season's numbers: this season's are official; later ones grow 7% a year (an estimate; the NBA sets them each July)
+  const R = CAPSEL ? Object.fromEntries(["cap", "tax", "apron1", "apron2", "ntmle", "tmle", "roomMle", "bae"].map(k => [k, Math.round(RULES[k] * grow / 1e3) * 1e3])) : RULES;
+  const optKey = o => o === "player option" ? "po" : o === "team option" ? "to" : o ? "eto" : null;
+  const counts = y => !y[2] || !CAPSEL || CAPOPT[optKey(y[2])] !== false;   // this season's options are already decided
+  const under = cts.filter(c => { const y = c.years.find(v => v[0] === S); return y && counts(y); });
+  const optOut = cts.filter(c => { const y = c.years.find(v => v[0] === S); return y && !counts(y); });
+  const pay = under.reduce((t,c) => t + num(c.years.find(v => v[0] === S)[1]), 0);
+  const hasOpt = cts.some(c => { const y = c.years.find(v => v[0] === S); return y && y[2]; });
+  const [zl, zc] = zone(pay, R);
   const lo = 100e6, hi = Math.max(250e6, pay * 1.05), x = v => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
-  const zones = [[lo, RULES.cap, "var(--z-cap)"], [RULES.cap, RULES.tax, "var(--court)"], [RULES.tax, RULES.apron1, "var(--z-tax)"], [RULES.apron1, RULES.apron2, "var(--z-a1)"], [RULES.apron2, hi, "var(--z-a2)"]];
-  const ticks = [[RULES.cap,"Cap","var(--z-cap)"],[RULES.tax,"Tax","var(--z-tax)"],[RULES.apron1,"1st apron","var(--z-a1)"],[RULES.apron2,"2nd apron","var(--z-a2)"]];
-  const mle = pay <= RULES.cap ? `Room exception (${M(RULES.roomMle)}) once cap space is used`
-    : pay <= RULES.apron1 ? `Non-taxpayer mid-level (${M(RULES.ntmle)}) and bi-annual (${M(RULES.bae)}), if not used yet`
-    : pay <= RULES.apron2 ? `Taxpayer mid-level (${M(RULES.tmle)}) only` : "No mid-level exception";
-  const tradeRule = pay > RULES.apron2 ? "Can't take back more salary than it sends, combine salaries, or send cash in trades."
-    : pay > RULES.apron1 ? "Can't take back more salary than it sends out in a trade."
-    : pay > RULES.cap ? "Can take back up to 125% (+$250K) or more of outgoing salary in trades." : "Can absorb salary into cap space.";
+  const zones = [[lo, R.cap, "var(--z-cap)"], [R.cap, R.tax, "var(--court)"], [R.tax, R.apron1, "var(--z-tax)"], [R.apron1, R.apron2, "var(--z-a1)"], [R.apron2, hi, "var(--z-a2)"]];
+  const ticks = [[R.cap,"Cap","var(--z-cap)"],[R.tax,"Tax","var(--z-tax)"],[R.apron1,"1st apron","var(--z-a1)"],[R.apron2,"2nd apron","var(--z-a2)"]];
+  const mle = pay <= R.cap ? `Room exception (${M(R.roomMle)}) once cap space is used`
+    : pay <= R.apron1 ? `Non-taxpayer mid-level (${M(R.ntmle)}) and bi-annual (${M(R.bae)}), if not used yet`
+    : pay <= R.apron2 ? `Taxpayer mid-level (${M(R.tmle)}) only` : "No mid-level exception";
+  const tradeRule = pay > R.apron2 ? "Can't take back more salary than it sends, combine salaries, or send cash in trades."
+    : pay > R.apron1 ? "Can't take back more salary than it sends out in a trade."
+    : pay > R.cap ? "Can take back up to 125% (+$250K) or more of outgoing salary in trades." : "Can absorb salary into cap space.";
   const totals = seasons.map(s => cts.reduce((t,c) => { const y = c.years.find(v => v[0] === s); return t + (y ? num(y[1]) : 0); }, 0));
   const cell = (c, s) => { const y = c.years.find(v => v[0] === s); if(!y) return `<td></td>`;
     const o = y[2] ? `<i>${y[2] === "player option" ? "PO" : y[2] === "team option" ? "TO" : "ETO"}</i>` : "";
     return `<td class="${y[2] ? "opt" : ""}">${M(num(y[1]))}${o}</td>`; };
   $('capBody').innerHTML = `<div class="card pad">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><span class="note" style="margin:0">${RULES.season} payroll</span><div style="font:700 34px/1.1 'Barlow Condensed'">${M(pay)}</div></div><span class="pill" style="--c:${zc}">${zl}</span></div>
+      <div class="capyrs" role="tablist" aria-label="Season">${seasons.map((s, k) => `<button class="${k === CAPSEL ? "on" : ""}" data-capyr="${k}">${s}</button>`).join("")}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><span class="note" style="margin:0">${S} ${CAPSEL ? "committed salary" : "payroll"} · ${under.length} player${under.length === 1 ? "" : "s"} under contract</span><div style="font:700 34px/1.1 'Barlow Condensed'">${M(pay)}</div></div><span class="pill" style="--c:${zc}">${zl}</span></div>
+      ${CAPSEL && pay <= R.cap ? `<div class="capspace"><span>Possible cap space</span><b>${M(R.cap - pay)}</b><small>if the cap is about ${M(R.cap)}, before cap holds for free agents and empty roster spots</small></div>` : ""}
+      ${hasOpt && CAPSEL ? `<div class="capopts"><span class="note" style="margin:0">Options in ${S}:</span>${[["po", "Player options"], ["to", "Team options"], ["eto", "Early termination"]].filter(([k]) => cts.some(c => { const y = c.years.find(v => v[0] === S); return y && optKey(y[2]) === k; })).map(([k, l]) => `<label><input type="checkbox" data-capopt="${k}"${CAPOPT[k] !== false ? " checked" : ""}> ${l} picked up</label>`).join("")}</div>` : ""}
       <div class="meter"><div class="track">${zones.map(([a,b,c]) => `<div class="zone" style="left:${x(a)}%;width:${x(b)-x(a)}%;background:${c}"></div>`).join("")}</div>
         <div class="fill" style="width:${x(pay)}%;background:${zc}"></div>
         ${ticks.map(([v,l,c]) => `<div class="tick" style="left:calc(${x(v)}% - 1px);--c:${c}"><span>${l}</span></div>`).join("")}</div>
       <div class="capnums">
-        <div><span>${pay <= RULES.cap ? "Cap space" : "Over the cap by"}</span><b>${M(Math.abs(RULES.cap - pay))}</b></div>
-        <div><span>${pay <= RULES.tax ? "Under the tax by" : "Over the tax by"}</span><b>${M(Math.abs(RULES.tax - pay))}</b></div>
-        <div><span>Room under 1st apron</span><b class="${pay > RULES.apron1 ? "neg" : ""}">${M(RULES.apron1 - pay)}</b></div>
-        <div><span>Room under 2nd apron</span><b class="${pay > RULES.apron2 ? "neg" : ""}">${M(RULES.apron2 - pay)}</b></div>
+        <div><span>${pay <= R.cap ? "Cap space" : "Over the cap by"}</span><b>${M(Math.abs(R.cap - pay))}</b></div>
+        <div><span>${pay <= R.tax ? "Under the tax by" : "Over the tax by"}</span><b>${M(Math.abs(R.tax - pay))}</b></div>
+        <div><span>Room under 1st apron</span><b class="${pay > R.apron1 ? "neg" : ""}">${M(R.apron1 - pay)}</b></div>
+        <div><span>Room under 2nd apron</span><b class="${pay > R.apron2 ? "neg" : ""}">${M(R.apron2 - pay)}</b></div>
       </div>
-      <p class="note" style="margin:14px 0 0"><b>Exceptions:</b> ${mle}. <b>Trades:</b> ${tradeRule} <b>Roster:</b> ${cts.length} contracts (max ${RULES.rosterMax} standard). Dead money and cap holds aren't included. <a href="trade.html#${CODE}">Open in the Trade Machine →</a></p>
+      <p class="note" style="margin:14px 0 0"><b>Exceptions:</b> ${mle}. <b>Trades:</b> ${tradeRule} <b>Roster:</b> ${under.length} contract${under.length === 1 ? "" : "s"} for ${S} (max ${RULES.rosterMax} standard)${optOut.length ? `; not counting ${optOut.map(c => esc(c.name)).join(", ")} (option declined)` : ""}. Dead money and cap holds aren't included. <a href="trade.html#${CODE}">Open in the Trade Machine →</a></p>
+      ${CAPSEL ? `<p class="note" style="margin:6px 0 0"><b>${S} is a projection.</b> Only contracts already signed count, so this is the team's flexibility before re-signing anyone. The cap (${M(R.cap)}), tax and aprons assume 7% growth a year from this season's numbers; the real figures are set each July.</p>` : ""}
     </div>
     <div class="card" style="margin-top:12px"><div class="tw"><table>
-      <thead><tr><th class="l">Player</th>${seasons.map(s => `<th>${s}</th>`).join("")}</tr></thead>
-      <tbody>${cts.map(c => `<tr><td class="l nm"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></td>${seasons.map(s => cell(c, s)).join("")}</tr>`).join("")}
-      <tr class="tot"><td class="l">Total</td>${totals.map(t => `<td>${t ? M(t) : ""}</td>`).join("")}</tr></tbody></table></div>
-      <div class="note pad" style="margin:0">PO = player option, TO = team option, ETO = early termination option (shaded). Future years count only signed contracts, so they'll grow as the team re-signs or adds players.</div></div>`;
+      <thead><tr><th class="l">Player</th>${seasons.map((s, k) => `<th class="capth${k === CAPSEL ? " sel" : ""}" data-capyr="${k}" title="Show ${s} in the calculator">${s}</th>`).join("")}</tr></thead>
+      <tbody>${cts.map(c => `<tr class="${under.includes(c) ? "" : "capoff"}"><td class="l nm"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></td>${seasons.map((s, k) => cell(c, s).replace("<td", `<td data-k="${k}"${k === CAPSEL ? ' data-sel="1"' : ""}`)).join("")}</tr>`).join("")}
+      <tr class="tot"><td class="l">Total</td>${totals.map((t, k) => `<td class="capth${k === CAPSEL ? " sel" : ""}" data-capyr="${k}">${t ? M(t) : ""}</td>`).join("")}</tr></tbody></table></div>
+      <div class="note pad" style="margin:0">Tap a season (column heading or total) to see it in the calculator above: only the players under contract that season count, so you can see the team's possible cap space. PO = player option, TO = team option, ETO = early termination option (shaded). Future years count only signed contracts, so they'll grow as the team re-signs or adds players.</div></div>`;
+  $('capBody').querySelectorAll("[data-capyr]").forEach(b => b.onclick = () => { CAPSEL = +b.dataset.capyr; const y = window.scrollY; drawCap(); window.scrollTo(0, y); });
+  $('capBody').querySelectorAll("[data-capopt]").forEach(b => b.onchange = () => { CAPOPT[b.dataset.capopt] = b.checked; const y = window.scrollY; drawCap(); window.scrollTo(0, y); });
 }
 
 /* ---------- draft picks ---------- */
