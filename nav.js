@@ -139,6 +139,7 @@ html.nobet .bet{display:none !important;}
 @media (max-width:520px){ .sitenav-cur{display:none;} .sitenav-list{min-width:280px;} .sitenav-brand img{height:34px;} .sitenav-word b{font-size:18px;} .sitenav-word i{font-size:10px;letter-spacing:3.4px;} }
 `;
 
+const escH = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function where(){ return {path: location.pathname, hash: location.hash || ""}; }
 /* ---------- site settings, kept in this browser: My team and Hide betting ---------- */
 const PREF = {get(k){ try{ return localStorage.getItem("fcgp." + k); }catch(_){ return null; } }, set(k, v){ try{ v ? localStorage.setItem("fcgp." + k, v) : localStorage.removeItem("fcgp." + k); }catch(_){} }};
@@ -184,6 +185,7 @@ function build(){
         <div class="sitenav-set"><small>Settings</small>
           <label>My team <select id="sitenavMyTeam" aria-label="My team"><option value="">Pick a team</option>${TEAM_LIST.slice().sort((a, b) => a[2].localeCompare(b[2])).map(([c, , n]) => `<option value="${c}">${n}</option>`).join("")}</select></label>
           <label>Hide betting lines &amp; picks <input type="checkbox" id="sitenavNoBet"></label>
+          <button type="button" class="sitenav-sync" id="sitenavCloud">☁️ Sign in to save my setup</button>
           <button type="button" class="sitenav-sync" id="sitenavSync">📲 Move my setup to another device</button>
         </div>
       </div>
@@ -207,6 +209,11 @@ function build(){
   sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet();
   sel.onchange = () => { Prefs.setMyTeam(sel.value); paintMine(); toast(sel.value ? `My team: ${sel.options[sel.selectedIndex].text}` : "My team cleared"); };
   nav.querySelector("#sitenavSync").onclick = () => { close(); openSync(); };
+  const cb = nav.querySelector("#sitenavCloud");
+  const paintCloud = () => { const u = window.FCCloud && FCCloud.user(); cb.innerHTML = u ? `☁️ Saved to ${u.email ? escH(u.email) : "your account"}<small style="display:block;font-weight:500;color:inherit;opacity:.7">Sign out</small>` : `☁️ Sign in to save my setup<small style="display:block;font-weight:500;color:inherit;opacity:.7">Keeps your team and record safe on any device</small>`; };
+  cb.onclick = async () => { close(); await need("cloud.js"); if(!window.FCCloud) return; if(FCCloud.user()){ if(confirm("Sign out? Your setup stays on this device but stops saving to your account.")) FCCloud.signOut(); } else FCCloud.signIn(); };
+  document.addEventListener("cloud", paintCloud); paintCloud();
+  try{ if(localStorage.getItem("cloud.meta")) need("cloud.js"); }catch(_){}
   nb.onchange = () => { Prefs.setNoBet(nb.checked); toast(nb.checked ? "Betting lines and picks hidden" : "Betting lines and picks shown"); };
   paintMine();
   document.addEventListener("prefs", () => { sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet(); paintMine(); });
@@ -350,7 +357,7 @@ async function checkSyncLink(){
   if(!/^#sync=/.test(location.hash)) return;
   try{ confirmLoad(await unpack(location.hash)); }catch(e){ toast(e.message || "That setup link didn't work"); history.replaceState(null, "", location.pathname + location.search); }
 }
-window.FCSync = {pack, unpack, open: openSync};
+window.FCSync = {pack, unpack, open: openSync, keys: SYNC_KEYS};
 /* ---------- install as an app ---------- */
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; const a = document.getElementById("sitenavApp"); if(a) a.hidden = false; });
