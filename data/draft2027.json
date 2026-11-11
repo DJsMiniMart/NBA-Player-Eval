@@ -1,0 +1,1563 @@
+{
+ "draft": "2027 NBA Draft",
+ "updated": "2026-11-11",
+ "dates": [
+  [
+   "Early-entry deadline",
+   "Late April 2027",
+   "TBA"
+  ],
+  [
+   "Draft lottery",
+   "May 2027",
+   "TBA"
+  ],
+  [
+   "Draft combine",
+   "May 2027",
+   "TBA"
+  ],
+  [
+   "Early-entry withdrawal deadline",
+   "Late May / June 2027",
+   "TBA"
+  ],
+  [
+   "2027 NBA Draft",
+   "Late June 2027",
+   "TBA"
+  ]
+ ],
+ "board": {
+  "title": "Consensus big board",
+  "source": "Ultimate Big Board consensus of 14 rankings (12 mock drafts, 2 big boards) from 13 outlets",
+  "url": "https://ultimatebigboard.com/nba/2027/",
+  "date": "2026-11-11"
+ },
+ "details": {
+  "source": "FanSided big board by Christopher Kline",
+  "url": "https://fansided.com/nba/2027-nba-draft-big-board-top-60-prospects-as-college-basketball-gets-underway",
+  "date": "2026-11-04"
+ },
+ "prospects": [
+  {
+   "rank": 1,
+   "name": "Tyran Stokes",
+   "pos": "F",
+   "school": "Kansas",
+   "proj": "SAC",
+   "fs": 1,
+   "ht": "6'7\"",
+   "age": "Fr., 19",
+   "note": "Explosive open-floor athlete and strong rebounder; turnovers, an inconsistent jumper and defensive lapses are the questions."
+  },
+  {
+   "rank": 2,
+   "name": "Jordan Smith Jr.",
+   "pos": "G",
+   "school": "Arkansas",
+   "proj": "NOP",
+   "fs": 3,
+   "ht": "6'2\"",
+   "age": "Fr., 19",
+   "note": "Tough two-way guard and physical slasher with a strong defensive profile; shooting and handle still developing."
+  },
+  {
+   "rank": 3,
+   "name": "Kanon Catchings",
+   "pos": "SF",
+   "school": "Georgia",
+   "proj": "UTA",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 4,
+   "name": "Caleb Holt",
+   "pos": "G",
+   "school": "Arizona",
+   "proj": "HOU",
+   "fs": 4,
+   "ht": "6'5\"",
+   "age": "Fr., 19",
+   "note": "Relentless, physical defender and rebounder who finishes well at the rim; unorthodox shot and limited self-creation."
+  },
+  {
+   "rank": 5,
+   "name": "Stefan Joksimovic",
+   "pos": "G",
+   "school": "Baskonia (Spain)",
+   "proj": "NOP",
+   "fs": 2,
+   "ht": "6'7\"",
+   "age": "Intl., 18",
+   "note": "Big playmaker with a good pull-up jumper and vision; needs strength to defend and finish through contact."
+  },
+  {
+   "rank": 6,
+   "name": "Bruce Branch III",
+   "pos": "F",
+   "school": "BYU",
+   "proj": "CHI",
+   "fs": 11,
+   "ht": "6'7\"",
+   "age": "Fr., 18",
+   "note": "Long wing with promising shooting, passing and weak-side blocks; thin frame and inconsistent finishing."
+  },
+  {
+   "rank": 7,
+   "name": "Anthony Thompson",
+   "pos": "F",
+   "school": "Ohio State",
+   "proj": "CHI",
+   "fs": 13,
+   "ht": "6'8\"",
+   "age": "Fr., 19",
+   "note": "Skilled shooter with size and an energetic defensive game; needs strength and a tighter handle."
+  },
+  {
+   "rank": 8,
+   "name": "Quentin Coleman",
+   "pos": "G",
+   "school": "Illinois",
+   "proj": "BKN",
+   "fs": 8,
+   "ht": "6'4\"",
+   "age": "Fr., 18",
+   "note": "Top-tier movement shooter with smooth mechanics and feel; slight frame raises point guard questions."
+  },
+  {
+   "rank": 9,
+   "name": "Motiejus Krivas",
+   "pos": "C",
+   "school": "Arizona",
+   "proj": "ORL",
+   "fs": 9,
+   "ht": "7'2\"",
+   "age": "Sr., 22",
+   "note": "Huge shot-blocking anchor and rebounder with post polish; finishing and a jump shot need work."
+  },
+  {
+   "rank": 10,
+   "name": "Colben Landrew",
+   "pos": "F",
+   "school": "UConn",
+   "proj": "OKC",
+   "fs": 7,
+   "ht": "6'6\"",
+   "age": "Fr., 19",
+   "note": "Efficient spot-up shooter and sturdy, connective defender; not quick laterally and struggles shooting off the dribble."
+  },
+  {
+   "rank": 11,
+   "name": "Braylon Mullins",
+   "pos": "G",
+   "school": "UConn",
+   "proj": "ORL",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 12,
+   "name": "Patrick Ngongba II",
+   "pos": "C",
+   "school": "Duke",
+   "proj": "POR",
+   "fs": 6,
+   "ht": "6'11\"",
+   "age": "Jr., 21",
+   "note": "Elite passing big who finishes inside and protects the rim; foot injury history and limited range."
+  },
+  {
+   "rank": 13,
+   "name": "Ivan Kharchenkov",
+   "pos": "SF",
+   "school": "Arizona",
+   "proj": "GSW",
+   "fs": 10,
+   "ht": "6'7\"",
+   "age": "So., 20",
+   "note": "High-motor, versatile defender and aggressive slasher who passes well; shooting and ball security lag."
+  },
+  {
+   "rank": 14,
+   "name": "Amari Allen",
+   "pos": "F",
+   "school": "Alabama",
+   "proj": "WAS",
+   "fs": 24,
+   "ht": "",
+   "age": "21",
+   "note": ""
+  },
+  {
+   "rank": 15,
+   "name": "Brandon McCoy Jr.",
+   "pos": "G",
+   "school": "Michigan",
+   "proj": "ATL",
+   "fs": 12,
+   "ht": "6'5\"",
+   "age": "Fr., 19",
+   "note": "Physical defender and transition finisher with an erratic jumper; a preseason ACL tear will cost him this season."
+  },
+  {
+   "rank": 16,
+   "name": "Abdou Toure",
+   "pos": "F",
+   "school": "Arkansas",
+   "proj": "HOU",
+   "fs": 16,
+   "ht": "6'5\"",
+   "age": "Fr., 19",
+   "note": "Explosive, high-motor athlete who attacks the rim and makes plays on defense; shot and handle need major work."
+  },
+  {
+   "rank": 17,
+   "name": "Obinna Ekezie Jr.",
+   "pos": "C",
+   "school": "Louisville",
+   "proj": "CHA",
+   "fs": 22,
+   "ht": "",
+   "age": "19",
+   "note": ""
+  },
+  {
+   "rank": 18,
+   "name": "Thomas Haugh",
+   "pos": "F",
+   "school": "Florida",
+   "proj": "POR",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 19,
+   "name": "Hugo Yimga-Moukouri",
+   "pos": "F",
+   "school": "Nanterre 92 (France)",
+   "proj": "BOS",
+   "fs": 30,
+   "ht": "",
+   "age": "18",
+   "note": ""
+  },
+  {
+   "rank": 20,
+   "name": "Christian Collins",
+   "pos": "SF",
+   "school": "USC",
+   "proj": "LAC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 21,
+   "name": "Alijah Arenas",
+   "pos": "G",
+   "school": "USC",
+   "proj": "GSW",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 22,
+   "name": "Caleb Gaskins",
+   "pos": "F",
+   "school": "Miami",
+   "proj": "POR",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 23,
+   "name": "Klark Reithauser",
+   "pos": "SF",
+   "school": "Switzerland",
+   "proj": "ATL",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 24,
+   "name": "Luigi Suigo",
+   "pos": "C",
+   "school": "Villanova",
+   "proj": "UTA",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 25,
+   "name": "Maximo Adams",
+   "pos": "F",
+   "school": "North Carolina",
+   "proj": "PHX",
+   "fs": 23,
+   "ht": "",
+   "age": "19",
+   "note": ""
+  },
+  {
+   "rank": 26,
+   "name": "Baba Oladotun",
+   "pos": "F",
+   "school": "Maryland",
+   "proj": "CHA",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 27,
+   "name": "Davis Fogle",
+   "pos": "SG",
+   "school": "Gonzaga",
+   "proj": "PHX",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 28,
+   "name": "Jason Crowe Jr.",
+   "pos": "G",
+   "school": "Missouri",
+   "proj": "GSW",
+   "fs": 28,
+   "ht": "",
+   "age": "19",
+   "note": ""
+  },
+  {
+   "rank": 29,
+   "name": "Cameron Williams",
+   "pos": "F",
+   "school": "Duke",
+   "proj": "MEM",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 30,
+   "name": "Sayon Keita",
+   "pos": "C",
+   "school": "North Carolina",
+   "proj": "DET",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 31,
+   "name": "Bryson Tiller",
+   "pos": "PF",
+   "school": "Missouri",
+   "proj": "CLE",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 32,
+   "name": "Dylan Mingo",
+   "pos": "G",
+   "school": "Baylor",
+   "proj": "CHA",
+   "fs": 18,
+   "ht": "6'5\"",
+   "age": "Fr., 18",
+   "note": "Creative ball-handler and playmaker with length on defense; ankle issues and poor 3-point shooting."
+  },
+  {
+   "rank": 33,
+   "name": "JJ Andrews",
+   "pos": "F",
+   "school": "Arkansas",
+   "proj": "BOS",
+   "fs": 17,
+   "ht": "6'6\"",
+   "age": "Fr., 19",
+   "note": "Strong, explosive wing who thrives in transition and guards bigger players; mostly a straight-line driver."
+  },
+  {
+   "rank": 34,
+   "name": "Miikka Muurinen",
+   "pos": "PF",
+   "school": "Arkansas",
+   "proj": "PHI",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 35,
+   "name": "Stefan Vaaks",
+   "pos": "",
+   "school": "Illinois",
+   "proj": "BKN",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 36,
+   "name": "Billy Richmond III",
+   "pos": "W",
+   "school": "Arkansas",
+   "proj": "OKC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 37,
+   "name": "Tyler Tanner",
+   "pos": "G",
+   "school": "Vanderbilt",
+   "proj": "BKN",
+   "fs": 5,
+   "ht": "5'11\"",
+   "age": "Jr., 21",
+   "note": "Skilled, smart guard with touch and disruptive hands; size and strength are the big risks."
+  },
+  {
+   "rank": 38,
+   "name": "Daniel Jacobsen",
+   "pos": "C",
+   "school": "Purdue",
+   "proj": "POR",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 39,
+   "name": "Sammy Jackson",
+   "pos": "G",
+   "school": "VCU",
+   "proj": "OKC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 40,
+   "name": "Tounde Yessoufou",
+   "pos": "G",
+   "school": "St. John's",
+   "proj": "MEM",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 41,
+   "name": "Arafan Diane",
+   "pos": "C",
+   "school": "Houston",
+   "proj": "PHX",
+   "fs": 15,
+   "ht": "7'1\"",
+   "age": "Fr., 19",
+   "note": "Powerful post presence and elite rebounder who deters shots; conditioning and lateral mobility are questions."
+  },
+  {
+   "rank": 42,
+   "name": "Trey McKenney",
+   "pos": "G",
+   "school": "Michigan",
+   "proj": "OKC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 43,
+   "name": "Dame Sarr",
+   "pos": "G",
+   "school": "Duke",
+   "proj": "PHI",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 44,
+   "name": "Na'jai Hines",
+   "pos": "C",
+   "school": "UConn",
+   "proj": "UTA",
+   "fs": 14,
+   "ht": "6'10\"",
+   "age": "So., 20",
+   "note": "Dominant shot-blocker and rebounder; fouls a lot and has shaky touch at the line."
+  },
+  {
+   "rank": 45,
+   "name": "Cole Cloer",
+   "pos": "",
+   "school": "Alabama",
+   "proj": "DET",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 46,
+   "name": "Austin Goosby",
+   "pos": "G",
+   "school": "Texas",
+   "proj": "OKC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 47,
+   "name": "Malachi Moreno",
+   "pos": "C",
+   "school": "Kentucky",
+   "proj": "IND",
+   "fs": 19,
+   "ht": "6'11\"",
+   "age": "So., 20",
+   "note": "Agile rim protector and skilled high-post passer who wins the offensive glass; needs strength."
+  },
+  {
+   "rank": 48,
+   "name": "Matt Able",
+   "pos": "G",
+   "school": "North Carolina",
+   "proj": "DET",
+   "fs": 29,
+   "ht": "",
+   "age": "20",
+   "note": ""
+  },
+  {
+   "rank": 49,
+   "name": "David Mirkovic",
+   "pos": "F",
+   "school": "Illinois",
+   "proj": "BOS",
+   "fs": 21,
+   "ht": "",
+   "age": "21",
+   "note": ""
+  },
+  {
+   "rank": 50,
+   "name": "Bryson Howard",
+   "pos": "G",
+   "school": "Duke",
+   "proj": "BKN",
+   "fs": 20,
+   "ht": "6'4\"",
+   "age": "Fr., 18",
+   "note": "Long, disruptive defender with a smooth lefty stroke and transition punch; turnovers and handle."
+  },
+  {
+   "rank": 51,
+   "name": "Mouhamed Sylla",
+   "pos": "C",
+   "school": "West Virginia",
+   "proj": "SAS",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 52,
+   "name": "Miles Sadler",
+   "pos": "G",
+   "school": "West Virginia",
+   "proj": "PHX",
+   "fs": 25,
+   "ht": "",
+   "age": "19",
+   "note": ""
+  },
+  {
+   "rank": 53,
+   "name": "Amadou Seini",
+   "pos": "C",
+   "school": "West Virginia",
+   "proj": "",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 54,
+   "name": "Rueben Chinyelu",
+   "pos": "C",
+   "school": "Florida",
+   "proj": "UTA",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 55,
+   "name": "Cheickh Niang",
+   "pos": "SF",
+   "school": "Trento (Italy)",
+   "proj": "PHI",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 56,
+   "name": "Matas Vokietaitis",
+   "pos": "C",
+   "school": "Texas",
+   "proj": "BKN",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 57,
+   "name": "Dash Daniels",
+   "pos": "G",
+   "school": "Australia",
+   "proj": "OKC",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 58,
+   "name": "Deron Rippey Jr.",
+   "pos": "G",
+   "school": "Duke",
+   "proj": "MEM",
+   "fs": 27,
+   "ht": "",
+   "age": "19",
+   "note": ""
+  },
+  {
+   "rank": 59,
+   "name": "Amare Bynum",
+   "pos": "",
+   "school": "Ohio State",
+   "proj": "WAS",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  },
+  {
+   "rank": 60,
+   "name": "Juke Harris",
+   "pos": "G",
+   "school": "Tennessee",
+   "proj": "PHI",
+   "fs": null,
+   "ht": "",
+   "age": "",
+   "note": ""
+  }
+ ],
+ "mocks": [
+  {
+   "id": "consensus",
+   "name": "Consensus mock",
+   "by": "Ultimate Big Board (14 sources)",
+   "date": "2026-11-11",
+   "url": "https://ultimatebigboard.com/nba/2027/",
+   "note": "Each player's average draft slot across 14 mocks and boards; the team is the one most sources pair him with.",
+   "picks": [
+    {
+     "pick": 1,
+     "team": "SAC",
+     "name": "Tyran Stokes",
+     "pos": "F",
+     "school": "Kansas",
+     "via": ""
+    },
+    {
+     "pick": 2,
+     "team": "NOP",
+     "name": "Jordan Smith Jr.",
+     "pos": "G",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 3,
+     "team": "UTA",
+     "name": "Kanon Catchings",
+     "pos": "SF",
+     "school": "Georgia",
+     "via": ""
+    },
+    {
+     "pick": 4,
+     "team": "HOU",
+     "name": "Caleb Holt",
+     "pos": "G",
+     "school": "Arizona",
+     "via": ""
+    },
+    {
+     "pick": 5,
+     "team": "NOP",
+     "name": "Stefan Joksimovic",
+     "pos": "G",
+     "school": "Baskonia (Spain)",
+     "via": ""
+    },
+    {
+     "pick": 6,
+     "team": "CHI",
+     "name": "Bruce Branch III",
+     "pos": "F",
+     "school": "BYU",
+     "via": ""
+    },
+    {
+     "pick": 7,
+     "team": "CHI",
+     "name": "Anthony Thompson",
+     "pos": "F",
+     "school": "Ohio State",
+     "via": ""
+    },
+    {
+     "pick": 8,
+     "team": "BKN",
+     "name": "Quentin Coleman",
+     "pos": "G",
+     "school": "Illinois",
+     "via": ""
+    },
+    {
+     "pick": 9,
+     "team": "ORL",
+     "name": "Motiejus Krivas",
+     "pos": "C",
+     "school": "Arizona",
+     "via": ""
+    },
+    {
+     "pick": 10,
+     "team": "OKC",
+     "name": "Colben Landrew",
+     "pos": "F",
+     "school": "UConn",
+     "via": ""
+    },
+    {
+     "pick": 11,
+     "team": "ORL",
+     "name": "Braylon Mullins",
+     "pos": "G",
+     "school": "UConn",
+     "via": ""
+    },
+    {
+     "pick": 12,
+     "team": "POR",
+     "name": "Patrick Ngongba II",
+     "pos": "C",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 13,
+     "team": "GSW",
+     "name": "Ivan Kharchenkov",
+     "pos": "SF",
+     "school": "Arizona",
+     "via": ""
+    },
+    {
+     "pick": 14,
+     "team": "WAS",
+     "name": "Amari Allen",
+     "pos": "F",
+     "school": "Alabama",
+     "via": ""
+    },
+    {
+     "pick": 15,
+     "team": "ATL",
+     "name": "Brandon McCoy Jr.",
+     "pos": "G",
+     "school": "Michigan",
+     "via": ""
+    },
+    {
+     "pick": 16,
+     "team": "HOU",
+     "name": "Abdou Toure",
+     "pos": "F",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 17,
+     "team": "CHA",
+     "name": "Obinna Ekezie Jr.",
+     "pos": "C",
+     "school": "Louisville",
+     "via": ""
+    },
+    {
+     "pick": 18,
+     "team": "POR",
+     "name": "Thomas Haugh",
+     "pos": "F",
+     "school": "Florida",
+     "via": ""
+    },
+    {
+     "pick": 19,
+     "team": "BOS",
+     "name": "Hugo Yimga-Moukouri",
+     "pos": "F",
+     "school": "Nanterre 92 (France)",
+     "via": ""
+    },
+    {
+     "pick": 20,
+     "team": "LAC",
+     "name": "Christian Collins",
+     "pos": "SF",
+     "school": "USC",
+     "via": ""
+    },
+    {
+     "pick": 21,
+     "team": "GSW",
+     "name": "Alijah Arenas",
+     "pos": "G",
+     "school": "USC",
+     "via": ""
+    },
+    {
+     "pick": 22,
+     "team": "POR",
+     "name": "Caleb Gaskins",
+     "pos": "F",
+     "school": "Miami",
+     "via": ""
+    },
+    {
+     "pick": 23,
+     "team": "ATL",
+     "name": "Klark Reithauser",
+     "pos": "SF",
+     "school": "Switzerland",
+     "via": ""
+    },
+    {
+     "pick": 24,
+     "team": "UTA",
+     "name": "Luigi Suigo",
+     "pos": "C",
+     "school": "Villanova",
+     "via": ""
+    },
+    {
+     "pick": 25,
+     "team": "PHX",
+     "name": "Maximo Adams",
+     "pos": "F",
+     "school": "North Carolina",
+     "via": ""
+    },
+    {
+     "pick": 26,
+     "team": "CHA",
+     "name": "Baba Oladotun",
+     "pos": "F",
+     "school": "Maryland",
+     "via": ""
+    },
+    {
+     "pick": 27,
+     "team": "PHX",
+     "name": "Davis Fogle",
+     "pos": "SG",
+     "school": "Gonzaga",
+     "via": ""
+    },
+    {
+     "pick": 28,
+     "team": "GSW",
+     "name": "Jason Crowe Jr.",
+     "pos": "G",
+     "school": "Missouri",
+     "via": ""
+    },
+    {
+     "pick": 29,
+     "team": "MEM",
+     "name": "Cameron Williams",
+     "pos": "F",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 30,
+     "team": "DET",
+     "name": "Sayon Keita",
+     "pos": "C",
+     "school": "North Carolina",
+     "via": ""
+    },
+    {
+     "pick": 31,
+     "team": "CLE",
+     "name": "Bryson Tiller",
+     "pos": "PF",
+     "school": "Missouri",
+     "via": ""
+    },
+    {
+     "pick": 32,
+     "team": "CHA",
+     "name": "Dylan Mingo",
+     "pos": "G",
+     "school": "Baylor",
+     "via": ""
+    },
+    {
+     "pick": 33,
+     "team": "BOS",
+     "name": "JJ Andrews",
+     "pos": "F",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 34,
+     "team": "PHI",
+     "name": "Miikka Muurinen",
+     "pos": "PF",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 35,
+     "team": "BKN",
+     "name": "Stefan Vaaks",
+     "pos": "",
+     "school": "Illinois",
+     "via": ""
+    },
+    {
+     "pick": 36,
+     "team": "OKC",
+     "name": "Billy Richmond III",
+     "pos": "W",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 37,
+     "team": "BKN",
+     "name": "Tyler Tanner",
+     "pos": "G",
+     "school": "Vanderbilt",
+     "via": ""
+    },
+    {
+     "pick": 38,
+     "team": "POR",
+     "name": "Daniel Jacobsen",
+     "pos": "C",
+     "school": "Purdue",
+     "via": ""
+    },
+    {
+     "pick": 39,
+     "team": "OKC",
+     "name": "Sammy Jackson",
+     "pos": "G",
+     "school": "VCU",
+     "via": ""
+    },
+    {
+     "pick": 40,
+     "team": "MEM",
+     "name": "Tounde Yessoufou",
+     "pos": "G",
+     "school": "St. John's",
+     "via": ""
+    },
+    {
+     "pick": 41,
+     "team": "PHX",
+     "name": "Arafan Diane",
+     "pos": "C",
+     "school": "Houston",
+     "via": ""
+    },
+    {
+     "pick": 42,
+     "team": "OKC",
+     "name": "Trey McKenney",
+     "pos": "G",
+     "school": "Michigan",
+     "via": ""
+    },
+    {
+     "pick": 43,
+     "team": "PHI",
+     "name": "Dame Sarr",
+     "pos": "G",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 44,
+     "team": "UTA",
+     "name": "Na'jai Hines",
+     "pos": "C",
+     "school": "UConn",
+     "via": ""
+    },
+    {
+     "pick": 45,
+     "team": "DET",
+     "name": "Cole Cloer",
+     "pos": "",
+     "school": "Alabama",
+     "via": ""
+    },
+    {
+     "pick": 46,
+     "team": "OKC",
+     "name": "Austin Goosby",
+     "pos": "G",
+     "school": "Texas",
+     "via": ""
+    },
+    {
+     "pick": 47,
+     "team": "IND",
+     "name": "Malachi Moreno",
+     "pos": "C",
+     "school": "Kentucky",
+     "via": ""
+    },
+    {
+     "pick": 48,
+     "team": "DET",
+     "name": "Matt Able",
+     "pos": "G",
+     "school": "North Carolina",
+     "via": ""
+    },
+    {
+     "pick": 49,
+     "team": "BOS",
+     "name": "David Mirkovic",
+     "pos": "F",
+     "school": "Illinois",
+     "via": ""
+    },
+    {
+     "pick": 50,
+     "team": "BKN",
+     "name": "Bryson Howard",
+     "pos": "G",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 51,
+     "team": "SAS",
+     "name": "Mouhamed Sylla",
+     "pos": "C",
+     "school": "West Virginia",
+     "via": ""
+    },
+    {
+     "pick": 52,
+     "team": "PHX",
+     "name": "Miles Sadler",
+     "pos": "G",
+     "school": "West Virginia",
+     "via": ""
+    },
+    {
+     "pick": 53,
+     "team": "",
+     "name": "Amadou Seini",
+     "pos": "C",
+     "school": "West Virginia",
+     "via": ""
+    },
+    {
+     "pick": 54,
+     "team": "UTA",
+     "name": "Rueben Chinyelu",
+     "pos": "C",
+     "school": "Florida",
+     "via": ""
+    },
+    {
+     "pick": 55,
+     "team": "PHI",
+     "name": "Cheickh Niang",
+     "pos": "SF",
+     "school": "Trento (Italy)",
+     "via": ""
+    },
+    {
+     "pick": 56,
+     "team": "BKN",
+     "name": "Matas Vokietaitis",
+     "pos": "C",
+     "school": "Texas",
+     "via": ""
+    },
+    {
+     "pick": 57,
+     "team": "OKC",
+     "name": "Dash Daniels",
+     "pos": "G",
+     "school": "Australia",
+     "via": ""
+    },
+    {
+     "pick": 58,
+     "team": "MEM",
+     "name": "Deron Rippey Jr.",
+     "pos": "G",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 59,
+     "team": "WAS",
+     "name": "Amare Bynum",
+     "pos": "",
+     "school": "Ohio State",
+     "via": ""
+    },
+    {
+     "pick": 60,
+     "team": "PHI",
+     "name": "Juke Harris",
+     "pos": "G",
+     "school": "Tennessee",
+     "via": ""
+    }
+   ]
+  },
+  {
+   "id": "cbs",
+   "name": "CBS Sports",
+   "by": "Adam Finkelstein",
+   "date": "2026-10-17",
+   "url": "https://www.cbssports.com/nba/news/2027-nba-mock-draft-tyran-stokes-jordan-smith-jr-stefan-joksimovic/",
+   "note": "First round, before the season started.",
+   "picks": [
+    {
+     "pick": 1,
+     "team": "SAC",
+     "name": "Tyran Stokes",
+     "pos": "SF",
+     "school": "Kansas",
+     "via": ""
+    },
+    {
+     "pick": 2,
+     "team": "HOU",
+     "name": "Jordan Smith Jr.",
+     "pos": "G",
+     "school": "Arkansas",
+     "via": "BKN"
+    },
+    {
+     "pick": 3,
+     "team": "NOP",
+     "name": "Stefan Joksimovic",
+     "pos": "SF",
+     "school": "Baskonia",
+     "via": "MIL"
+    },
+    {
+     "pick": 4,
+     "team": "CHI",
+     "name": "Caleb Holt",
+     "pos": "SG",
+     "school": "Arizona",
+     "via": ""
+    },
+    {
+     "pick": 5,
+     "team": "OKC",
+     "name": "Bruce Branch III",
+     "pos": "SF",
+     "school": "BYU",
+     "via": "LAC"
+    },
+    {
+     "pick": 6,
+     "team": "MEM",
+     "name": "Amari Allen",
+     "pos": "SF",
+     "school": "Alabama",
+     "via": ""
+    },
+    {
+     "pick": 7,
+     "team": "ATL",
+     "name": "Motiejus Krivas",
+     "pos": "C",
+     "school": "Arizona",
+     "via": "NOP"
+    },
+    {
+     "pick": 8,
+     "team": "CHA",
+     "name": "Braylon Mullins",
+     "pos": "SG",
+     "school": "UConn",
+     "via": "DAL"
+    },
+    {
+     "pick": 9,
+     "team": "WAS",
+     "name": "Patrick Ngongba II",
+     "pos": "C",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 10,
+     "team": "CHA",
+     "name": "Thomas Haugh",
+     "pos": "SF",
+     "school": "Florida",
+     "via": ""
+    },
+    {
+     "pick": 11,
+     "team": "MEM",
+     "name": "Ivan Kharchenkov",
+     "pos": "SF",
+     "school": "Arizona",
+     "via": "UTA"
+    },
+    {
+     "pick": 12,
+     "team": "GSW",
+     "name": "Alijah Arenas",
+     "pos": "SG",
+     "school": "USC",
+     "via": ""
+    },
+    {
+     "pick": 13,
+     "team": "SAS",
+     "name": "Dame Sarr",
+     "pos": "SF",
+     "school": "Duke",
+     "via": "ATL"
+    },
+    {
+     "pick": 14,
+     "team": "ORL",
+     "name": "Arafan Diane",
+     "pos": "C",
+     "school": "Houston",
+     "via": ""
+    },
+    {
+     "pick": 15,
+     "team": "HOU",
+     "name": "Quentin Coleman",
+     "pos": "SG",
+     "school": "Illinois",
+     "via": "PHX"
+    },
+    {
+     "pick": 16,
+     "team": "IND",
+     "name": "Luigi Suigo",
+     "pos": "C",
+     "school": "Villanova",
+     "via": ""
+    },
+    {
+     "pick": 17,
+     "team": "POR",
+     "name": "Cameron Williams",
+     "pos": "PF",
+     "school": "Duke",
+     "via": ""
+    },
+    {
+     "pick": 18,
+     "team": "CHA",
+     "name": "Davis Fogle",
+     "pos": "SG",
+     "school": "Gonzaga",
+     "via": "MIA"
+    },
+    {
+     "pick": 19,
+     "team": "MEM",
+     "name": "David Mirkovic",
+     "pos": "PF",
+     "school": "Illinois",
+     "via": "LAL"
+    },
+    {
+     "pick": 20,
+     "team": "LAC",
+     "name": "Jason Crowe Jr.",
+     "pos": "PG",
+     "school": "Missouri",
+     "via": ""
+    },
+    {
+     "pick": 21,
+     "team": "BKN",
+     "name": "Billy Richmond III",
+     "pos": "SF",
+     "school": "Arkansas",
+     "via": "HOU"
+    },
+    {
+     "pick": 22,
+     "team": "UTA",
+     "name": "Malachi Moreno",
+     "pos": "C",
+     "school": "Kentucky",
+     "via": "CLE"
+    },
+    {
+     "pick": 23,
+     "team": "PHX",
+     "name": "Anthony Thompson",
+     "pos": "SF",
+     "school": "Ohio State",
+     "via": "MIN"
+    },
+    {
+     "pick": 24,
+     "team": "DET",
+     "name": "Matt Able",
+     "pos": "SG",
+     "school": "North Carolina",
+     "via": ""
+    },
+    {
+     "pick": 25,
+     "team": "OKC",
+     "name": "Dash Daniels",
+     "pos": "SF",
+     "school": "Australia",
+     "via": "DEN"
+    },
+    {
+     "pick": 26,
+     "team": "PHI",
+     "name": "Neo Avdalas",
+     "pos": "SF",
+     "school": "North Carolina",
+     "via": ""
+    },
+    {
+     "pick": 27,
+     "team": "BOS",
+     "name": "JJ Andrews",
+     "pos": "SF",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 28,
+     "team": "BKN",
+     "name": "Matas Vokietaitis",
+     "pos": "C",
+     "school": "Texas",
+     "via": "NYK"
+    },
+    {
+     "pick": 29,
+     "team": "OKC",
+     "name": "Rueben Chinyelu",
+     "pos": "C",
+     "school": "Florida",
+     "via": "SAS"
+    },
+    {
+     "pick": 30,
+     "team": "TOR",
+     "name": "Tounde Yessoufou",
+     "pos": "SF",
+     "school": "St. John's",
+     "via": "OKC"
+    }
+   ]
+  },
+  {
+   "id": "espn",
+   "name": "ESPN",
+   "by": "Jeremy Woo",
+   "date": "2026-06-25",
+   "url": "https://www.espn.com/nba/story/_/id/49101766/2027-nba-mock-draft-no-1-pick-options-top-players-race-picks",
+   "note": "Top 10, made in June with the order set by preseason title odds, not the new lottery.",
+   "picks": [
+    {
+     "pick": 1,
+     "team": "SAC",
+     "name": "Tyran Stokes",
+     "pos": "SF",
+     "school": "Kansas",
+     "via": ""
+    },
+    {
+     "pick": 2,
+     "team": "CHI",
+     "name": "Jordan Smith Jr.",
+     "pos": "PG/SG",
+     "school": "Arkansas",
+     "via": ""
+    },
+    {
+     "pick": 3,
+     "team": "MEM",
+     "name": "Caleb Holt",
+     "pos": "SG/PG",
+     "school": "Arizona",
+     "via": ""
+    },
+    {
+     "pick": 4,
+     "team": "HOU",
+     "name": "Bruce Branch III",
+     "pos": "SG/SF",
+     "school": "BYU",
+     "via": "BKN"
+    },
+    {
+     "pick": 5,
+     "team": "ATL",
+     "name": "Stefan Joksimovic",
+     "pos": "PG",
+     "school": "Baskonia",
+     "via": "NOP"
+    },
+    {
+     "pick": 6,
+     "team": "NOP",
+     "name": "Braylon Mullins",
+     "pos": "SG",
+     "school": "UConn",
+     "via": "MIL"
+    },
+    {
+     "pick": 7,
+     "team": "MEM",
+     "name": "Thomas Haugh",
+     "pos": "SF/PF",
+     "school": "Florida",
+     "via": "UTA"
+    },
+    {
+     "pick": 8,
+     "team": "CHA",
+     "name": "Jason Crowe Jr.",
+     "pos": "PG/SG",
+     "school": "Missouri",
+     "via": "DAL"
+    },
+    {
+     "pick": 9,
+     "team": "WAS",
+     "name": "Anthony Thompson",
+     "pos": "SF/PF",
+     "school": "Ohio State",
+     "via": ""
+    },
+    {
+     "pick": 10,
+     "team": "HOU",
+     "name": "Cameron Williams",
+     "pos": "F/C",
+     "school": "Duke",
+     "via": "PHX"
+    }
+   ]
+  }
+ ],
+ "more": [
+  [
+   "Tankathon",
+   "https://www.tankathon.com/",
+   "Live draft order and mock simulator"
+  ],
+  [
+   "No Ceilings mock simulator",
+   "https://ncmockdraft.com/",
+   "Run your own mock draft"
+  ],
+  [
+   "NBA Draft Room big board",
+   "https://nbadraftroom.com/2027-nba-draft-big-board-1-0/",
+   "Big board 1.0"
+  ],
+  [
+   "TSN top 100",
+   "https://www.tsn.ca/nba/article/breaking-down-top-prospects-for-2027-nba-draft-n1-50379717/",
+   "Top 100 prospects"
+  ],
+  [
+   "NBA.com draft order",
+   "https://www.nba.com/news/2027-nba-draft-order",
+   "How the 2027 order and lottery work"
+  ]
+ ]
+}

@@ -45,7 +45,7 @@ function items(code, F, player){
     const u = (F.p.upcoming || []).find(x => x.id === next[0]);
     const o = F.m.odds && F.m.odds[next[0]];
     const line = o && o.spread != null ? ` · line ${esc(o.spread <= 0 ? next[2] : next[3])} ${o.spread === 0 ? "PK" : sgn(-Math.abs(o.spread))}` : "";
-    out.push(["next", `<b>NEXT</b> ${home ? "vs" : "@"} ${esc(opp)} · ${esc(time(next[1]))}${next[8] ? " · " + esc(String(next[8]).split(",")[0]) : ""}${u ? ` · Pulse picks <b>${esc(u.pick)}</b> (${Math.round(u.p * 100)}%)` : ""}${line}`]);
+    out.push(["next", `<b>NEXT</b> ${home ? "vs" : "@"} ${esc(opp)} · ${esc(time(next[1]))}${next[8] ? " · " + esc(String(next[8]).split(",")[0]) : ""}${u ? ` · Pulse picks <b>${esc(u.pick)}</b> (${Math.round(u.p * 100)}%)` : ""}${line ? `<i class="bet" style="font-style:normal">${line}</i>` : ""}`]);
   }
   const feed = window.Injuries && Injuries.data() && Injuries.data().teams && Injuries.data().teams[code];
   const inj = feed ? feed.map(x => [x.name, x.status, [x.side, x.type].filter(Boolean).join(" "), x])
@@ -85,7 +85,7 @@ function leagueItems(F){
   games.filter(g => g[4] !== 3 && new Date(g[1]) - now < 30 * 36e5 && new Date(g[1]) - now > -4 * 36e5).forEach(g => {
     const u = (F.p.upcoming || []).find(x => x.id === g[0]), o = F.m.odds && F.m.odds[g[0]];
     const line = o && o.spread != null ? ` · ${esc(o.spread <= 0 ? g[2] : g[3])} ${o.spread === 0 ? "PK" : sgn(-Math.abs(o.spread))}` : "";
-    out.push(["next", `<b>${esc(new Date(g[1]).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"}))}</b> ${esc(g[3])} @ ${esc(g[2])}${u ? ` · Pulse: <b>${esc(u.pick)}</b> ${Math.round(u.p * 100)}%` : ""}${line}`, `matchup.html#${encodeURIComponent(g[0])}`]);
+    out.push(["next", `<b>${esc(new Date(g[1]).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"}))}</b> ${esc(g[3])} @ ${esc(g[2])}${u ? ` · Pulse: <b>${esc(u.pick)}</b> ${Math.round(u.p * 100)}%` : ""}${line ? `<i class="bet" style="font-style:normal">${line}</i>` : ""}`, `matchup.html#${encodeURIComponent(g[0])}`]);
   });
   (F.m.news || []).slice(0, 8).forEach(n => out.push(["news", `<b>${esc(/headline/i.test(n.k || "") ? "NEWS" : String(n.k || "News").toUpperCase())}</b> ${esc(n.h)}`, n.u]));
   const cut = new Date(now - 3 * 864e5).toISOString().slice(0, 10);
@@ -123,6 +123,10 @@ function css(){
 .tk-run span.mine b{color:#7ee2a8;}
 .tk-run a{color:#fff;text-decoration:none;} .tk-run a:hover{text-decoration:underline;}
 .tk-btn{flex:none;width:38px;border:0;background:#1b1b20;color:#fff;font-size:14px;cursor:pointer;}
+.tk-min{flex:none;width:34px;border:0;border-left:1px solid #2a2a30;background:#1b1b20;color:#fff;font-size:15px;cursor:pointer;}
+.tk.min{left:auto;right:10px;bottom:10px;height:34px;line-height:34px;border-radius:999px;border-top-width:0;box-shadow:0 4px 14px rgba(0,0,0,.35);overflow:hidden;padding-bottom:0;}
+.tk.min .tk-view,.tk.min .tk-btn{display:none;} .tk.min .tk-lab{padding:0 6px 0 10px;font-size:13px;} .tk.min .tk-min{border-left:0;background:var(--tk1,#C8102E);}
+body.has-tk.tk-small{padding-bottom:0;}
 @keyframes tkmove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion: reduce){ .tk-run{animation:none;} .tk-view{overflow-x:auto;mask-image:none;} }
 body.has-tk{padding-bottom:44px;}
@@ -152,7 +156,12 @@ async function show(code, opts){
   if(!list.length){ BAR.innerHTML = `<div class="tk-lab">${esc(code)} news</div><div class="tk-view" style="padding:0 14px;color:#aab">No team news right now.</div>`; return; }
   const one = list.map(([k, h, u, m]) => `<span class="${m ? "mine" : ""}">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${h}</a>` : h}</span>`).join("");
   const logo = code === "NBA" ? `<img src="img/emblem-sm.png" alt="" style="border-radius:4px;background:none">` : team.id && window.teamBadge ? `<img src="${teamBadge(code)}" alt="" onerror="this.remove()">` : "";
-  BAR.innerHTML = `<div class="tk-lab">${logo}${esc(code)}<span class="tk-word">&nbsp;news</span></div><div class="tk-view"><div class="tk-run">${one}${one}</div></div><button class="tk-btn" title="Pause or play the ticker" aria-label="Pause or play the ticker">❚❚</button>`;
+  BAR.innerHTML = `<div class="tk-lab">${logo}${esc(code)}<span class="tk-word">&nbsp;news</span></div><div class="tk-view"><div class="tk-run">${one}${one}</div></div><button class="tk-btn" title="Pause or play the ticker" aria-label="Pause or play the ticker">❚❚</button><button class="tk-min" title="Hide the ticker" aria-label="Hide the ticker">▾</button>`;
+  const mini = on => { BAR.classList.toggle("min", on); document.body.classList.toggle("tk-small", on); const m = BAR.querySelector(".tk-min"); m.textContent = on ? "▴" : "▾"; m.title = on ? "Show the ticker" : "Hide the ticker"; m.setAttribute("aria-label", m.title); try{ localStorage.setItem("tk.min", on ? "1" : ""); }catch(_){} };
+  let wasMin = false; try{ wasMin = localStorage.getItem("tk.min") === "1"; }catch(_){}
+  mini(wasMin);
+  BAR.querySelector(".tk-min").onclick = e => { e.stopPropagation(); mini(!BAR.classList.contains("min")); };
+  BAR.querySelector(".tk-lab").onclick = () => { if(BAR.classList.contains("min")) mini(false); };
   const run = BAR.querySelector(".tk-run");
   requestAnimationFrame(() => { const w = run.scrollWidth / 2; run.style.setProperty("--tkdur", Math.max(25, w / 70) + "s"); });   // about 70 px a second
   const btn = BAR.querySelector(".tk-btn");

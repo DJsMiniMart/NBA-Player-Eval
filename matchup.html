@@ -168,7 +168,7 @@ async function load(){
   html += `<h2>Head-to-head</h2>` + h2hHtml(H, away, home);
 
   // ---------- lines + your pick ----------
-  html += `<h2>Lines &amp; your pick</h2>` + linesHtml(O, U, away, home, g);
+  html += `<div class="bet"><h2>Lines &amp; your pick</h2>` + linesHtml(O, U, away, home, g) + `</div>`;
 
   // ---------- storylines ----------
   const st = (U && U.stories) || [];

@@ -13,7 +13,7 @@ const ALIAS = {sixers:"PHI", blazers:"POR", cavs:"CLE", wolves:"MIN", mavs:"DAL"
 const PAGES = [["The Morning Press", "index.html", "scores headlines standings home"], ["The Pulse Board", "pe.html#/", "leaderboard pulse rankings award races mvp rookie"],
   ["The Locker Room", "pe.html#/players", "players rosters contracts salaries"], ["The Stat Lab", "stats.html", "team stats league leaders"],
   ["Franchise Files", "team.html", "teams cap sheet draft picks lineups"], ["Trade Machine", "trade.html", "trades cba salary"],
-  ["Playoff Picture", "playoffs.html", "bracket play-in lottery standings"], ["NBA History", "history.html", "champions mvp awards all-nba all-star"],
+  ["Playoff Picture", "playoffs.html", "bracket play-in lottery standings"], ["Draft Board", "draft.html", "draft prospects mock big board lottery picks"], ["NBA History", "history.html", "champions mvp awards all-nba all-star"],
   ["My Picks", "picks.html", "bets record spread moneyline over under"], ["About Pulse", "about.html", "formula how it works"]];
 const onPE = /pe\.html$/.test(location.pathname);
 let ROWS = null, CUR = null;
@@ -54,8 +54,8 @@ function css(){
 .srch input:focus::placeholder{color:#7a8497;}
 .srch .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;opacity:.9;}
 .srch ul{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:70;list-style:none;margin:0;padding:6px;background:var(--panel,#fff);color:var(--ink,#0f172a);border:1px solid var(--line,#dde2ea);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);max-height:70vh;overflow:auto;}
-.srch li a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:inherit;}
-.srch li a.on,.srch li a:hover{background:var(--row,#f2f4f8);}
+.srch li:not(.ask) > a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:inherit;}
+.srch li:not(.ask) > a.on,.srch li:not(.ask) > a:hover{background:var(--row,#f2f4f8);}
 .srch li img{width:26px;height:26px;flex:none;}
 .srch li .ph{width:26px;height:26px;flex:none;display:grid;place-items:center;font-size:15px;}
 .srch li b{font-weight:600;font-size:14px;} .srch li small{display:block;color:var(--dim,#5b6475);font-size:12px;}
@@ -65,21 +65,33 @@ function css(){
 }
 function mount(el, opts){
   css(); opts = opts || {};
-  el.innerHTML = `<div class="srch" role="search"><span class="ic">🔍</span><input type="search" id="siteSearch" autocomplete="off" placeholder="${esc(opts.placeholder || "Search players, teams and pages")}" aria-label="Search players, teams and pages" aria-autocomplete="list" aria-controls="siteSearchList"><ul id="siteSearchList" role="listbox" hidden></ul></div>`;
+  el.innerHTML = `<div class="srch" role="search"><span class="ic">🔍</span><input type="search" id="siteSearch" autocomplete="off" placeholder="${esc(opts.placeholder || "Search or ask a question")}" aria-label="Search players, teams and pages, or ask a question" aria-autocomplete="list" aria-controls="siteSearchList"><ul id="siteSearchList" role="listbox" hidden></ul></div>`;
   const input = el.querySelector("input"), list = el.querySelector("ul");
-  let items = [], sel = 0, seq = 0;
+  let items = [], sel = 0, seq = 0, ans = null, asking = false;
+  if(window.Ask) Ask.css();
+  const askHtml = () => asking ? `<li class="ask"><div class="ask-k">Answer</div><span class="ask-n">Looking that up…</span></li>`
+    : ans ? `<li class="ask"><div class="ask-k">Answer</div>${ans.html}${ans.href ? `<a class="ask-go" href="${esc(ans.href)}">${esc(ans.more || "More")} →</a>` : ""}</li>`
+    : window.Ask && Ask.looksLikeQuestion(input.value) ? `<li class="ask none">I don't have an answer for that one yet. Try: ${Ask.EXAMPLES.slice(0, 3).map(x => `“${esc(x)}”`).join(", ")}.</li>` : "";
   const paint = () => {
-    if(!input.value.trim()){ list.hidden = true; return; }
+    if(!input.value.trim()){ list.hidden = !(window.Ask && document.activeElement === input); list.innerHTML = window.Ask ? `<li class="ask none"><b>Ask a question</b> or search. Try ${Ask.EXAMPLES.map(x => `<a href="#" data-ex="${esc(x)}">${esc(x)}</a>`).join(" · ")}</li>` : ""; return; }
     list.hidden = false;
-    list.innerHTML = items.length ? items.map((x, i) => `<li role="option"><a href="${esc(x.href)}" class="${i === sel ? "on" : ""}" data-i="${i}">${x.code && window.teamBadge ? `<img src="${teamBadge(x.code)}" alt="">` : `<span class="ph">${x.kind === "page" ? "📄" : "👤"}</span>`}<span><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></span><span class="kind">${x.kind}</span></a></li>`).join("")
-      : `<li class="none">No player, team or page matches "${esc(input.value)}".</li>`;
+    list.innerHTML = askHtml() + (items.length ? items.map((x, i) => `<li role="option"><a href="${esc(x.href)}" class="${i === sel ? "on" : ""}" data-i="${i}">${x.code && window.teamBadge ? `<img src="${teamBadge(x.code)}" alt="">` : `<span class="ph">${x.kind === "page" ? "📄" : "👤"}</span>`}<span><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></span><span class="kind">${x.kind}</span></a></li>`).join("")
+      : ans || asking ? "" : `<li class="none">No player, team or page matches "${esc(input.value)}".</li>`);
   };
-  input.addEventListener("input", async () => { const my = ++seq; const r = await find(input.value); if(my !== seq) return; items = r; sel = 0; paint(); });
-  input.addEventListener("focus", () => { load(); if(input.value.trim()) paint(); });
+  const run = async () => { const my = ++seq, v = input.value;
+    const isQ = window.Ask && Ask.looksLikeQuestion(v);
+    asking = isQ; ans = null;
+    const r = await find(isQ ? "" : v); if(my !== seq) return; items = isQ ? [] : r; sel = 0; paint();
+    if(isQ){ let a = null; try{ a = await Ask.answer(v); }catch(_){ a = null; } if(my !== seq) return; asking = false; ans = a;
+      if(!a){ items = await find(v.replace(/\?/g, "").split(" ").slice(-3).join(" ")); } paint(); } };
+  let t = null;
+  input.addEventListener("input", () => { clearTimeout(t); t = setTimeout(run, window.Ask && Ask.looksLikeQuestion(input.value) ? 350 : 0); });
+  input.addEventListener("focus", () => { load(); paint(); });
+  list.addEventListener("mousedown", e => { const x = e.target.closest("[data-ex]"); if(x){ e.preventDefault(); input.value = x.dataset.ex; run(); } });
   input.addEventListener("keydown", e => {
     if(e.key === "ArrowDown"){ e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); paint(); }
     else if(e.key === "ArrowUp"){ e.preventDefault(); sel = Math.max(0, sel - 1); paint(); }
-    else if(e.key === "Enter"){ e.preventDefault(); if(items[sel]) location.href = items[sel].href; }
+    else if(e.key === "Enter"){ e.preventDefault(); clearTimeout(t); if(items[sel]) location.href = items[sel].href; else if(ans && ans.href) location.href = ans.href; else run(); }
     else if(e.key === "Escape"){ list.hidden = true; input.blur(); }
   });
   document.addEventListener("click", e => { if(!el.contains(e.target)) list.hidden = true; });

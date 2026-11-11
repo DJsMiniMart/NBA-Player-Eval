@@ -45,6 +45,7 @@ const PAGES = [
   {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
   {label:"Franchise Files", sub:"Every team: stats, lineups, cap, picks, history",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
+  {label:"Draft Board",     sub:"2027 big board, mock drafts, lottery order", href:"draft.html", match:p => /draft\.html$/.test(p.path)},
   {label:"Playoff Picture", sub:"Bracket, play-in and the 2027 lottery", href:"playoffs.html", match:p => /playoffs\.html$/.test(p.path)},
   {label:"NBA History",     sub:"Champions, MVPs, Coach of the Year, All-NBA", href:"history.html", match:p => /history\.html$/.test(p.path)},
   {label:"My Picks",        sub:"Make your own picks, track your record vs Pulse and Vegas", href:"picks.html", match:p => /picks\.html$/.test(p.path)},
@@ -100,10 +101,43 @@ const css = `
 .sitenav-grid img{width:30px;height:30px;object-fit:contain;}
 .sitenav-grid a.on{background:#fbe7ea;box-shadow:inset 0 0 0 2px #C8102E;}
 @media (prefers-color-scheme: dark){ .sitenav-teams{border-top-color:#22304a;} .sitenav-grid a{background:rgba(255,255,255,.92);} }
+html.nobet .bet{display:none !important;}
+.sitenav-tools{display:flex;align-items:center;gap:6px;}
+.sitenav-ic{display:grid;place-items:center;width:36px;height:34px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;cursor:pointer;padding:0;}
+.sitenav-ic:hover{background:rgba(255,255,255,.18);} .sitenav-ic svg{width:17px;height:17px;}
+.sitenav-set{border-top:1px solid #dde2ea;margin-top:6px;padding:10px 10px 4px;display:grid;gap:8px;font-size:13.5px;}
+.sitenav-set > small{font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10.5px;color:#5b6475;}
+.sitenav-set label{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
+.sitenav-set select{font:500 13.5px Inter,system-ui,sans-serif;padding:5px 8px;border-radius:8px;border:1px solid #dde2ea;background:#fff;color:#0f172a;max-width:170px;}
+.sitenav-set input[type=checkbox]{width:18px;height:18px;accent-color:#C8102E;}
+.sitenav-list a.myteam{display:flex;align-items:center;gap:10px;} .sitenav-list a.myteam img{width:28px;height:28px;}
+.sitenav-grid a.mine{box-shadow:inset 0 0 0 2px #f5b700;}
+.fc-pop{position:fixed;z-index:120;inset:0;background:rgba(5,10,25,.55);display:flex;align-items:flex-start;justify-content:center;padding:70px 12px 12px;}
+.fc-pop[hidden]{display:none;}
+.fc-pop-in{background:#0b0b0d;border-radius:14px;padding:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+.fc-pop-in .x{float:right;margin:-4px -4px 6px 8px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer;}
+.fc-pop-in h3{margin:0 0 10px;color:#fff;font:700 18px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;}
+.fc-share{position:fixed;z-index:120;right:12px;top:62px;background:#fff;color:#0f172a;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:8px;min-width:220px;font:14px Inter,system-ui,sans-serif;}
+.fc-share a,.fc-share button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border-radius:8px;border:0;background:none;color:inherit;text-decoration:none;font:inherit;cursor:pointer;text-align:left;}
+.fc-share a:hover,.fc-share button:hover{background:#f2f4f8;}
+.fc-toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:130;background:#0b0b0d;color:#fff;padding:9px 16px;border-radius:999px;font:600 13.5px Inter,system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);}
+@media (prefers-color-scheme: dark){ .sitenav-set{border-top-color:#22304a;} .sitenav-set select{background:#16213a;color:#e8edf6;border-color:#22304a;} .fc-share{background:#121b2e;color:#e8edf6;} .fc-share a:hover,.fc-share button:hover{background:#16213a;} }
 @media (max-width:520px){ .sitenav-cur{display:none;} .sitenav-list{min-width:280px;} .sitenav-brand img{height:34px;} .sitenav-word b{font-size:18px;} .sitenav-word i{font-size:10px;letter-spacing:3.4px;} }
 `;
 
 function where(){ return {path: location.pathname, hash: location.hash || ""}; }
+/* ---------- site settings, kept in this browser: My team and Hide betting ---------- */
+const PREF = {get(k){ try{ return localStorage.getItem("fcgp." + k); }catch(_){ return null; } }, set(k, v){ try{ v ? localStorage.setItem("fcgp." + k, v) : localStorage.removeItem("fcgp." + k); }catch(_){} }};
+window.Prefs = {
+  myTeam: () => PREF.get("myteam") || "",
+  setMyTeam(c){ PREF.set("myteam", c || ""); document.dispatchEvent(new CustomEvent("prefs", {detail: {myTeam: c}})); },
+  noBet: () => PREF.get("nobet") === "1",
+  setNoBet(on){ PREF.set("nobet", on ? "1" : ""); document.documentElement.classList.toggle("nobet", !!on); document.dispatchEvent(new CustomEvent("prefs", {detail: {noBet: on}})); }
+};
+document.documentElement.classList.toggle("nobet", Prefs.noBet());
+/* load a helper script once (search + Ask, glossary) */
+const loaded = {};
+function need(src){ return loaded[src] || (loaded[src] = new Promise(res => { if(document.querySelector(`script[src="${src}"]`)) return res(); const sc = document.createElement("script"); sc.src = src; sc.onload = res; sc.onerror = res; document.body.appendChild(sc); })); }
 
 function build(){
   const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
@@ -119,18 +153,26 @@ function build(){
   nav.className = "sitenav"; nav.setAttribute("aria-label", "Site");
   nav.innerHTML = `<div class="sitenav-in">
     <a class="sitenav-brand" href="index.html" aria-label="Full Court Geek Press home"><img src="img/emblem-sm.png" alt=""><span class="sitenav-word"><b>Full Court</b><i>Geek Press</i></span><span class="sitenav-cur" id="sitenavCur"></span></a>
+    <div class="sitenav-tools">
+      <button class="sitenav-ic" id="sitenavSearch" title="Search or ask a question ( / )" aria-label="Search or ask a question"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
+      <button class="sitenav-ic" id="sitenavShare" title="Share this page" aria-label="Share this page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v8h14v-8"/></svg></button>
     <div class="sitenav-menu">
       <button class="sitenav-btn" id="sitenavBtn" aria-haspopup="true" aria-expanded="false" aria-controls="sitenavList">
         Menu <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
       </button>
       <div class="sitenav-list" id="sitenavList" role="menu">
-        ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
+        <a role="menuitem" href="#" id="sitenavMine" class="myteam" hidden></a>
+        ${PAGES.map((p,i) => `<a role="menuitem" href="${p.href}" data-i="${i}"${p.href === "picks.html" ? ' class="bet"' : ""}><b>${p.label}</b><small>${p.sub}</small></a>`).join("")}
         <a role="menuitem" href="#" id="sitenavApp" hidden><b>📲 Get the app</b><small>Add Full Court Geek Press to your home screen</small></a>
         <div class="sitenav-teams"><small>Franchise Files</small><div class="sitenav-grid">
           ${TEAM_LIST.map(([c,id,n]) => `<a role="menuitem" href="team.html#${c}" data-team="${c}" title="${n}" aria-label="${n}"><img src="${teamBadge(c)}" alt="" loading="lazy" onerror="this.replaceWith('${c}')"></a>`).join("")}
         </div></div>
+        <div class="sitenav-set"><small>Settings</small>
+          <label>My team <select id="sitenavMyTeam" aria-label="My team"><option value="">Pick a team</option>${TEAM_LIST.slice().sort((a, b) => a[2].localeCompare(b[2])).map(([c, , n]) => `<option value="${c}">${n}</option>`).join("")}</select></label>
+          <label>Hide betting lines &amp; picks <input type="checkbox" id="sitenavNoBet"></label>
+        </div>
       </div>
-    </div></div>`;
+    </div></div></div>`;
   document.body.insertBefore(nav, document.body.firstChild);
   const btn = nav.querySelector("#sitenavBtn"), list = nav.querySelector("#sitenavList");
   const close = () => { list.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); };
@@ -145,9 +187,67 @@ function build(){
     }
   });
   list.querySelectorAll("a").forEach(a => a.addEventListener("click", close));
+  // settings
+  const sel = nav.querySelector("#sitenavMyTeam"), nb = nav.querySelector("#sitenavNoBet");
+  sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet();
+  sel.onchange = () => { Prefs.setMyTeam(sel.value); paintMine(); toast(sel.value ? `My team: ${sel.options[sel.selectedIndex].text}` : "My team cleared"); };
+  nb.onchange = () => { Prefs.setNoBet(nb.checked); toast(nb.checked ? "Betting lines and picks hidden" : "Betting lines and picks shown"); };
+  paintMine();
+  document.addEventListener("prefs", () => { sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet(); paintMine(); });
+  // search / ask from any page
+  nav.querySelector("#sitenavSearch").onclick = openSearch;
+  document.addEventListener("keydown", e => { if(e.key === "/" && !document.getElementById("siteSearch") && document.activeElement && !/input|textarea|select/i.test(document.activeElement.tagName)){ e.preventDefault(); openSearch(); } });
+  nav.querySelector("#sitenavShare").onclick = e => { e.stopPropagation(); share(); };
+  need("glossary.js");
   setupApp();
   mark();
   window.addEventListener("hashchange", mark);
+}
+function paintMine(){
+  const c = Prefs.myTeam(), a = document.getElementById("sitenavMine"); if(!a) return;
+  const t = TEAM_LIST.find(x => x[0] === c);
+  a.hidden = !t;
+  if(t){ a.href = `team.html#${c}`; a.innerHTML = `<img src="${teamBadge(c)}" alt=""><span><b>My team: ${t[2]}</b><small>Franchise Files for your team</small></span>`; }
+  document.querySelectorAll("#sitenavList .sitenav-grid a").forEach(x => x.classList.toggle("mine", x.dataset.team === c));
+}
+function toast(msg){
+  const t = document.createElement("div"); t.className = "fc-toast"; t.setAttribute("role", "status"); t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+window.fcToast = toast;
+async function openSearch(){
+  const own = document.getElementById("siteSearch");
+  if(own && !own.closest("#fcSearchPop")){ own.scrollIntoView({block: "center"}); own.focus(); return; }   // the home page has its own box
+  let d = document.getElementById("fcSearchPop");
+  if(!d){
+    d = document.createElement("div"); d.id = "fcSearchPop"; d.className = "fc-pop";
+    d.innerHTML = `<div class="fc-pop-in" role="dialog" aria-label="Search or ask"><button class="x" aria-label="Close">✕</button><h3>Search or ask</h3><div id="fcSearchBox"></div></div>`;
+    d.onclick = e => { if(e.target === d || e.target.classList.contains("x")) d.hidden = true; };
+    document.addEventListener("keydown", e => { if(e.key === "Escape") d.hidden = true; });
+    document.body.appendChild(d);
+    await need("ask.js"); await need("search.js");
+    if(window.Search) Search.mount(d.querySelector("#fcSearchBox"), {placeholder: "Search or ask: “who has the most titles?”"});
+  }
+  d.hidden = false;
+  const i = d.querySelector("input"); if(i){ i.focus(); i.select(); }
+}
+/* share the page you're on: the phone's share sheet when there is one, otherwise copy the link or post it */
+async function share(){
+  const url = location.href, title = document.title;
+  if(navigator.share && matchMedia("(pointer: coarse)").matches){ try{ await navigator.share({title, url}); return; }catch(_){ return; } }
+  let m = document.getElementById("fcShare");
+  if(m){ m.remove(); return; }
+  m = document.createElement("div"); m.id = "fcShare"; m.className = "fc-share"; m.setAttribute("role", "menu");
+  const u = encodeURIComponent(url), t = encodeURIComponent(title);
+  m.innerHTML = `<button data-copy>🔗 Copy link</button>
+    <a href="https://twitter.com/intent/tweet?url=${u}&text=${t}" target="_blank" rel="noopener">𝕏 Post on X</a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=${u}" target="_blank" rel="noopener">📘 Share on Facebook</a>
+    <a href="https://www.reddit.com/submit?url=${u}&title=${t}" target="_blank" rel="noopener">👽 Post to Reddit</a>
+    <a href="mailto:?subject=${t}&body=${u}">✉️ Email</a>`;
+  document.body.appendChild(m);
+  m.querySelector("[data-copy]").onclick = async () => { try{ await navigator.clipboard.writeText(url); toast("Link copied"); }catch(_){ prompt("Copy this link:", url); } m.remove(); };
+  m.querySelectorAll("a").forEach(a => a.addEventListener("click", () => m.remove()));
+  setTimeout(() => document.addEventListener("click", function off(e){ if(!m.contains(e.target)){ m.remove(); document.removeEventListener("click", off); } }), 0);
 }
 /* ---------- install as an app ---------- */
 let installEvt = null;

@@ -262,6 +262,17 @@
   .injrow .wh{font-size:13px;min-width:0;} .injrow .wh b{font-weight:600;} .injrow .wh span{color:var(--dim);}
   .injrow .new{font:700 10px Inter,sans-serif;color:#fff;background:var(--accent,#C8102E);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:2px;}
   @media (max-width:640px){.injrow{grid-template-columns:28px minmax(0,1fr) auto;} .injrow .wh{grid-column:2 / -1;}}
+  .my{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+  .my .card{padding:12px 14px;}
+  .my .head{display:flex;align-items:center;gap:12px;border-left:5px solid var(--tc,#1D428A);}
+  .my .head img{width:52px;height:52px;} .my .head b{font:700 26px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;display:block;}
+  .my .head small{color:var(--dim);font-size:13px;}
+  .my h4{margin:0 0 6px;font:700 12px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  .my .big{font:700 22px/1.15 "Barlow Condensed",sans-serif;} .my .big img{width:24px;height:24px;vertical-align:-4px;}
+  .my ul{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:13.5px;}
+  .my .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;} .my .row a,.my .row button{font:600 12.5px Inter,sans-serif;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;cursor:pointer;}
+  .my-pick{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;}
+  .my-pick select{font:500 14px Inter,sans-serif;padding:7px 10px;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -276,11 +287,16 @@
   <div class="facts" id="facts"></div>
 </div></header>
 <nav class="jumps" aria-label="Jump to a section"><div class="jumps-in" id="jumps">
-  <a href="#scoresSec">Scores</a><a href="#hlSec">Highlights</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
+  <a href="#mySec">My team</a><a href="#scoresSec">Scores</a><a href="#hlSec">Highlights</a><a href="#upSec">Coming up</a><a href="#potnSec">Player of the night</a><a href="#leadSec">Top performers</a>
   <a href="#otdSec">On this day</a><a href="#storySec">Storylines</a><a href="#newsSec">Headlines</a><a href="#standSec">Standings</a><a href="#injSec">Injuries</a><a href="#txSec">Transactions</a>
 </div></nav>
 
 <main class="wrap">
+  <section class="sec" id="mySec">
+    <div class="sec-h"><h2 id="myTitle">My team</h2><small id="myNote">Pick a team to see it first every time you visit</small></div>
+    <div id="myBody"></div>
+  </section>
+
   <section class="sec" id="scoresSec">
     <div class="sec-h"><h2>Scores</h2><small>Click a game for the full box score</small></div>
     <div class="scores" id="scores"><div class="card empty">Loading games…</div></div>
@@ -301,7 +317,7 @@
     </div>
     <p class="note" id="upDaySum" style="margin:-4px 2px 10px" hidden></p>
     <div class="upgrid" id="upcoming"><div class="card empty">Loading the schedule…</div></div>
-    <p class="note" id="upLines" style="margin:8px 2px 0"></p>
+    <p class="note bet" id="upLines" style="margin:8px 2px 0"></p>
   </section>
 
   <div class="cols">
@@ -382,6 +398,7 @@
 <script src="picks.js"></script>
 <script src="tradepop.js"></script>
 <script src="injpop.js"></script>
+<script src="ask.js"></script>
 <script src="search.js"></script>
 <script src="clips.js"></script>
 <script>
@@ -494,7 +511,7 @@ function renderScores(games, lines){
     return `<button class="card game" data-gid="${gid}" aria-label="${esc(nick(a))} ${al[0]}, ${esc(nick(h))} ${hl[0]}. Open box score">
       ${row(a, al[0], !hw)}${row(h, hl[0], hw)}
       <div class="meta">Final${ot ? ` <span class="badge ot">${ot}</span>` : ""}${clutch.has(gid) ? ` <span class="badge hot" title="Close in the last 5 minutes">🔥 Crunch time</span>` : ""}${(() => { const pk = PRED && PRED.picks && PRED.picks[gid]; const at = PRED && PRED.ats && PRED.ats[gid];
-        const atsB = at ? ` <span class="pickres ${at[3] === 1 ? "ok" : at[3] === 0 ? "no" : ""}" title="Pulse against the spread: took ${esc(at[0])} (line ${sgnNum(at[2])} for the home team)">ATS ${esc(at[0])} ${at[3] === 1 ? "✓" : at[3] === 0 ? "✗" : "push"}</span>` : "";
+        const atsB = at ? ` <span class="bet pickres ${at[3] === 1 ? "ok" : at[3] === 0 ? "no" : ""}" title="Pulse against the spread: took ${esc(at[0])} (line ${sgnNum(at[2])} for the home team)">ATS ${esc(at[0])} ${at[3] === 1 ? "✓" : at[3] === 0 ? "✗" : "push"}</span>` : "";
         return (pk ? ` <span class="pickres ${pk[2] ? "ok" : "no"}" title="Pulse's pick before the game: ${esc(nick(pk[0]))} (${Math.round(pk[1] * 100)}%)">Pulse pick ${esc(pk[0])} ${pk[2] ? "✓" : "✗"}</span>` : "") + atsB; })()}</div>
       <div class="tops">${tl(a)}${tl(h)}</div>
       ${rc ? `<div class="recap"><b>${esc(rc.h)}</b></div>` : ""}</button>`;
@@ -526,7 +543,7 @@ function renderFacts(games, lines){
     best ? [best.s, "most pts · " + esc(best.t)] : null,
     pickFact(games),
     atsFact(),
-  ].filter(Boolean).map(([b, s]) => `<div class="fact"><b>${b}</b><span>${s}</span></div>`).join("");
+  ].filter(Boolean).map(([b, s]) => `<div class="fact${/spread/.test(s) ? " bet" : ""}"><b>${b}</b><span>${s}</span></div>`).join("");
 }
 
 function renderPotn(lines){
@@ -689,16 +706,16 @@ function linesHtml(u){
     const pH = ih / (ih + ia), vFav = pH >= .5 ? u.home : u.away, vP = Math.max(pH, 1 - pH);
     const pulseP = u.p;
     vegas = vFav === u.pick
-      ? `<div class="vegas">Pulse and Vegas agree: ${esc(nick(u.pick))} (Pulse ${Math.round(pulseP * 100)}%, Vegas ${Math.round(vP * 100)}%)</div>`
-      : `<div class="vegas upset">🚨 Upset pick: Pulse likes the ${esc(nick(u.pick))} (${Math.round(pulseP * 100)}%); Vegas favors the ${esc(nick(vFav))} (${Math.round(vP * 100)}%)</div>`;
+      ? `<div class="vegas bet">Pulse and Vegas agree: ${esc(nick(u.pick))} (Pulse ${Math.round(pulseP * 100)}%, Vegas ${Math.round(vP * 100)}%)</div>`
+      : `<div class="vegas upset bet">🚨 Upset pick: Pulse likes the ${esc(nick(u.pick))} (${Math.round(pulseP * 100)}%); Vegas favors the ${esc(nick(vFav))} (${Math.round(vP * 100)}%)</div>`;
   }
   let ats = "";
   if(o.spread != null && u.margin != null){
     const pm = u.margin, side = pm + o.spread > 0 ? u.home : u.away, sideLine = side === u.home ? o.spread : -o.spread;
     const pl = Math.abs(pm) < .05 ? "even" : `${esc(pm > 0 ? u.home : u.away)} ${sgnNum(-Math.round(Math.abs(pm) * 10) / 10)}`;
-    ats = `<div class="vegas ats">📏 Pulse line: <b>${pl}</b> · against the spread Pulse takes <b>${esc(side)} ${sideLine === 0 ? "PK" : sgnNum(sideLine)}</b></div>`;
+    ats = `<div class="vegas ats bet">📏 Pulse line: <b>${pl}</b> · against the spread Pulse takes <b>${esc(side)} ${sideLine === 0 ? "PK" : sgnNum(sideLine)}</b></div>`;
   }
-  return `<div class="lines" title="${esc(o.book || "Sportsbook")} lines">
+  return `<div class="lines bet" title="${esc(o.book || "Sportsbook")} lines">
       <div><span>Spread</span><b>${sp}</b>${moved(o.spread, o.open && o.open.spread)}</div>
       <div><span>Total</span><b>${o.total != null ? "O/U " + o.total : "—"}</b>${moved(o.total, o.open && o.open.total)}</div>
       <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}${ats}`;
@@ -715,7 +732,7 @@ function myPicksHtml(u){
     return `<button class="${on ? "on" : ""}" data-mp="${esc(u.id)}|${x.type}|${esc(x.side)}"${locked ? " disabled" : ""} title="${on ? "Your pick. Tap again to take it back" : "Pick this"}">${txt}</button>`; };
   const row = (type, label) => { const r = opts.filter(x => x.type === type); return r.length ? `<div class="r"><span>${label}</span>${r.map(btn).join("")}</div>` : ""; };
   const mine = ["ml", "spread", "total"].filter(t => MyPicks.pickOf(u.id, t)).length;
-  return `<div class="mp"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${mine ? `${mine} pick${mine === 1 ? "" : "s"} · ` : ""}My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}</div>`;
+  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${mine ? `${mine} pick${mine === 1 ? "" : "s"} · ` : ""}My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}</div>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("[data-mp]"); if(!b || !window.MyPicks) return;
@@ -746,7 +763,7 @@ function pastCard(g, R){
   const win = fin ? (hs > as ? home : away) : null;
   const row = (t, sc) => `<div class="tm${fin && t !== win ? " lost" : ""}">${img(t)}<div class="nm">${esc(nick(t))}<small>${recStr(R[t])}</small></div>
       ${pk && pk[0] === t ? `<span class="pk ${fin ? (pk[2] ? "hit" : "miss") : ""}" title="Pulse's pick">Pulse pick · ${Math.round(pk[1] * 100)}%${fin ? (pk[2] ? " ✓" : " ✗") : ""}</span>` : ""}${fin ? `<span class="sc">${sc}</span>` : ""}</div>`;
-  const atsLine = ats ? `<div class="vegas ats">📏 Against the spread Pulse took <b>${esc(ats[0])} ${ats[2] === 0 ? "PK" : sgnNum(ats[0] === home ? ats[2] : -ats[2])}</b>${fin ? (ats[3] === 1 ? " · covered ✓" : ats[3] === 0 ? " · didn't cover ✗" : " · push") : ""}</div>` : "";
+  const atsLine = ats ? `<div class="vegas ats bet">📏 Against the spread Pulse took <b>${esc(ats[0])} ${ats[2] === 0 ? "PK" : sgnNum(ats[0] === home ? ats[2] : -ats[2])}</b>${fin ? (ats[3] === 1 ? " · covered ✓" : ats[3] === 0 ? " · didn't cover ✗" : " · push") : ""}</div>` : "";
   return `<div class="card up past"><div class="when"><span>${fin ? "Final" : time}${arena ? " · " + esc(arena) : ""}</span><span>${esc((tv || "").split(",").slice(0, 2).join(", "))}</span></div>
     ${row(away, as)}${row(home, hs)}${atsLine}
     ${!fin && !pk ? `<ul><li class="none"><span>•</span><div>Pulse picks, lines and storylines show up a week before the game.</div></li></ul>` : ""}
@@ -777,7 +794,7 @@ function renderUpcoming(){
   const hits = picked.filter(g => PRED.picks[g[0]][2]).length, atsG = fins.filter(g => PRED && PRED.ats && PRED.ats[g[0]]);
   const aw = atsG.filter(g => PRED.ats[g[0]][3] === 1).length, al = atsG.filter(g => PRED.ats[g[0]][3] === 0).length;
   $("upDaySum").hidden = !picked.length;
-  $("upDaySum").innerHTML = picked.length ? `<b>Pulse went ${hits}–${picked.length - hits}</b> picking winners on ${esc(new Date(upDay + "T12:00:00").toLocaleDateString("en-US", {weekday: "long", month: "long", day: "numeric"}))}${atsG.length ? ` · ${aw}–${al} against the spread` : ""}.` : "";
+  $("upDaySum").innerHTML = picked.length ? `<b>Pulse went ${hits}–${picked.length - hits}</b> picking winners on ${esc(new Date(upDay + "T12:00:00").toLocaleDateString("en-US", {weekday: "long", month: "long", day: "numeric"}))}${atsG.length ? `<span class="bet"> · ${aw}–${al} against the spread</span>` : ""}.` : "";
   const list = day.p;
   const Rpast = standings(addDay(upDay, -1));
   const R = standings();
@@ -885,6 +902,47 @@ function renderInjuries(){
   $("injMore").textContent = `Show more (${list.length - INJ.shown} left)`;
 }
 
+
+/* ---------- My team (window.Prefs from nav.js): your team's game, record, injuries and news first ---------- */
+function renderMyTeam(){
+  const c = window.Prefs ? Prefs.myTeam() : "";
+  const opts = Object.keys(TEAMS).sort((a, b) => TEAMS[a].n.localeCompare(TEAMS[b].n)).map(k => `<option value="${k}"${k === c ? " selected" : ""}>${esc(TEAMS[k].n)}</option>`).join("");
+  if(!c){
+    $("myTitle").textContent = "My team"; $("myNote").textContent = "Pick a team to see it first every time you visit";
+    $("myBody").innerHTML = `<div class="card my-pick"><span>⭐ Make it yours: your team's last game, next game, injuries and news, right here.</span><select id="myPick" aria-label="Pick your team"><option value="">Pick a team</option>${opts}</select></div>`;
+    $("myPick").onchange = e => window.Prefs && Prefs.setMyTeam(e.target.value);
+    return;
+  }
+  const T = TEAMS[c] || {n: c}, R = standings(), r = R[c] || {w: 0, l: 0};
+  const conf = Object.values(R).filter(x => CONF_OF[x.t] === CONF_OF[c]).sort((a, b) => b.pct - a.pct || b.w - a.w), seed = conf.findIndex(x => x.t === c) + 1;
+  const games = ((SCHED && SCHED.games) || []).filter(g => g[2] === c || g[3] === c).sort((a, b) => a[1] < b[1] ? -1 : 1);
+  const last = games.filter(g => g[4] === 3).pop(), next = games.find(g => g[4] !== 3 && new Date(g[1]) > new Date(Date.now() - 3 * 36e5));
+  const u = next && ((PRED && PRED.upcoming) || []).find(x => x.id === next[0]);
+  const lastHtml = last ? (() => { const home = last[2] === c, us = home ? last[5] : last[6], them = home ? last[6] : last[5], opp = home ? last[3] : last[2];
+    return `<div class="big">${us > them ? "W" : "L"} ${us}-${them}</div><div class="note" style="margin:2px 0 0">${home ? "vs" : "@"} ${esc(nick(opp))} · ${new Date(last[1]).toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"})}</div><div class="row"><button data-box="${esc(last[0])}">Box score</button></div>`; })() : `<div class="note">No games yet.</div>`;
+  const nextHtml = next ? (() => { const home = next[2] === c, opp = home ? next[3] : next[2];
+    return `<div class="big">${home ? "vs" : "@"} ${img(opp)} ${esc(nick(opp))}</div><div class="note" style="margin:2px 0 0">${new Date(next[1]).toLocaleString("en-US", {weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"})}${next[8] ? " · " + esc(String(next[8]).split(",")[0]) : ""}</div>
+      ${u ? `<div class="note" style="margin:4px 0 0">Pulse picks <b>${esc(nick(u.pick))}</b> (${Math.round(u.p * 100)}%)</div>` : ""}<div class="row"><a href="matchup.html#${encodeURIComponent(next[0])}">Preview →</a></div>`; })() : `<div class="note">No games scheduled.</div>`;
+  const C = (PLAYERS && PLAYERS.cols) || [], ix = k => C.indexOf(k);
+  const tops = ((PLAYERS && PLAYERS.players) || []).filter(p => p[ix("team")] === c && p[ix("g")] >= 1).map(p => ({n: p[ix("name")], g: p[ix("g")], pts: p[ix("pts")] / p[ix("g")], reb: (p[ix("dreb")] + p[ix("oreb")]) / p[ix("g")], ast: p[ix("ast")] / p[ix("g")]})).sort((a, b) => b.pts - a.pts).slice(0, 3);
+  const inj = ((window.Injuries && Injuries.data() && Injuries.data().teams && Injuries.data().teams[c]) || []).filter(x => !/^active$/i.test(x.status || ""));
+  const news = ((MORNING && MORNING.news) || []).filter(n => (n.teams || []).includes(T.n) || new RegExp(`\\b${nick(c)}\\b`, "i").test(n.h)).slice(0, 2);
+  const tx = ((MORNING && MORNING.transactions) || []).filter(x => x[1] === c).slice(0, 2);
+  $("myTitle").textContent = T.n; $("myNote").innerHTML = `Your team · <a href="#" id="myChange">change</a>`;
+  $("myBody").innerHTML = `<div class="my">
+    <div class="card head" style="--tc:${T.c1 || "#1D428A"}">${img(c)}<div><b>${esc(nick(c))}</b><small>${r.w}-${r.l} · ${seed ? ordinal(seed) : "—"} in the ${CONF_OF[c] || ""}${r.strk && r.strk !== "—" ? " · " + esc(r.strk) : ""} · last 10: ${esc(r.l10 || "—")}</small><div class="row"><a href="team.html#${c}">Franchise Files →</a></div></div></div>
+    <div class="card"><h4>Last game</h4>${lastHtml}</div>
+    <div class="card"><h4>Next game</h4>${nextHtml}</div>
+    <div class="card"><h4>Leading scorers</h4><ul>${tops.map(p => `<li>${window.playerLink ? playerLink(p.n, c) : esc(p.n)} · <b>${p.pts.toFixed(1)}</b> pts, ${p.reb.toFixed(1)} reb, ${p.ast.toFixed(1)} ast</li>`).join("") || "<li class='note'>No games yet.</li>"}</ul></div>
+    <div class="card"><h4>Injury report</h4><ul>${inj.length ? inj.slice(0, 5).map(x => `<li><a href="#" data-inj="${esc(c)}|${esc(x.name)}">${esc(x.name)}</a> · <b>${esc(x.status)}</b>${x.tl ? ` <span class="note">· ${esc(x.tl.label)}</span>` : ""}</li>`).join("") : "<li class='note'>Nobody on the report.</li>"}</ul></div>
+    <div class="card"><h4>News &amp; moves</h4><ul>${news.map(n => `<li><a href="${esc(n.u || "#")}" target="_blank" rel="noopener">${esc(n.h)}</a></li>`).join("")}${tx.map(x => `<li class="note">${new Date(x[0] + "T12:00:00Z").toLocaleDateString("en-US", {month: "short", day: "numeric", timeZone: "UTC"})}: ${esc(x[2])}</li>`).join("")}${!news.length && !tx.length ? "<li class='note'>No news today.</li>" : ""}</ul></div>
+  </div>`;
+  $("myChange").onclick = e => { e.preventDefault(); if(window.Prefs) Prefs.setMyTeam(""); };
+  $("myBody").querySelectorAll("[data-box]").forEach(b => b.onclick = () => window.BoxScore && BoxScore.open(b.dataset.box));
+}
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th","st","nd","rd"][n % 10] || "th");
+document.addEventListener("prefs", e => { if(e.detail && "myTeam" in e.detail) renderMyTeam(); });
+
 /* ---------- putting it together ---------- */
 async function showNight(d){
   NIGHT = d;
@@ -913,10 +971,12 @@ async function init(){
   $("prev").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i > 0) showNight(NIGHTS[i - 1]); };
   $("next").onclick = () => { const i = NIGHTS.indexOf(NIGHT); if(i < NIGHTS.length - 1) showNight(NIGHTS[i + 1]); };
   document.querySelectorAll("#standTabs button").forEach(b => b.onclick = () => { standView = b.dataset.v; store.set("home.stand", standView); renderStandings(); });
+  renderMyTeam();
+  if(window.Injuries) Injuries.ready.then(renderMyTeam);
   renderNews(); renderTx(); renderUpcoming(); pollLive();
   Promise.all([window.Injuries ? Injuries.ready : null, window.PlayerIndex ? PlayerIndex.ready : null]).then(() => { renderUpcoming(); paintLive(); });
   if(window.Ticker) Ticker.show("NBA");
-  if(window.Search) Search.mount($("searchBox"), {placeholder: "Search any player, team or page   ( / )"});
+  if(window.Search) Search.mount($("searchBox"), {placeholder: "Search or ask: “who leads the league in 3s?”"});
   renderOnThisDay();
   await showNight(NIGHTS[NIGHTS.length - 1] || null);
 }
