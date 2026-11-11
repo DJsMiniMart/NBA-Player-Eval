@@ -111,6 +111,19 @@ html.nobet .bet{display:none !important;}
 .sitenav-set label{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;}
 .sitenav-set select{font:500 13.5px Inter,system-ui,sans-serif;padding:5px 8px;border-radius:8px;border:1px solid #dde2ea;background:#fff;color:#0f172a;max-width:170px;}
 .sitenav-set input[type=checkbox]{width:18px;height:18px;accent-color:#C8102E;}
+.sitenav-sync{width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid #dde2ea;background:#f6f8fb;color:#0f172a;font:600 13px Inter,system-ui,sans-serif;cursor:pointer;}
+.sitenav-sync:hover{background:#eef1f6;}
+.fc-sync{background:#fff;color:#0f172a;border-radius:16px;max-width:460px;width:100%;padding:18px;font:14px/1.45 Inter,system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.35);max-height:calc(100vh - 100px);overflow:auto;}
+.fc-sync h3{margin:0 0 4px;font:700 20px "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.4px;}
+.fc-sync p{margin:6px 0;color:#5b6475;font-size:13px;}
+.fc-sync .tabs{display:flex;gap:6px;margin:10px 0;} .fc-sync .tabs button{flex:1;padding:8px;border-radius:999px;border:1px solid #dde2ea;background:#fff;font:700 13px Inter,sans-serif;cursor:pointer;color:#0f172a;}
+.fc-sync .tabs button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
+.fc-sync textarea{width:100%;min-height:84px;font:12px/1.4 ui-monospace,Menlo,monospace;padding:8px;border-radius:10px;border:1px solid #dde2ea;resize:vertical;word-break:break-all;}
+.fc-sync .go{width:100%;padding:10px;border-radius:10px;border:0;background:#C8102E;color:#fff;font:700 14px Inter,sans-serif;cursor:pointer;margin-top:8px;}
+.fc-sync .alt{width:100%;padding:9px;border-radius:10px;border:1px solid #dde2ea;background:#fff;color:#0f172a;font:600 13.5px Inter,sans-serif;cursor:pointer;margin-top:6px;}
+.fc-sync .qr{display:flex;justify-content:center;margin:10px 0;} .fc-sync .qr img,.fc-sync .qr canvas{width:180px !important;height:180px !important;}
+.fc-sync ul{margin:6px 0;padding-left:18px;font-size:13px;}
+@media (prefers-color-scheme: dark){ .sitenav-sync{background:#16213a;color:#e8edf6;border-color:#22304a;} }
 .sitenav-list a.myteam{display:flex;align-items:center;gap:10px;} .sitenav-list a.myteam img{width:28px;height:28px;}
 .sitenav-grid a.mine{box-shadow:inset 0 0 0 2px #f5b700;}
 .fc-pop{position:fixed;z-index:120;inset:0;background:rgba(5,10,25,.55);display:flex;align-items:flex-start;justify-content:center;padding:70px 12px 12px;}
@@ -171,6 +184,7 @@ function build(){
         <div class="sitenav-set"><small>Settings</small>
           <label>My team <select id="sitenavMyTeam" aria-label="My team"><option value="">Pick a team</option>${TEAM_LIST.slice().sort((a, b) => a[2].localeCompare(b[2])).map(([c, , n]) => `<option value="${c}">${n}</option>`).join("")}</select></label>
           <label>Hide betting lines &amp; picks <input type="checkbox" id="sitenavNoBet"></label>
+          <button type="button" class="sitenav-sync" id="sitenavSync">📲 Move my setup to another device</button>
         </div>
       </div>
     </div></div></div>`;
@@ -192,6 +206,7 @@ function build(){
   const sel = nav.querySelector("#sitenavMyTeam"), nb = nav.querySelector("#sitenavNoBet");
   sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet();
   sel.onchange = () => { Prefs.setMyTeam(sel.value); paintMine(); toast(sel.value ? `My team: ${sel.options[sel.selectedIndex].text}` : "My team cleared"); };
+  nav.querySelector("#sitenavSync").onclick = () => { close(); openSync(); };
   nb.onchange = () => { Prefs.setNoBet(nb.checked); toast(nb.checked ? "Betting lines and picks hidden" : "Betting lines and picks shown"); };
   paintMine();
   document.addEventListener("prefs", () => { sel.value = Prefs.myTeam(); nb.checked = Prefs.noBet(); paintMine(); });
@@ -200,6 +215,7 @@ function build(){
   document.addEventListener("keydown", e => { if(e.key === "/" && !document.getElementById("siteSearch") && document.activeElement && !/input|textarea|select/i.test(document.activeElement.tagName)){ e.preventDefault(); openSearch(); } });
   nav.querySelector("#sitenavShare").onclick = e => { e.stopPropagation(); share(); };
   need("glossary.js");
+  checkSyncLink();
   setupApp();
   mark();
   window.addEventListener("hashchange", mark);
@@ -250,6 +266,91 @@ async function share(){
   m.querySelectorAll("a").forEach(a => a.addEventListener("click", () => m.remove()));
   setTimeout(() => document.addEventListener("click", function off(e){ if(!m.contains(e.target)){ m.remove(); document.removeEventListener("click", off); } }), 0);
 }
+/* ---------- sync code: move My team, The Rotation, My Picks and settings to another device (no account) ----------
+   Everything lives in this browser's storage; the code is that data packed into text (compressed when the browser can).
+   A link with #sync=<code> on any page offers to load it. */
+const SYNC_KEYS = k => /^(fcgp|tk\.|pp\.|dr\.|po\.|hist\.|home\.|team$|pickedSeason$)/.test(k);
+const b64u = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function pack(){
+  const data = {}; try{ for(let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if(SYNC_KEYS(k)) data[k] = localStorage.getItem(k); } }catch(_){}
+  const raw = new TextEncoder().encode(JSON.stringify({v: 1, at: new Date().toISOString(), d: data}));
+  if(window.CompressionStream){ try{ const buf = await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer(); return "z" + b64u(new Uint8Array(buf)); }catch(_){} }
+  return "j" + b64u(raw);
+}
+async function unpack(code){
+  code = String(code || "").trim().replace(/^.*#sync=/, "").replace(/\s+/g, "");
+  let bytes = unb64u(code.slice(1));
+  if(code[0] === "z"){ if(!window.DecompressionStream) throw new Error("This browser can't open compressed codes"); bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer()); }
+  else if(code[0] !== "j") throw new Error("That doesn't look like a Geek Press sync code");
+  const o = JSON.parse(new TextDecoder().decode(bytes));
+  if(!o || !o.d) throw new Error("That code is empty");
+  return o;
+}
+function describe(d){
+  const out = [];
+  const team = d["fcgp.myteam"], t = team && TEAM_LIST.find(x => x[0] === team);
+  if(t) out.push(`My team: <b>${t[2]}</b>`);
+  try{ const r = JSON.parse(d["fcgp.rotation"] || "[]"); if(r.length) out.push(`The Rotation: <b>${r.length} player${r.length === 1 ? "" : "s"}</b>`); }catch(_){}
+  try{ const p = JSON.parse(d["fcgp-mypicks-v1"] || "{}"); const n = Object.keys((p && p.picks) || {}).length; if(n) out.push(`My Picks: <b>${n} game${n === 1 ? "" : "s"}</b> picked`); }catch(_){}
+  if(d["fcgp.nobet"]) out.push("Betting lines hidden");
+  return out.length ? out : ["Your page settings"];
+}
+function syncBox(html){
+  let d = document.getElementById("fcSyncPop");
+  if(!d){ d = document.createElement("div"); d.id = "fcSyncPop"; d.className = "fc-pop"; d.onclick = e => { if(e.target === d || e.target.dataset.x) d.hidden = true; }; document.body.appendChild(d); }
+  d.innerHTML = `<div class="fc-sync" role="dialog" aria-label="Move my setup">${html}</div>`; d.hidden = false; return d;
+}
+async function openSync(tab){
+  tab = tab || "send";
+  const code = await pack();
+  let data = {}; try{ data = (await unpack(code)).d; }catch(_){}
+  const link = location.origin + location.pathname.replace(/[^/]*$/, "") + "index.html#sync=" + code;
+  const d = syncBox(`<h3>Move my setup</h3><p>Take your team, Rotation, picks and settings to another phone or computer. No account needed.</p>
+    <div class="tabs"><button data-tab="send" class="${tab === "send" ? "on" : ""}">Send from this device</button><button data-tab="get" class="${tab === "get" ? "on" : ""}">Load on this device</button></div>
+    <div data-pane="send"${tab === "send" ? "" : " hidden"}>
+      <p>What's included:</p><ul>${describe(data).map(x => `<li>${x}</li>`).join("")}</ul>
+      <div class="qr" id="fcSyncQr"></div>
+      <p style="text-align:center;margin-top:-4px">Scan with your other phone's camera, or send yourself the link.</p>
+      <button class="go" data-act="copylink">Copy my setup link</button>
+      ${navigator.share ? `<button class="alt" data-act="share">Send the link…</button>` : ""}
+      <button class="alt" data-act="copycode">Copy as a code instead</button>
+      <p>It's a one-time copy: changes you make later don't sync on their own. Make a new link whenever you want to move it again.</p></div>
+    <div data-pane="get"${tab === "get" ? "" : " hidden"}>
+      <p>Paste the setup link or code from your other device:</p>
+      <textarea id="fcSyncIn" placeholder="Paste the link or code here"></textarea>
+      <button class="go" data-act="load">Load this setup</button>
+      <p>This replaces the team, Rotation, picks and settings on this device.</p></div>
+    <button class="alt" data-x="1">Close</button>`);
+  d.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => openSync(b.dataset.tab));
+  const act = (a, fn) => { const b = d.querySelector(`[data-act="${a}"]`); if(b) b.onclick = fn; };
+  const copy = async (txt, msg) => { try{ await navigator.clipboard.writeText(txt); toast(msg); }catch(_){ prompt("Copy this:", txt); } };
+  act("copylink", () => copy(link, "Setup link copied"));
+  act("copycode", () => copy(code, "Setup code copied"));
+  act("share", async () => { try{ await navigator.share({title: "My Full Court Geek Press setup", url: link}); }catch(_){} });
+  act("load", async () => { const v = d.querySelector("#fcSyncIn").value; if(!v.trim()) return; try{ confirmLoad(await unpack(v)); }catch(e){ toast(e.message || "That code didn't work"); } });
+  if(tab === "send"){
+    const qr = d.querySelector("#fcSyncQr");
+    if(link.length < 2300){ await need("qrcode.js");   // qrcode-generator by Kazuhiko Arase (MIT)
+      if(window.qrcode && qr){ try{ const q = qrcode(0, "L"); q.addData(link); q.make(); qr.innerHTML = `<img src="${q.createDataURL(6, 2)}" alt="QR code for your setup link">`; }catch(_){ qr.remove(); } } else if(qr) qr.remove(); }
+    else if(qr) qr.remove();
+  }
+}
+function confirmLoad(o){
+  const when = o.at ? new Date(o.at).toLocaleString("en-US", {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) : "";
+  const d = syncBox(`<h3>Load this setup?</h3><p>From another device${when ? `, saved ${when}` : ""}:</p><ul>${describe(o.d).map(x => `<li>${x}</li>`).join("")}</ul>
+    <p>This replaces what's on this device.</p><button class="go" data-act="yes">Load it</button><button class="alt" data-x="1">Not now</button>`);
+  d.querySelector('[data-act="yes"]').onclick = () => {
+    try{ Object.keys(localStorage).filter(SYNC_KEYS).forEach(k => localStorage.removeItem(k)); Object.entries(o.d).forEach(([k, v]) => { if(SYNC_KEYS(k)) localStorage.setItem(k, v); }); }catch(_){ toast("Couldn't save here (private browsing?)"); return; }
+    if(/#sync=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search);
+    d.hidden = true; toast("Setup loaded"); setTimeout(() => location.reload(), 700);
+  };
+}
+async function checkSyncLink(){
+  if(!/^#sync=/.test(location.hash)) return;
+  try{ confirmLoad(await unpack(location.hash)); }catch(e){ toast(e.message || "That setup link didn't work"); history.replaceState(null, "", location.pathname + location.search); }
+}
+window.FCSync = {pack, unpack, open: openSync};
 /* ---------- install as an app ---------- */
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; const a = document.getElementById("sitenavApp"); if(a) a.hidden = false; });
