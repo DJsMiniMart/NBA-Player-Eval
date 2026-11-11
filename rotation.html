@@ -153,7 +153,7 @@
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
   </div>
   <div id="gameMode" hidden>
-    <div class="wallet card"><div><span>Your points</span><b id="gPts">—</b><small id="gPtsNote"></small></div><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
+    <div class="wallet card"><div><span>Your points</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">Daily bonus</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
     <div id="gStart"></div>
     <div id="gOpen"></div>
     <div id="gPlay">
@@ -360,11 +360,12 @@ const PACKS = [{id: "gold", cost: 150, top: 150, rest: 0, name: "Gold pack", cls
   {id: "ruby", cost: 300, top: 75, rest: 200, name: "Ruby pack", cls: "ruby", desc: "3 cards · at least one top-75 player; the others are top 200"},
   {id: "opal", cost: 500, top: 25, rest: 150, name: "Galaxy pack", cls: "opal", desc: "3 cards · at least one top-25 player; the others are top 150"}];
 const LADDER = [[400, "gold"], [700, "ruby"], [1000, "opal"]], FF_TARGET = 120, WIN_PTS = 10;
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, cards: [], start: [], bench: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const DAILY = 20;
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(_){} };
-const balance = () => EARN.pts + G.game + G.sold - G.spent;
+const balance = () => EARN.pts + G.game + G.bonus + G.sold - G.spent;
 const ymd = d => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const addD = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
 /* card value: from where his Pulse ranks (percentile), steep at the top like a real market: a top-10 player is worth ~230, a top-25 ~100, a median player ~7 */
@@ -373,8 +374,11 @@ const valueOf = r => r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.p
 async function earnings(){
   if(!window.MyPicks){ EARN = {pts: 0, games: 0, list: []}; return; }
   const F = await MyPicks.finals(SCHED); const list = MyPicks.graded(F).filter(x => x.res && x.res.you);
-  const by = {}; list.forEach(x => { (by[x.gid] = by[x.gid] || {gid: x.gid, home: x.home, away: x.away, t: x.t, w: 0, n: 0}); by[x.gid].n++; if(x.res.you === "W") by[x.gid].w++; });
-  const PTS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { const p = PTS[Math.min(3, g.w)]; pts += p; return Object.assign(g, {p}); });
+  // each line pays on its own (spread/total 25, winner 25 × the payout, at least 10, push 5), then a bonus for how many lines hit in that game (1 = 10, 2 = 25, all 3 = 50)
+  const by = {}; list.forEach(x => { const g = by[x.gid] = by[x.gid] || {gid: x.gid, home: x.home, away: x.away, t: x.t, w: 0, n: 0, line: 0};
+    g.n++; const r = x.res.you;
+    if(r === "W"){ g.w++; g.line += x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25; } else if(r === "P") g.line += 5; });
+  const BONUS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { g.bonus = BONUS[Math.min(3, g.w)]; g.p = g.line + g.bonus; pts += g.p; return g; });
   EARN = {pts, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
 }
 function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => (b.value || 0) - (a.value || 0)) : []; }
@@ -487,7 +491,8 @@ function drawLadder(){
 function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
-  $("gPtsNote").textContent = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.sold} from sales · ${G.spent} spent on packs`;
+  $("gPtsNote").textContent = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold} from sales · ${G.spent} spent on packs`;
+  const today = ymd(); $("gDaily").disabled = G.daily === today; $("gDaily").textContent = G.daily === today ? "Daily bonus claimed ✓" : `Claim daily bonus (+${DAILY})`;
   const started = !!G.started;
   $("gPlay").hidden = !started;
   $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.</p><button class="gbtn" data-startteam>Open my 5 starter packs</button></div>`;
@@ -515,7 +520,11 @@ function drawGame(){
 function drawRules(){
   $("gRules").innerHTML = `<ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
     <li><b>Start your team</b> with 5 free packs (15 cards) and fill a 10-man roster: 5 starters and 5 on the bench.</li>
-    <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). For each game, count how many of your lines hit (winner, spread, total): <b>1 right = 10</b>, <b>2 right = 25</b>, <b>all 3 = 50</b>.</li>
+    <li><b>Daily bonus:</b> <b>+${DAILY}</b> for checking in each day.</li>
+    <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
+      <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
+      <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
+      Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.</li>
     <li><b>Earn points from nightly games</b> (scored the morning after, from the real box scores), using the lineup you had before the night's first tip-off:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's Pulse production (PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV). Bench players sub in, in order, for starters who don't play. Hit ${FF_TARGET}: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs Pulse:</b> Pulse builds a five from that night's players with about your starters' total OVR. Outscore it: <b>+${WIN_PTS}</b>.</li>
@@ -523,7 +532,7 @@ function drawRules(){
     <li><b>Weekly ladder:</b> Fantasy Five points add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
     <li><b>Packs:</b> Gold 150, Ruby 300, Galaxy 500 points. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his Pulse ranks this season.</li>
     <li><b>Card values move with Pulse.</b> A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
-    ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded pick games: ${EARN.list.map(g => `${esc(g.away)} @ ${esc(g.home)} ${g.w}/${g.n} +${g.p}`).slice(0, 6).join(" · ")}${EARN.list.length > 6 ? "…" : ""} <a href="picks.html">All picks →</a></p>` : ""}
+    ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded pick games: ${EARN.list.map(g => `${esc(g.away)} @ ${esc(g.home)}: ${g.w} of ${g.n} right, +${g.line} + ${g.bonus} bonus = ${g.p}`).slice(0, 6).join(" · ")}${EARN.list.length > 6 ? "…" : ""} <a href="picks.html">All picks →</a></p>` : ""}
     ${document.documentElement.classList.contains("nobet") ? `<p class="note" style="margin:8px 0 0">You have betting lines hidden, so pick buttons don't show; you can still earn from the nightly games.</p>` : ""}`;
 }
 function showOpen(title, cards, dupes){
@@ -553,6 +562,7 @@ function setupGame(){
   let m0 = "follow"; try{ m0 = localStorage.getItem("fcgp.rotmode") || "follow"; }catch(_){}
   if(/#game/.test(location.hash)) m0 = "game";
   mode(m0);
+  $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   $("gameMode").addEventListener("click", e => {
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
