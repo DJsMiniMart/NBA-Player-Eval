@@ -1,4 +1,4 @@
-/* Cloud save: sign in (Google) to keep My team, The Rotation and its card game, My Picks and settings in your account,
+/* Cloud save: sign in (Google) to keep My team, The Game (your Rotation and the card game), My Picks and settings in your account,
    so they survive a cleared browser and follow you to any device. Optional: the site works the same without it.
    Firebase Authentication for sign-in; Firebase Realtime Database (REST) for one record per person at users/<uid>.
    The Firebase SDK only loads once someone signs in. Database rules let each person read and write only their own record. */
@@ -91,7 +91,7 @@ function choose(rem){
   d.innerHTML = `<div class="fc-sync" role="dialog" aria-label="Which setup to keep"><h3>Which setup should we keep?</h3>
     <p>Your account has a setup saved ${when(rem.at)}, and this device has a different one. Keep one; the other is replaced.</p>
     <button class="go" data-k="acct">Use my account's setup</button><button class="alt" data-k="dev">Keep this device's setup</button>
-    <p>Tip: if you've been playing The Rotation on another phone, you probably want your account's setup.</p></div>`;
+    <p>Tip: if you've been playing The Game on another phone, you probably want your account's setup.</p></div>`;
   d.hidden = false;
   d.querySelector('[data-k="acct"]').onclick = async () => { d.hidden = true; deciding = false; await apply(rem); toast("Loaded your account's setup"); setTimeout(() => location.reload(), 600); };
   d.querySelector('[data-k="dev"]').onclick = async () => { d.hidden = true; deciding = false; const m = getMeta(); setMeta(Object.assign({}, m, {uid: user.uid, h: "x"})); try{ await putRemote(); toast("Saved this device's setup to your account"); }catch(e){ toast(e.message); } };

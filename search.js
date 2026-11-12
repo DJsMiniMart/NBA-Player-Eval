@@ -13,7 +13,7 @@ const ALIAS = {sixers:"PHI", blazers:"POR", cavs:"CLE", wolves:"MIN", mavs:"DAL"
 const PAGES = [["The Morning Press", "index.html", "scores headlines standings home"], ["The Pulse Board", "pe.html#/", "leaderboard pulse rankings award races mvp rookie"],
   ["The Locker Room", "pe.html#/players", "players rosters contracts salaries"], ["The Stat Lab", "stats.html", "team stats league leaders"],
   ["Franchise Files", "team.html", "teams cap sheet draft picks lineups"], ["Trade Machine", "trade.html", "trades cba salary"],
-  ["Playoff Picture", "playoffs.html", "bracket play-in lottery standings"], ["Draft Board", "draft.html", "draft prospects mock big board lottery picks"], ["The Rotation", "rotation.html", "favorite players myteam cards follow"], ["NBA History", "history.html", "champions mvp awards all-nba all-star"],
+  ["Playoff Picture", "playoffs.html", "bracket play-in lottery standings"], ["Draft Board", "draft.html", "draft prospects mock big board lottery picks"], ["The Game", "rotation.html", "favorite players myteam cards follow"], ["NBA History", "history.html", "champions mvp awards all-nba all-star"],
   ["My Picks", "picks.html", "bets record spread moneyline over under"], ["About Pulse", "about.html", "formula how it works"]];
 const onPE = /pe\.html$/.test(location.pathname);
 let ROWS = null, CUR = null;

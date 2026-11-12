@@ -901,11 +901,11 @@ function render(){
   EL.querySelector("#ppBack").onclick = () => { location.hash = window.PE_BACK || ""; };
   EL.querySelector("#ppCompare").onclick = () => { location.hash = "#/compare/" + encodeURIComponent(REC.id); };
   { const b = EL.querySelector("#ppRot"), K = "fcgp.rotation", get = () => { try{ return JSON.parse(localStorage.getItem(K) || "[]") || []; }catch(_){ return []; } };
-    const paint = () => { const on = get().includes(REC.id); b.textContent = on ? "★ In The Rotation" : "☆ Add to The Rotation"; b.title = on ? "Tap to remove him from your Rotation" : "Follow him on The Rotation page"; };
+    const paint = () => { const on = get().includes(REC.id); b.textContent = on ? "★ In my Rotation" : "☆ Add to my Rotation"; b.title = on ? "Tap to remove him from your Rotation" : "Follow him on The Rotation page"; };
     paint();
     b.onclick = () => { let l = get(); const on = l.includes(REC.id);
       if(on) l = l.filter(x => x !== REC.id); else if(l.length >= 10){ if(window.fcToast) fcToast("Your Rotation is full (10 players)"); return; } else l.push(REC.id);
-      try{ localStorage.setItem(K, JSON.stringify(l)); }catch(_){} paint(); if(window.fcToast) fcToast(on ? "Removed from The Rotation" : "Added to The Rotation · see it in the menu"); }; }
+      try{ localStorage.setItem(K, JSON.stringify(l)); }catch(_){} paint(); if(window.fcToast) fcToast(on ? "Removed from your Rotation" : "Added to your Rotation · see it in The Game"); }; }
   EL.querySelectorAll("[data-cmp]").forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); location.hash = `#/compare/${encodeURIComponent(REC.id)}/${encodeURIComponent(b.dataset.cmp)}`; });
   bindPairs();
   EL.querySelectorAll("[data-trsel]").forEach(b => b.onclick = () => { TRSEL = +b.dataset.trsel; const y = window.scrollY; render(); window.scrollTo(0, y); });

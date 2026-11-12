@@ -42,7 +42,7 @@ const PAGES = [
   {label:"The Morning Press", sub:"Last night in the NBA, every morning",          href:"index.html",          match:p => /index\.html$|\/$|matchup\.html$/.test(p.path)},
   {label:"The Pulse Board", sub:"Leaderboard, Pulse$, rookie report",          href:"pe.html#/",           match:p => /pe\.html$/.test(p.path) && !/^#\/(players|player|compare)/.test(p.hash)},
   {label:"The Locker Room", sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
-  {label:"The Rotation", sub:"Your 10 favorite players, 2K-style cards", href:"rotation.html", match:p => /rotation\.html$/.test(p.path)},
+  {label:"The Game", sub:"Your favorite players, 2K-style cards and the card game", href:"rotation.html", match:p => /rotation\.html$/.test(p.path)},
   {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
   {label:"Franchise Files", sub:"Every team: stats, lineups, cap, picks, history",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
@@ -298,7 +298,7 @@ function describe(d){
   const out = [];
   const team = d["fcgp.myteam"], t = team && TEAM_LIST.find(x => x[0] === team);
   if(t) out.push(`My team: <b>${t[2]}</b>`);
-  try{ const r = JSON.parse(d["fcgp.rotation"] || "[]"); if(r.length) out.push(`The Rotation: <b>${r.length} player${r.length === 1 ? "" : "s"}</b>`); }catch(_){}
+  try{ const r = JSON.parse(d["fcgp.rotation"] || "[]"); if(r.length) out.push(`Your Rotation: <b>${r.length} player${r.length === 1 ? "" : "s"}</b>`); }catch(_){}
   try{ const p = JSON.parse(d["fcgp-mypicks-v1"] || "{}"); const n = Object.keys((p && p.picks) || {}).length; if(n) out.push(`My Picks: <b>${n} game${n === 1 ? "" : "s"}</b> picked`); }catch(_){}
   if(d["fcgp.nobet"]) out.push("Betting lines hidden");
   return out.length ? out : ["Your page settings"];

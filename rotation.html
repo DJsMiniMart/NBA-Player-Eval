@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Rotation · Full Court Geek Press</title>
-<meta name="description" content="The Rotation: pick up to 10 favorite players and follow them in one place: 2K-style player cards, last games, next games, injuries, trades, news and milestones.">
+<title>The Game · Full Court Geek Press</title>
+<meta name="description" content="The Game: pick up to 10 favorite players and follow them in one place: 2K-style player cards, last games, next games, injuries, trades, news and milestones.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -143,7 +143,7 @@
 </head>
 <body>
 <div class="nba-band"><div class="wrap band-in">
-  <div><h1>The <span>Rotation</span></h1>
+  <div><h1>The <span>Game</span></h1>
     <div class="meta">Your 10 guys, one page. Pick your favorite players and keep up with all of them: 2K-style cards, last night, next game, injuries, trades, news and milestones.</div>
     <div class="sum" id="sum"></div></div>
   <div class="row"><button id="shareBtn" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.3);border-radius:999px;font-weight:600">Share my Rotation</button></div>
@@ -340,7 +340,7 @@ async function add(id){
   ROT.push(id); save(ROT);
   if(!FILES[id]) FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`);
   drawAll();
-  if(window.fcToast) fcToast("Added to The Rotation");
+  if(window.fcToast) fcToast("Added to your Rotation");
 }
 function drawAll(){ drawSummary(); drawLineup(); drawFeed(); drawTonight(); drawQuick(); }
 
