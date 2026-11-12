@@ -160,7 +160,7 @@
   <div class="two">
     <div><h2 data-jump="What's new">What's new <small>with your Rotation, newest first</small></h2><div class="card"><ul class="feed" id="feed"></ul></div></div>
     <div><h2 data-jump="Next up">Next up <small>when your guys play</small></h2><div class="card"><ul class="tn" id="tonight"></ul></div>
-      <h2 data-jump="Card tiers">Card tiers</h2><p class="note" style="margin:0">Each card's rating (OVR) comes from where his Pulse ranks among qualified players this season, on a 2K-style scale: the league's best is a 99, a typical rotation player is in the low 70s. "Early" means he hasn't played enough yet to qualify, so his rating is pulled toward average until he has.</p><div class="legend" id="legend"></div></div>
+      <h2 data-jump="Card tiers">Card tiers</h2><p class="note" style="margin:0">Each card's rating (OVR) comes from where his production per game (PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV, the same formula the card game scores) ranks among qualified players this season, so minutes count: a 35-minute starter rates above an efficient 15-minute backup, on a 2K-style scale: the league's best is a 99, a typical rotation player is in the low 70s. "Early" means he hasn't played enough yet to qualify, so his rating is pulled toward average until he has.</p><div class="legend" id="legend"></div></div>
   </div>
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
   </div>
@@ -215,14 +215,17 @@ let ROT = load(), IDX = [], STATS = null, CT = {}, SCHED = null, MORNING = null,
 const md = iso => new Date(String(iso).slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"});
 const money = n => "$" + (n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : Math.round(n / 1e3) + "K");
 
-/* ---------- ratings: Pulse percentile among qualified players -> 2K-style OVR and card tier ---------- */
+/* ---------- ratings: production-per-game percentile among qualified players -> 2K-style OVR and card tier ---------- */
 const TIERS = [[95, "opal", "Galaxy Opal"], [90, "diamond", "Diamond"], [84, "amethyst", "Amethyst"], [77, "ruby", "Ruby"], [0, "gold", "Gold"]];
 let QUAL = [], MING = 1;
+/* card ratings use production per game (the Fantasy Five formula), not per-minute Pulse: a card is worth what it puts up
+   in a night, so a 35-minute starter outranks an efficient 15-minute backup */
+const fpg = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 4 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0)) / p.g : 0;
 function ratingOf(p){
   if(!p || !p.g || !p.mp) return null;
   const early = !(p.g >= MING && p.mp / p.g >= 15);
   const med = QUAL.length ? QUAL.slice().sort((a, b) => a - b)[QUAL.length >> 1] : 1;
-  const v = early ? ((p.value || 0) * p.mp + med * 300) / (p.mp + 300) : (p.value || 0), below = QUAL.filter(x => x < v).length, pc = QUAL.length ? below / QUAL.length : .5;
+  const v = early ? (fpg(p) * p.g + med * 5) / (p.g + 5) : fpg(p), below = QUAL.filter(x => x < v).length, pc = QUAL.length ? below / QUAL.length : .5;
   const ovr = Math.max(55, Math.min(99, Math.round(60 + 39 * Math.pow(pc, 1.6))));
   const t = TIERS.find(x => ovr >= x[0]);
   return {ovr, cls: t[1], tier: t[2], early, pc};
@@ -324,7 +327,7 @@ function drawTonight(){
     : `<li class="note">Add players to see when they play next.</li>`;
 }
 function drawQuick(){
-  const top = STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => b.value - a.value) : [];
+  const top = STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => fpg(b) - fpg(a)) : [];
   const mt = window.Prefs ? Prefs.myTeam() : "", bbr = {BKN: "BRK", CHA: "CHO", PHX: "PHO"}[mt] || mt;
   const mine = mt ? (STATS ? STATS.players.filter(p => p.team === bbr && p.g).sort((a, b) => b.pts / b.g - a.pts / a.g).slice(0, 4) : []) : [];
   const pick = list => list.filter(p => !ROT.includes(p.id));
@@ -372,7 +375,7 @@ function setupShare(){
 }
 /* ================= the card game: points from picks and nightly games, packs, a 10-man roster ================= */
 const GKEY = "fcgp.cards2";
-/* packs: each card is drawn from rank ranges with set odds (rank = Pulse rank among qualified players; uniform within a range).
+/* packs: each card is drawn from rank ranges with set odds (rank = production-per-game rank among qualified players; uniform within a range).
    Card 1 is the pack's "hit"; cards 2 and 3 are depth. [top N, chance] — the last range runs to the whole pool (0). */
 const PACKS = [{id: "gold", cost: 300, name: "Gold pack", cls: "gold", desc: "3 cards · about a 7% chance at a top-25 player",
     hit: [[25, .03], [75, .12], [150, .85]], rest: [[25, .02], [75, .08], [150, .25], [0, .65]]},
@@ -390,7 +393,7 @@ const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch
 const balance = () => EARN.pts + G.game + G.bonus + G.sold - G.spent;
 const ymd = d => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const addD = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
-/* card value: from where his Pulse ranks (percentile), steep at the top like a real market: a top-10 player is worth ~230, a top-25 ~100, a median player ~7 */
+/* card value: from where his production per game ranks (percentile), steep at the top like a real market: a top-10 player is worth ~230, a top-25 ~100, a median player ~7 */
 const valueOf = r => r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.pow(r.pc, 2.5)))) : 5;
 /* pick points: per game, how many of your lines (winner, spread, total) hit: 1 = 10, 2 = 25, 3 = 50 */
 async function earnings(){
@@ -403,7 +406,7 @@ async function earnings(){
   const BONUS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { g.bonus = BONUS[Math.min(3, g.w)]; g.p = g.line + g.bonus; pts += g.p; return g; });
   EARN = {pts, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
 }
-function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => (b.value || 0) - (a.value || 0)) : []; }
+function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => fpg(b) - fpg(a)) : []; }
 const statOf = id => STATS && STATS.players.find(p => p.id === id);
 function pull(k){
   const P = pool(); if(!P.length) return [];
@@ -547,7 +550,7 @@ function gCard(c, opts){
     <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div></div>
     <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div>
     <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div>
-    <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.value != null ? (+st.value).toFixed(2) : "—"}</b><span>PULSE</span></div></div>
+    <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
@@ -657,8 +660,8 @@ function drawRules(){
     <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
     <li><b>Bench balance:</b> the bench needs guards, wings and bigs (a backup center helps). When a starter sits, the first bench player at his position subs in, and that night's chemistry uses the five who actually played, so an all-guard bench can leave you with no center. Balanced bench: +5% on subs; lopsided: up to −40%.</li>
     <li><b>Weekly ladder:</b> Fantasy Five points add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
-    <li><b>Packs:</b> ${PACKS.map(k => `${k.name.replace(" pack", "")} ${k.cost.toLocaleString()}`).join(", ")} points. Stars are rare: the chance of a top-25 player is about 7% in a Gold pack, 15% in a Ruby and 50% in a Galaxy. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his Pulse ranks this season.</li>
-    <li><b>Card values move with Pulse.</b> A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
+    <li><b>Packs:</b> ${PACKS.map(k => `${k.name.replace(" pack", "")} ${k.cost.toLocaleString()}`).join(", ")} points. Stars are rare: the chance of a top-25 player is about 7% in a Gold pack, 15% in a Ruby and 50% in a Galaxy. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his production per game ranks this season.</li>
+    <li><b>Card values move with production.</b> OVR and value come from production per game (the Fantasy Five formula), so minutes count. A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
     ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded pick games: ${EARN.list.map(g => `${esc(g.away)} @ ${esc(g.home)}: ${g.w} of ${g.n} right, +${g.line} + ${g.bonus} bonus = ${g.p}`).slice(0, 6).join(" · ")}${EARN.list.length > 6 ? "…" : ""} <a href="picks.html">All picks →</a></p>` : ""}
     <p style="margin:10px 0 0"><a href="card-rules.html" style="font-weight:700">Full rules →</a> <button class="chip" data-greset style="border-radius:999px;font-weight:600;margin-left:8px">Start over with a new team</button></p>
     ${document.documentElement.classList.contains("nobet") ? `<p class="note" style="margin:8px 0 0">You have betting lines hidden, so pick buttons don't show; you can still earn from the nightly games.</p>` : ""}`;
@@ -748,7 +751,7 @@ async function init(){
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
   IDX = idx || []; STATS = st || {players: []}; CT = (ct && ct.players) || {}; SCHED = sc; MORNING = mo; TRADED = tr; SEASON = (STATS && STATS.season) || (sc && sc.season) || "";
   const most = Math.max(1, ...STATS.players.map(p => p.g || 0)); MING = Math.max(1, Math.ceil(most / 2));
-  QUAL = STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).map(p => p.value || 0);
+  QUAL = STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).map(fpg);
   $("legend").innerHTML = TIERS.map(t => `<span class="t-${t[1]}">${t[2]} ${t[0] ? t[0] + "+" : ""}</span>`).join("");
   await Promise.all([window.Injuries ? Injuries.ready : null, window.Injuries ? Injuries.logReady() : null, ...ROT.map(async id => { FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`); })]);
   setupAdd(); drawAll();
