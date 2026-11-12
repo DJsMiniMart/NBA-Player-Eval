@@ -58,6 +58,7 @@
   .pc-acts{display:flex;gap:4px;margin-top:auto;padding-top:4px;}
   .pc-acts button{flex:1;padding:4px 0;border-radius:7px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:12px;}
   .pc-acts button:hover{background:rgba(0,0,0,.45);}
+  #gWish img,#gSets img{width:22px;height:22px;vertical-align:middle;object-fit:contain;margin-right:2px;}
   .trophies{padding:12px 14px;margin-top:14px;} .shelf{display:flex;gap:8px;overflow-x:auto;padding:8px 0 2px;}
   .tro{flex:0 0 auto;width:78px;text-align:center;background:var(--row,#f6f8fb);border:1px solid var(--line);border-radius:12px;padding:6px 4px;}
   .tro span{font-size:26px;display:block;line-height:1.2;} .tro small{display:block;font-size:10.5px;line-height:1.25;color:var(--dim);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
@@ -187,6 +188,8 @@
     <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
     <p class="note" id="gLock" style="margin:0 0 6px"></p>
     <section class="lineup" id="gLineup"></section>
+    <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
+    <div class="card" style="padding:6px 14px 12px" id="gWish"></div>
     <h2 data-jump="Team sets">Team sets <small>5 players from one team = free Gold pack + trophy</small></h2>
     <div class="card" style="padding:10px 14px" id="gSets"></div>
     <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
@@ -400,7 +403,7 @@ const LAD1 = 80, LAD2 = 140, LAD3 = 200;
 const CAP = 1000, APRON = 1500, MATE = 0.03, MATE_MAX = 0.09;
 const LADDER = [[LAD1, "gold"], [LAD2, "ruby"], [LAD3, "opal"]], FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -613,11 +616,25 @@ function chalHtml(){
     return `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:7px 0;gap:8px"><span style="flex:1;min-width:180px"><span class="tierdot t-${P.cls}"></span><b>${esc(c.text)}</b><br><small class="note">Reward: free ${esc(P.name)} + trophy</small></span>${got ? `<span class="note">Done ✓</span>` : done ? `<button class="gbtn" data-chal="${c.key}|${c.pk}|${esc(c.text)}">Claim</button>` : `<span class="note">In progress</span>`}</div>`; }).join("")
     + `<p class="note" style="margin:6px 0 0">New challenges every Monday. Unclaimed rewards expire with the week.</p>`;
 }
+/* ---------- wish list: up to 3 players; pull one from any pack for a 🌠 trophy ---------- */
+const WISH_MAX = 3;
+function checkWish(cards){
+  const hits = cards.filter(c => G.wish.includes(c.id));
+  hits.forEach(c => { if(award("wish:" + c.id, `Wish list pull: ${c.name}`, c.name.split(" ").slice(-1)[0])) { if(window.fcToast) setTimeout(() => fcToast(`🌠 Wish granted: you pulled ${c.name}!`), 600); } });
+  return new Set(hits.map(c => c.id));
+}
+function wishHtml(){
+  const P = pool(), rows = G.wish.map(id => { const st = statOf(id), r = ratingOf(st), got = G.trophies.some(x => x.k === "wish:" + id), own = G.cards.some(c => c.id === id);
+    return `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:7px 0;gap:8px"><span style="flex:1;min-width:160px">${logo(st ? st.team : "")} <b>${esc(st ? st.name : id)}</b> <span class="note">${r ? r.ovr + " OVR · " + esc(r.tier) : ""}</span>${got ? ` <span class="gtag">🌠 Pulled</span>` : own ? ` <span class="note">(you own him from before)</span>` : ""}</span><button class="gbtn alt" data-wishout="${esc(id)}">Remove</button></div>`; }).join("");
+  return `${rows}${G.wish.length < WISH_MAX ? `<div class="row" style="gap:8px;margin-top:8px"><input list="wishOpts" id="wishQ" placeholder="Add a player (${WISH_MAX - G.wish.length} spot${WISH_MAX - G.wish.length === 1 ? "" : "s"} left)…" style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit"><button class="gbtn" id="wishAdd">Add</button>
+    <datalist id="wishOpts">${P.filter(p => !G.wish.includes(p.id)).map(p => `<option value="${esc(p.name)}">`).join("")}</datalist></div>` : ""}
+    <p class="note" style="margin:8px 0 0">Pick up to ${WISH_MAX} players you're hoping for. Pull one from any pack and you get a 🌠 trophy (once per player). Swap players in and out any time; it doesn't change pack odds.</p>`;
+}
 /* ---------- trophy case ---------- */
 function trophyHtml(){
   const T = G.trophies || [];
-  if(!T.length) return `<div class="trophies card"><b>🏆 Trophy case</b><span class="note"> Empty for now. Complete team sets and weekly challenges to fill it.</span></div>`;
-  const icon = k => k.startsWith("set:") ? "🏅" : k.startsWith("chal:") ? "🏆" : "⭐";
+  if(!T.length) return `<div class="trophies card"><b>🏆 Trophy case</b><span class="note"> Empty for now. Complete team sets and weekly challenges, or pull a player from your wish list, to fill it.</span></div>`;
+  const icon = k => k.startsWith("set:") ? "🏅" : k.startsWith("chal:") ? "🏆" : k.startsWith("wish:") ? "🌠" : "⭐";
   return `<div class="trophies card"><div class="row" style="justify-content:space-between"><b>🏆 Trophy case</b><span class="note">${T.length} troph${T.length === 1 ? "y" : "ies"}</span></div>
     <div class="shelf">${T.slice().reverse().map(x => `<div class="tro" title="${esc(x.t)} · ${esc(x.d)}"><span>${icon(x.k)}</span><small>${esc(x.s || x.t)}</small></div>`).join("")}</div></div>`;
 }
@@ -752,7 +769,7 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml();
+  $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml();
   drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
@@ -773,6 +790,7 @@ function drawRules(){
     <li><b>Real teammates:</b> players from the same NBA team who play together in your five add +3% each (a pair +3%, three teammates +6%, up to +9%).</li>
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
+    <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
     <li><b>Weekly ladder:</b> points you win in the nightly games (+${WIN_PTS} a win, +${WIN_PTS} an upset, up to 40 a night) add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
     <li><b>Packs:</b> ${PACKS.map(k => `${k.name.replace(" pack", "")} ${k.cost.toLocaleString()}`).join(", ")} points. Stars are rare: the chance of a top-25 player is about 7% in a Gold pack, 15% in a Ruby and 50% in a Galaxy. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his production per game ranks this season.</li>
@@ -781,9 +799,9 @@ function drawRules(){
     <p style="margin:10px 0 0"><a href="card-rules.html" style="font-weight:700">Full rules →</a> <button class="chip" data-greset style="border-radius:999px;font-weight:600;margin-left:8px">Start over with a new team</button></p>
     ${document.documentElement.classList.contains("nobet") ? `<p class="note" style="margin:8px 0 0">You have betting lines hidden, so pick buttons don't show; you can still earn from the nightly games.</p>` : ""}`;
 }
-function showOpen(title, cards, dupes){
+function showOpen(title, cards, dupes, wished){
   const best = Math.max(...cards.map(c => c.ovr));
-  $("gOpen").innerHTML = `<div class="opening"><h3>${esc(title)}: tap each card to flip it</h3><div class="reveal">${cards.map((c, i) => `<div class="flip" data-flip><div class="inner"><div class="back">FCGP</div><div class="front">${gCard(c, {acts: false, tags: `${c.ovr === best ? '<span class="gtag">Best pull</span>' : ""}${dupes[i] ? '<span class="gtag dupe">Duplicate</span>' : ""}`})}</div></div></div>`).join("")}</div>
+  $("gOpen").innerHTML = `<div class="opening"><h3>${esc(title)}: tap each card to flip it</h3><div class="reveal">${cards.map((c, i) => `<div class="flip" data-flip><div class="inner"><div class="back">FCGP</div><div class="front">${gCard(c, {acts: false, tags: `${c.ovr === best ? '<span class="gtag">Best pull</span>' : ""}${dupes[i] ? '<span class="gtag dupe">Duplicate</span>' : ""}${wished && wished.has(c.id) ? '<span class="gtag">🌠 Wish list!</span>' : ""}`})}</div></div></div>`).join("")}</div>
     <div class="row" style="margin-top:10px"><button class="gbtn alt" data-flipall>Flip all</button><button class="gbtn alt" data-closeopen>Done</button></div></div>`;
   $("gOpen").scrollIntoView({behavior: "smooth", block: "start"});
 }
@@ -792,7 +810,7 @@ function openPack(k, free){
   if(overflow().length){ if(window.fcToast) fcToast("Your roster is over 20 cards: sell or place the extras first"); return; }
   const owned = new Set(G.cards.map(c => c.id)), cards = pull(k); if(!cards.length) return;
   if(!free) G.spent += k.cost;
-  G.cards.push(...cards); cards.forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); }); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)));
+  G.cards.push(...cards); cards.forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); }); const wished = checkWish(cards); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)), wished);
 }
 const overflow = () => G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid) && !G.res.includes(c.cid));
 function fillRes(){   // put cards that aren't on the roster yet into open reserve spots, best first
@@ -810,7 +828,7 @@ function startTeam(){
   uniq.forEach(c => { if(start.length < 5 && !start.includes(c)) start.push(c); });
   const bench = uniq.filter(c => !start.includes(c)).slice(0, 5);
   G.start = start.map(c => c.cid); G.bench = bench.map(c => c.cid); G.res = []; fillRes(); snap(); gSave(); drawGame();
-  showOpen("Your 5 starter packs", cards, cards.map(() => false));
+  showOpen("Your 5 starter packs", cards, cards.map(() => false), checkWish(cards)); gSave();
   earnings().then(() => drawGame());
 }
 function setupGame(){
@@ -822,19 +840,24 @@ function setupGame(){
   mode(m0);
   $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
+  $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } });
   $("gameMode").addEventListener("click", e => {
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || []}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || []}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
     if("freepack" in d){ if(overflow().length) return toast("Your roster is over 20 cards: sell or place the extras first"); const id = G.free.shift(); gSave(); return openPack(PACKS.find(x => x.id === id), true); }
     if(d.claim){ const [key, pk] = d.claim.split("|"); if(G.claimed[key]) return; G.claimed[key] = 1; G.free.push(pk); gSave(); drawGame(); toast("Free pack added: open it under Card packs"); return; }
     if(d.night){ NSEL = d.night; drawNights(); return; }
+    if(t.id === "wishAdd"){ const q = fold($("wishQ").value); if(!q) return; const P = pool(), hit = P.find(p => fold(p.name) === q) || P.find(p => fold(p.name).includes(q));
+      if(!hit) return toast("No player in the card pool by that name (needs 15+ minutes a game)"); if(G.wish.includes(hit.id)) return toast("Already on your wish list");
+      if(G.wish.length >= WISH_MAX) return toast(`Your wish list holds ${WISH_MAX}`); G.wish.push(hit.id); gSave(); drawGame(); toast(`${hit.name} added to your wish list`); return; }
+    if(d.wishout){ G.wish = G.wish.filter(x => x !== d.wishout); gSave(); drawGame(); return; }
     if(d.setclaim){ const t = d.setclaim; if(!teamSets().some(x => x.t === t && x.n >= 5) || !award("set:" + t, `${nick(t)} team set`, nick(t))) return; G.free.push("gold"); gSave(); drawGame(); toast(`🏅 ${nick(t)} set complete: free Gold pack added`); return; }
     if(d.chal){ const [key, pk, text] = d.chal.split("|"), wk = key.split(":")[0]; if(!award("chal:" + key, text, "Week of " + new Date(wk + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"}))) return; G.free.push(pk); gSave(); drawGame(); toast(`🏆 Challenge complete: free ${(PACKS.find(x => x.id === pk) || {}).name} added`); return; }
     if("flip" in d) return t.classList.add("shown");
