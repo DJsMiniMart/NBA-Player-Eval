@@ -380,7 +380,6 @@ const PACKS = [{id: "gold", cost: 300, name: "Gold pack", cls: "gold", desc: "3 
     hit: [[25, .10], [75, .40], [150, .50]], rest: [[25, .03], [75, .12], [150, .35], [0, .50]]},
   {id: "opal", cost: 1500, name: "Galaxy pack", cls: "opal", desc: "3 cards · one top-75 player or better · about a 50% chance at a top-25",
     hit: [[10, .12], [25, .33], [75, .55]], rest: [[25, .05], [75, .20], [150, .45], [0, .30]]}];
-const PICK_GAMES = 3;   // pick points count for the first 3 games you pick each day
 const LADDER = [[600, "gold"], [900, "ruby"], [1200, "opal"]], FF_TARGET = 120, WIN_PTS = 10;
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
 const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
@@ -396,12 +395,7 @@ const valueOf = r => r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.p
 /* pick points: per game, how many of your lines (winner, spread, total) hit: 1 = 10, 2 = 25, 3 = 50 */
 async function earnings(){
   if(!window.MyPicks){ EARN = {pts: 0, games: 0, list: []}; return; }
-  const F = await MyPicks.finals(SCHED); const all = MyPicks.graded(F).filter(x => x.res && x.res.you && ymd(new Date(x.t)) >= (G.started || ymd()));
-  // only the first PICK_GAMES games you picked each day earn points (by when you made the pick)
-  const firstAt = {}; MyPicks.graded(F).forEach(x => { const k = x.gid; const a = x.at || x.t; if(!firstAt[k] || a < firstAt[k].at) firstAt[k] = {at: a, d: ymd(new Date(x.t))}; });
-  const byDay = {}; Object.entries(firstAt).sort((a, b) => String(a[1].at).localeCompare(String(b[1].at))).forEach(([gid, v]) => { (byDay[v.d] = byDay[v.d] || []).push(gid); });
-  const counts = new Set(Object.values(byDay).flatMap(l => l.slice(0, PICK_GAMES)));
-  const list = all.filter(x => counts.has(x.gid));
+  const F = await MyPicks.finals(SCHED); const list = MyPicks.graded(F).filter(x => x.res && x.res.you);
   // each line pays on its own (spread/total 25, winner 25 × the payout, at least 10, push 5), then a bonus for how many lines hit in that game (1 = 10, 2 = 25, all 3 = 50)
   const by = {}; list.forEach(x => { const g = by[x.gid] = by[x.gid] || {gid: x.gid, home: x.home, away: x.away, t: x.t, w: 0, n: 0, line: 0};
     g.n++; const r = x.res.you;
@@ -652,7 +646,7 @@ function drawRules(){
   $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
     <li><b>Start your team</b> with 5 free packs (15 cards). Your roster holds 20: 5 starters, 5 on the bench and 10 reserves. Reserves never play or sub in; keep them to sell or move up. New cards land in your reserves, and you can't open packs while you're over 20.</li>
     <li><b>Daily bonus:</b> <b>+${DAILY}</b> for checking in each day.</li>
-    <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick), for the <b>first ${PICK_GAMES} games you pick each day</b> since you started your team (choose wisely). Two parts, added together for each game:
+    <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
       Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.</li>
@@ -714,8 +708,9 @@ function setupGame(){
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
     if("startteam" in d) return startTeam();
-    if("greset" in d){ if(!confirm("Start over? Your cards, points, record and nightly results are wiped, and only picks from today on will count. This can't be undone.")) return;
-      const keep = {backup: G.backup}; G = Object.assign(blank(), keep); gSave(); EARN = {pts: 0, games: 0, list: []}; drawGame(); window.scrollTo(0, 0); toast("Fresh start: open your 5 starter packs"); return; }
+    if("greset" in d){ const first = !G.resets;
+      if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
