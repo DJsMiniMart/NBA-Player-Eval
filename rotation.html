@@ -402,9 +402,10 @@ const PACKS = [{id: "gold", cost: 300, name: "Gold pack", cls: "gold", desc: "3 
   {id: "opal", cost: 1500, name: "Galaxy pack", cls: "opal", desc: "3 cards · one top-75 player or better · about a 50% chance at a top-25",
     hit: [[10, .12], [25, .33], [75, .55]], rest: [[25, .05], [75, .20], [150, .45], [0, .30]]}];
 const LAD1 = 80, LAD2 = 140, LAD3 = 200;
-/* salary cap: a card's salary is its current value; your 10-man lineup's payroll is checked each night.
-   Over the cap: luxury tax off that night's points (1 point for every 20 over, double past the apron). The apron is a hard limit on moves. */
-const CAP = 1000, APRON = 1500, MATE = 0.03, MATE_MAX = 0.09;
+/* salary cap: a card's salary is the player's real NBA contract this season; your 10-man lineup's payroll is checked each night.
+   Over the $165M cap (the real NBA cap): luxury tax off that night's points, 1 point per $1M over (2 per $1M past the $209M apron, the real 1st apron). The apron is a hard limit on moves. */
+const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
+const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
 const LADDER = [[LAD1, "gold"], [LAD2, "ruby"], [LAD3, "opal"]], FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
 const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], st: {}, n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
@@ -569,16 +570,16 @@ function chemHtml(ids){
     <p class="note" style="margin:6px 0 0">80+ chemistry: +10% · 65-79: +5% · 50-64: no change · 35-49: −20% · 20-34: −35% · under 20: −50%. No guard: another −20%; no center: another −20% (−60% at most). Applies to Fantasy Five and both matchups, using the five who actually played that night.</p></div>`;
 }
 /* ---------- salary cap ---------- */
-const salaryOf = id => valueOf(ratingOf(statOf(id)));
+const salaryOf = id => { const c = CT[id], y = c && (c.years || []).find(r => r[0] === SEASON); const n = y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0; return n || MIN_SAL; };   // no contract listed: league minimum
 const payrollOf = ids => ids.reduce((a, id) => a + salaryOf(id), 0);
-const taxOf = pay => pay <= CAP ? 0 : Math.ceil((Math.min(pay, APRON) - CAP) / 20) + (pay > APRON ? Math.ceil((pay - APRON) / 10) : 0);
+const taxOf = pay => pay <= CAP ? 0 : Math.ceil((Math.min(pay, APRON) - CAP) / 1e6) + (pay > APRON ? 2 * Math.ceil((pay - APRON) / 1e6) : 0);
 const lineupIds = () => { const by = Object.fromEntries(G.cards.map(c => [c.cid, c.id])); return G.start.concat(G.bench).map(x => by[x]).filter(Boolean); };
 function capHtml(){
   const pay = payrollOf(lineupIds()), tax = taxOf(pay), pc = v => Math.min(100, v / (APRON * 1.15) * 100);
   const color = pay > APRON ? "var(--bad)" : pay > CAP ? "#f59f00" : "var(--good)";
-  return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Payroll ${pay.toLocaleString()}</b><span class="note"> / cap ${CAP.toLocaleString()}</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${tax ? `−${tax} a night` : "Under the cap"}</div></div>
+  return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Payroll ${$M(pay)}</b><span class="note"> / cap ${$M(CAP)}</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${tax ? `−${tax} a night` : "Under the cap"}</div></div>
     <div class="ladder" style="margin:8px 0 4px"><i style="width:${pc(pay)}%;background:${color}"></i><s style="left:${pc(CAP)}%">cap</s><s style="left:${pc(APRON)}%">apron</s></div>
-    <p class="note" style="margin:4px 0 0">Each card's salary is its current value; your 10-man lineup's payroll counts (reserves don't). Over the ${CAP.toLocaleString()} cap: luxury tax of 1 point for every 20 over, off each night's points. Past the ${APRON.toLocaleString()} apron the tax doubles, and you can't add players that push you further over.</p></div>`;
+    <p class="note" style="margin:4px 0 0">Each card's salary is the player's real NBA contract this season, so players who outplay their contracts are gold. Your 10-man lineup's payroll counts (reserves don't). You can go over the ${$M(CAP)} cap, but it costs a luxury tax of 1 point per $1M over, off each night's points. Past the ${$M(APRON)} apron it's 2 points per $1M, and you can't add players that push you further over.</p></div>`;
 }
 /* ---------- team sets: 5 different players from the same NBA team anywhere on your roster ---------- */
 function teamSets(){
@@ -653,7 +654,7 @@ const MS = [
   ["chem90", "Win a game on a night with chemistry 90+", "Chem 90", () => playedNights().some(n => n.chem >= 90 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["pulseweek", "A full week with no losses vs Pulse (3+ nights)", "Pulse sweep", () => { const by = {}, cur = weekOf(ymd()); playedNights().forEach(n => { const w = weekOf(n.d); if(w < cur) (by[w] = by[w] || []).push(n); }); return Object.values(by).some(l => l.length >= 3 && l.every(n => n.pWin)) ? 1 : 0; }, [1]],
   ["sellhigh", "Sell a card for 100+ more than it was worth when you got it", "Sell high", () => G.st.sellHigh || 0, [1]],
-  ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll != null && n.payroll <= CAP)) ? 1 : 0; }, [1]],
+  ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
   ["earned", "Earn points (all-time)", "points", () => Math.max(0, balance() + G.spent), [1000, 5000, 25000]],
@@ -718,6 +719,7 @@ function gCard(c, opts){
     <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div>
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
+    <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
@@ -732,7 +734,7 @@ function drawNights(){
   $("gNightNote").textContent = `${md2(NSEL)} · +${N.pts} points`;
   const row = (n, p, extra) => `<tr><td>${esc(n)}${extra || ""}</td><td class="n"><b>${p}</b></td></tr>`;
   $("gNights").innerHTML = `<div class="daypick" style="grid-column:1/-1">${ds.slice(0, 7).map(d => `<button class="${d === NSEL ? "on" : ""}" data-night="${d}">${md2(d)} ${G.nights[d].pts ? `+${G.nights[d].pts}` : ""}</button>`).join("")}</div>
-    <div class="card ng"><h4>1 · Fantasy Five</h4><div class="res ${N.ffWin ? "w" : "l"}">${N.ff} ${N.ffWin ? "✓ beat" : "✗ missed"} ${N.target != null ? `your projection of ${N.target}` : FF_TARGET}</div><div class="note">${N.ffWin ? `+${WIN_PTS} points` : "No points this time"} · ${N.raw != null && N.raw !== N.ff ? `${N.raw} production ${chemLabel(N.mult)} chemistry${N.broken ? " (no guard or no center)" : ""}${N.mmult ? `, +${Math.round(N.mmult * 100)}% teammates` : ""}` : "Production of your five (no chemistry change)"}${N.tax ? ` · <b style="color:var(--bad)">luxury tax −${N.tax}</b> (payroll ${N.payroll})` : ""}</div>
+    <div class="card ng"><h4>1 · Fantasy Five</h4><div class="res ${N.ffWin ? "w" : "l"}">${N.ff} ${N.ffWin ? "✓ beat" : "✗ missed"} ${N.target != null ? `your projection of ${N.target}` : FF_TARGET}</div><div class="note">${N.ffWin ? `+${WIN_PTS} points` : "No points this time"} · ${N.raw != null && N.raw !== N.ff ? `${N.raw} production ${chemLabel(N.mult)} chemistry${N.broken ? " (no guard or no center)" : ""}${N.mmult ? `, +${Math.round(N.mmult * 100)}% teammates` : ""}` : "Production of your five (no chemistry change)"}${N.tax ? ` · <b style="color:var(--bad)">luxury tax −${N.tax}</b> (payroll ${N.payroll > 1e5 ? $M(N.payroll) : N.payroll})` : ""}</div>
       <table>${N.five.map(x => row(x.n, x.p, `${x.s ? ` <span class="note">(sub${x.f ? " for " + esc(x.f.split(" ").slice(-1)[0]) : ""}${N.bmult ? ", " + chemLabel(N.bmult) + " bench" : ""})</span>` : ""}<br><span class="note">${esc(x.l)}</span>`)).join("") || `<tr><td class="note">None of your players played.</td></tr>`}</table></div>
     <div class="card ng"><h4>2 · Head-to-head vs Pulse</h4><div class="vs"><div><b>${N.ff}</b>You</div><div class="note">vs</div><div><b>${N.pf}</b>Pulse's five</div></div><div class="res ${N.pWin ? "w" : "l"}" style="font-size:20px;text-align:center">${N.pWin ? `Won · +${WIN_PTS}` : "Lost"}</div>
       <table>${N.pulse.map(x => row(x.n, x.p, ` <span class="note">${x.o} OVR</span>`)).join("")}</table><p class="note" style="margin:6px 0 0">Pulse picked ${N.pulse.length} players from that night with about the same total OVR as your ${N.pulse.length === 1 ? "player" : N.pulse.length + " players"} who played.</p></div>
@@ -829,7 +831,7 @@ function drawRules(){
       <li><b>vs a real team:</b> your five against the NBA starting five closest to yours in OVR that night (if fewer of yours played, their starters who played the most minutes, same number). Win: <b>+${WIN_PTS}</b>; beat a better-rated five: another <b>+${WIN_PTS}</b>.</li></ol></li>
     <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
     <li><b>Bench balance:</b> the bench needs guards, wings and bigs (a backup center helps). When a starter sits, the first bench player at his position subs in, and that night's chemistry uses the five who actually played, so an all-guard bench can leave you with no center. Balanced bench: +5% on subs; lopsided: up to −40%.</li>
-    <li><b>Salary cap:</b> each card's salary is its current value. Your 10-man lineup's payroll (reserves don't count) has a ${CAP.toLocaleString()} cap: over it, a luxury tax of 1 point for every 20 over comes off each night's points. Past the ${APRON.toLocaleString()} apron the tax doubles and you can't add players who push you further over.</li>
+    <li><b>Salary cap:</b> each card's salary is the player's <b>real NBA contract</b> this season. Your 10-man lineup's payroll (reserves don't count) has a ${$M(CAP)} cap. You can go over it, but each night costs a luxury tax of 1 point per $1M over; past the ${$M(APRON)} apron it's 2 points per $1M and you can't add players who push you further over. Look for players who outplay their contracts: 💰 on a card means he plays like a much bigger contract, 💸 means he's paid far more than he produces.</li>
     <li><b>Real teammates:</b> players from the same NBA team who play together in your five add +3% each (a pair +3%, three teammates +6%, up to +9%).</li>
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
@@ -919,7 +921,7 @@ function setupGame(){
       if(sameP(cid)) return toast("He's already in your lineup");
       if(G[to].length >= 5) return toast(to === "start" ? "Starting five is full: take someone out first" : "Bench is full: take someone out first");
       { const inLine = G.start.includes(cid) || G.bench.includes(cid), pay = payrollOf(lineupIds()), add = inLine ? 0 : salaryOf(cardOf(cid).id);
-        if(add && pay + add > APRON) return toast(`That puts your payroll at ${pay + add}, past the ${APRON} apron. Move someone out first.`); }
+        if(add && pay + add > APRON) return toast(`That puts your payroll at ${$M(pay + add)}, past the ${$M(APRON)} apron. Move someone out first.`); }
       G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid); G.res = G.res.filter(x => x !== cid); G[to].push(cid); snap(); gSave(); drawGame(); return; }
     if(d.gout || d.gres){ const cid = d.gout || d.gres;
       if(G.res.length >= RES_MAX && !G.res.includes(cid)){ if(d.gres) return toast("Reserves are full: sell a reserve first"); }
