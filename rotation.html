@@ -65,6 +65,10 @@
   .sc-row .nm{font-weight:700;} .sc-row .nm img{width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;} .sc-row .meta{font-size:12.5px;color:var(--dim);grid-column:1/-1;line-height:1.45;}
   .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
   .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
+  .keepers{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;max-height:320px;overflow-y:auto;} .keepers label{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.25);border-radius:10px;cursor:pointer;} .keepers small{opacity:.7;margin-left:auto;}
+  .gtabs{display:flex;gap:6px;margin:16px 0 4px;padding:4px 0;}
+  .gtabs button{flex:1;font-weight:700;border-radius:999px;padding:9px 10px;font-size:14px;}
+  .gtabs button.on{background:var(--accent,#C8102E);border-color:var(--accent,#C8102E);color:#fff;}
   .trophies{padding:12px 14px;margin-top:14px;}
   .mslist{margin-top:8px;} .mslist summary{cursor:pointer;font-weight:600;font-size:14px;}
   .mslist ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;}
@@ -190,14 +194,8 @@
     <div id="gStart"></div>
     <div id="gOpen"></div>
     <div id="gPlay">
-    <h2 data-jump="Scoreboard">Scoreboard <small id="gScoreNote"></small></h2>
-    <div id="gScore"></div>
-    <h2 data-jump="Last night">Nightly games <small id="gNightNote"></small></h2>
-    <div class="nights" id="gNights"></div>
-    <h2 data-jump="Challenges">Weekly challenges <small>new every Monday</small></h2>
-    <div class="card" style="padding:6px 14px 12px" id="gChal"></div>
-    <h2 data-jump="Season ladder">Weekly ladder <small id="gLadderNote"></small></h2>
-    <div class="card" style="padding:12px 14px" id="gLadder"></div>
+    <div class="gtabs" role="tablist"><button data-gtab="team" role="tab">🏀 My Team</button><button data-gtab="market" role="tab">🛒 Market</button><button data-gtab="progress" role="tab">🏆 Progress</button></div>
+    <div data-gpane="team">
     <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
     <p class="note" id="gLock" style="margin:0 0 6px"></p>
     <section class="lineup" id="gLineup"></section>
@@ -206,14 +204,27 @@
     <div id="gOver"></div>
     <div class="chips" id="gSort"></div>
     <div class="cards" id="gColl"></div>
+    </div>
+    <div data-gpane="market" hidden>
     <h2 data-jump="Scout">Scout <small>buy low, play cheap, sell high</small></h2>
     <div class="card" style="padding:10px 14px" id="gScout"></div>
-    <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
-    <div class="card" style="padding:6px 14px 12px" id="gWish"></div>
-    <h2 data-jump="Team sets">Team sets <small>5 players from one team = free Gold pack + trophy</small></h2>
-    <div class="card" style="padding:10px 14px" id="gSets"></div>
     <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
     <div class="packs" id="gPacks"></div>
+    <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
+    <div class="card" style="padding:6px 14px 12px" id="gWish"></div>
+    </div>
+    <div data-gpane="progress" hidden>
+    <h2 data-jump="Scoreboard">Scoreboard <small id="gScoreNote"></small></h2>
+    <div id="gScore"></div>
+    <h2 data-jump="Last night">Nightly games <small id="gNightNote"></small></h2>
+    <div class="nights" id="gNights"></div>
+    <h2 data-jump="Challenges">Weekly challenges <small>new every Monday</small></h2>
+    <div class="card" style="padding:6px 14px 12px" id="gChal"></div>
+    <h2 data-jump="Team sets">Team sets <small>5 players from one team = free Gold pack + trophy</small></h2>
+    <div class="card" style="padding:10px 14px" id="gSets"></div>
+    <h2 data-jump="Past seasons">Past seasons</h2>
+    <div class="card" style="padding:10px 14px" id="gHist"></div>
+    </div>
     </div>
     <h2 data-jump="How it works">How it works <small><a href="card-rules.html">Full rules →</a></small></h2>
     <div class="card" style="padding:12px 14px" id="gRules"></div>
@@ -412,14 +423,13 @@ const PACKS = [{id: "gold", cost: 300, name: "Gold pack", cls: "gold", desc: "3 
     hit: [[25, .10], [75, .40], [150, .50]], rest: [[25, .03], [75, .12], [150, .35], [0, .50]]},
   {id: "opal", cost: 1500, name: "Galaxy pack", cls: "opal", desc: "3 cards · one top-75 player or better · about a 50% chance at a top-25",
     hit: [[10, .12], [25, .33], [75, .55]], rest: [[25, .05], [75, .20], [150, .45], [0, .30]]}];
-const LAD1 = 80, LAD2 = 140, LAD3 = 200;
 /* salary cap: a card's salary is the player's real NBA contract this season; your 10-man lineup's payroll is checked each night.
    Over the $165M cap (the real NBA cap): luxury tax off that night's points, 1 point per $1M over (2 per $1M past the $209M apron, the real 1st apron). The apron is a hard limit on moves. */
 const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
 const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
-const LADDER = [[LAD1, "gold"], [LAD2, "ruby"], [LAD3, "opal"]], FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
+const FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -432,7 +442,7 @@ const valueOf = r => r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.p
 /* pick points: per game, how many of your lines (winner, spread, total) hit: 1 = 10, 2 = 25, 3 = 50 */
 async function earnings(){
   if(!window.MyPicks){ EARN = {pts: 0, games: 0, list: []}; return; }
-  const F = await MyPicks.finals(SCHED); const list = MyPicks.graded(F).filter(x => x.res && x.res.you);
+  const F = await MyPicks.finals(SCHED); const list = MyPicks.graded(F).filter(x => x.res && x.res.you && (!G.since || ymd(new Date(x.t)) >= G.since));
   // each line pays on its own (spread/total 25, winner 25 × the payout, at least 10, push 5), then a bonus for how many lines hit in that game (1 = 10, 2 = 25, all 3 = 50)
   const by = {}; list.forEach(x => { const g = by[x.gid] = by[x.gid] || {gid: x.gid, home: x.home, away: x.away, t: x.t, w: 0, n: 0, line: 0};
     g.n++; const r = x.res.you;
@@ -510,6 +520,7 @@ async function playNight(d){
   res.pts = res.won - res.tax;
   return res;
 }
+function weekOf(d){ const x = new Date(d + "T12:00:00"); const dow = (x.getDay() + 6) % 7; return addD(d, -dow); }
 function useContracts(ids){
   ids.forEach(id => { const inLine = G.cards.filter(c => c.id === id && (G.start.includes(c.cid) || G.bench.includes(c.cid))), c = inLine[0] || G.cards.find(x => x.id === id);
     if(!c || c.gl == null) return; c.gl = Math.max(0, c.gl - 1);
@@ -675,7 +686,7 @@ const MS = [
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
-  ["earned", "Earn points (all-time)", "points", () => Math.max(0, balance() + G.spent), [1000, 5000, 25000]],
+  ["earned", "Earn points (all-time)", "points", () => Math.max(0, (G.st.pastEarned || 0) + balance() + G.spent), [1000, 5000, 25000]],
   ["lines3", "Hit all 3 lines in one game", "3 for 3", () => EARN.list.some(g => g.w >= 3) ? 1 : 0, [1]],
   ["daily", "Daily bonus streak", "day streak", () => G.st.dbest || 0, [7, 30]],
   ["chal10", "Complete 10 weekly challenges", "10 challenges", () => G.trophies.filter(x => x.k.startsWith("chal:")).length, [10]],
@@ -691,7 +702,7 @@ function checkMilestones(){
 }
 function trophyHtml(){
   const T = G.trophies || [], total = MS.reduce((a, m) => a + m[4].length, 0), msGot = T.filter(x => x.k.startsWith("ms:")).length;
-  const icon = x => { if(x.k.startsWith("set:")) return "🏅"; if(x.k.startsWith("chal:")) return "🏆"; if(x.k.startsWith("wish:")) return "🌠";
+  const icon = x => { if(x.k.startsWith("set:")) return "🏅"; if(x.k.startsWith("chal:")) return "🏆"; if(x.k.startsWith("wish:")) return "🌠"; if(x.k.startsWith("season:")) return "🎖️";
     const [, id, t] = x.k.split(":"), m = MS.find(y => y[0] === id); return m ? MEDAL(m[4].indexOf(+t), m[4].length) : "⭐"; };
   const list = MS.map(m => { let v = 0; try{ v = m[3](); }catch(_){}
     return m[4].map((t, i) => { const have = T.some(x => x.k === `ms:${m[0]}:${t}`);
@@ -750,12 +761,6 @@ function nextHtml(team){
   return `<div class="pc-next" title="Next 3 games (opponent's record)">${L.map(x => `<span class="${x.today ? "tn" : ""}"><b>${day(x)}</b> ${x.home ? "vs" : "@"} ${esc(x.opp)}${x.rec ? ` <i>${x.rec}</i>` : ""}</span>`).join("")}</div>`;
 }
 function matesNow(ids){ const tc = {}; ids.forEach(id => { const st = statOf(id); if(st && st.team) tc[st.team] = (tc[st.team] || 0) + 1; }); return Object.values(tc).reduce((a, n) => a + Math.max(0, n - 1), 0); }
-/* ---------- weekly ladder (Monday to Sunday): points won in the nightly games add up; hit a rung for a free pack ---------- */
-function weekOf(d){ const x = new Date(d + "T12:00:00"); const dow = (x.getDay() + 6) % 7; return addD(d, -dow); }
-function ladder(){
-  const wk = weekOf(ymd()), nights = Object.values(G.nights).filter(n => !n.none && weekOf(n.d) === wk);
-  return {wk, total: nights.reduce((a, n) => a + (n.pts || 0), 0), n: nights.length};
-}
 function gCard(c, opts){
   opts = opts || {};
   const st = statOf(c.id), r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier, pc: 0}, team = st ? st.team : "", g = st && st.g, per = k => g ? (st[k] / g).toFixed(1) : "—";
@@ -779,23 +784,15 @@ function drawNights(){
   if(!ds.length){ $("gNightNote").textContent = ""; $("gNights").innerHTML = `<div class="card ng note">Your first nightly results show up the morning after your team's first full night of games. Each night your starting five plays three games: Fantasy Five, vs Pulse and vs a real team.</div>`; return; }
   if(!NSEL || !G.nights[NSEL]) NSEL = ds[0];
   const N = G.nights[NSEL], md2 = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
-  $("gNightNote").textContent = `${md2(NSEL)} · +${N.pts} points`;
+  $("gNightNote").textContent = `${md2(NSEL)} · ${N.pts < 0 ? "−" + -N.pts : "+" + N.pts} points`;
   const row = (n, p, extra) => `<tr><td>${esc(n)}${extra || ""}</td><td class="n"><b>${p}</b></td></tr>`;
-  $("gNights").innerHTML = `<div class="daypick" style="grid-column:1/-1">${ds.slice(0, 7).map(d => `<button class="${d === NSEL ? "on" : ""}" data-night="${d}">${md2(d)} ${G.nights[d].pts ? `+${G.nights[d].pts}` : ""}</button>`).join("")}</div>
+  $("gNights").innerHTML = `<div class="daypick" style="grid-column:1/-1">${ds.slice(0, 7).map(d => `<button class="${d === NSEL ? "on" : ""}" data-night="${d}">${md2(d)} ${G.nights[d].pts ? (G.nights[d].pts > 0 ? "+" : "−") + Math.abs(G.nights[d].pts) : ""}</button>`).join("")}</div>
     <div class="card ng"><h4>1 · Fantasy Five</h4><div class="res ${N.ffWin ? "w" : "l"}">${N.ff} ${N.ffWin ? "✓ beat" : "✗ missed"} ${N.target != null ? `your projection of ${N.target}` : FF_TARGET}</div><div class="note">${N.ffWin ? `+${WIN_PTS} points` : "No points this time"} · ${N.raw != null && N.raw !== N.ff ? `${N.raw} production ${chemLabel(N.mult)} chemistry${N.broken ? " (no guard or no center)" : ""}${N.mmult ? `, +${Math.round(N.mmult * 100)}% teammates` : ""}` : "Production of your five (no chemistry change)"}${N.tax ? ` · <b style="color:var(--bad)">luxury tax −${N.tax}</b> (payroll ${N.payroll > 1e5 ? $M(N.payroll) : N.payroll})` : ""}</div>
       <table>${N.five.map(x => row(x.n, x.p, `${x.s ? ` <span class="note">(sub${x.f ? " for " + esc(x.f.split(" ").slice(-1)[0]) : ""}${N.bmult ? ", " + chemLabel(N.bmult) + " bench" : ""})</span>` : ""}<br><span class="note">${esc(x.l)}</span>`)).join("") || `<tr><td class="note">None of your players played.</td></tr>`}</table></div>
     <div class="card ng"><h4>2 · Head-to-head vs Pulse</h4><div class="vs"><div><b>${N.ff}</b>You</div><div class="note">vs</div><div><b>${N.pf}</b>Pulse's five</div></div><div class="res ${N.pWin ? "w" : "l"}" style="font-size:20px;text-align:center">${N.pWin ? `Won · +${WIN_PTS}` : "Lost"}</div>
       <table>${N.pulse.map(x => row(x.n, x.p, ` <span class="note">${x.o} OVR</span>`)).join("")}</table><p class="note" style="margin:6px 0 0">Pulse picked ${N.pulse.length} players from that night with about the same total OVR as your ${N.pulse.length === 1 ? "player" : N.pulse.length + " players"} who played.</p></div>
     <div class="card ng"><h4>3 · vs a real team</h4>${N.opp ? `<div class="vs"><div><b>${N.ff}</b>Your five</div><div class="note">vs</div><div><b>${N.opp.prod}</b>${esc(nick(N.opp.t))} starters</div></div><div class="res ${N.oWin ? "w" : "l"}" style="font-size:20px;text-align:center">${N.oWin ? `Won · +${WIN_PTS}${N.upset ? ` · upset bonus +${WIN_PTS}` : ""}` : "Lost"}</div>
       <table>${N.opp.l.map(x => row(x.n, x.p)).join("")}</table><p class="note" style="margin:6px 0 0">The ${esc(nick(N.opp.t))} had the starting five closest to yours in OVR (${N.opp.avg} vs your ${N.myAvg})${N.opp.l.length < 5 ? `; only ${N.opp.l.length} of yours played, so it's their ${N.opp.l.length} starters who played the most minutes` : ""}. Beat a better-rated five for an upset bonus.</p>` : `<p class="note">No full starting five that night.</p>`}</div>`;
-}
-function drawLadder(){
-  const L = ladder(), top = LADDER[LADDER.length - 1][0] * 1.1, pc = v => Math.min(100, v / top * 100);
-  $("gLadderNote").textContent = `week of ${new Date(L.wk + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"})} · resets Monday`;
-  const rungs = LADDER.map(([need, pk]) => { const P = PACKS.find(x => x.id === pk), key = L.wk + ":" + need, got = G.claimed[key];
-    return `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:6px 0"><span><b>${need}</b> points → free ${P.name}</span>${got ? `<span class="note">Claimed ✓</span>` : L.total >= need ? `<button class="gbtn" data-claim="${key}|${pk}">Claim</button>` : `<span class="note">${need - L.total} to go</span>`}</div>`; }).join("");
-  $("gLadder").innerHTML = `<div class="row" style="justify-content:space-between"><b style="font:700 26px 'Barlow Condensed',sans-serif">${L.total} pts</b><span class="note">Points won in nightly games this week (${L.n} night${L.n === 1 ? "" : "s"})</span></div>
-    <div class="ladder"><i style="width:${pc(L.total)}%"></i>${LADDER.map(([n, pk]) => `<s style="left:${pc(n)}%">${n}</s>`).join("")}</div>${rungs}`;
 }
 /* scoreboard: win-loss record for each nightly game, streaks, bests; built from every saved night */
 function record(list, key){
@@ -828,6 +825,56 @@ function backupHtml(){
   const stale = !last || days >= 7;
   return `<div class="card row" style="padding:10px 14px;margin-top:10px;justify-content:space-between;gap:10px;${stale ? "border-color:#f59f00" : ""}"><span class="note" style="flex:1;min-width:200px">💾 Your team and record are saved in this browser and stay put when you close it. ${last ? `Last backup ${days === 0 ? "today" : days + " day" + (days === 1 ? "" : "s") + " ago"}.` : "Sign in to save it to your account, or make a backup code."}</span><button class="gbtn" id="gSignIn">Sign in to save</button><button class="gbtn" id="gBackup" style="background:transparent;color:inherit;border:1px solid var(--line)">Backup code</button></div>`;
 }
+/* ---------- tabs: My Team, Market, Progress ---------- */
+let GTAB = (() => { try{ return localStorage.getItem("fcgp.gtab") || "team"; }catch(_){ return "team"; } })();
+function setTab(t){
+  if(t){ GTAB = t; try{ localStorage.setItem("fcgp.gtab", t); }catch(_){} }
+  document.querySelectorAll("[data-gtab]").forEach(b => { b.classList.toggle("on", b.dataset.gtab === GTAB); b.setAttribute("aria-selected", b.dataset.gtab === GTAB); });
+  document.querySelectorAll("[data-gpane]").forEach(p => p.hidden = p.dataset.gpane !== GTAB);
+}
+/* ---------- seasons: awards at the end of each NBA season, a record of past seasons, and up to 3 keeper cards ---------- */
+const KEEP_MAX = 3;
+const SEASON_AWARDS = [
+  ["champ", "Season champion: won 60%+ of your nightly games", "Champion", N => N.length >= 50 && seasonPct(N) >= .6],
+  ["winning", "Winning season: won 50%+ of your nightly games", "Winning season", N => N.length >= 50 && seasonPct(N) >= .5],
+  ["ffmvp", "Fantasy Five MVP: beat your projection on 55%+ of nights", "FF MVP", N => N.length >= 50 && N.filter(n => n.ffWin).length / N.length >= .55],
+  ["giant", "Giant killer: 10+ upsets in a season", "Giant killer", N => N.filter(n => n.upset).length >= 10],
+  ["perfect", "Perfect ten: 10+ perfect 3–0 nights", "Perfect ten", N => N.filter(n => n.ffWin && n.pWin && n.oWin).length >= 10],
+  ["capwiz", "Cap wizard: 30+ nights, never paid luxury tax", "Cap wizard", N => N.length >= 30 && N.every(n => !n.tax)],
+  ["ironman", "Iron man: played 100+ nights", "Iron man", N => N.length >= 100]];
+function seasonPct(N){ const w = N.reduce((a, n) => a + (n.ffWin ? 1 : 0) + (n.pWin ? 1 : 0) + (n.oWin ? 1 : 0), 0), g = N.reduce((a, n) => a + 2 + (n.opp ? 1 : 0), 0); return g ? w / g : 0; }
+function histHtml(){
+  const H = G.hist || [];
+  return H.length ? `<div class="tw" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13.5px"><thead><tr style="text-align:left;color:var(--dim);font-size:11px;text-transform:uppercase"><th>Season</th><th>Nights</th><th>Record</th><th>Fantasy Five</th><th>Best night</th><th>Points</th><th>Awards</th></tr></thead><tbody>
+    ${H.slice().reverse().map(h => `<tr style="border-top:1px solid var(--line)"><td><b>${esc(h.season)}</b></td><td>${h.n}</td><td>${h.w}–${h.l}</td><td>${h.ffw}–${h.n - h.ffw}</td><td>${h.best}</td><td>${(h.pts || 0).toLocaleString()}</td><td>${(h.aw || []).map(a => "🎖️ " + esc(a)).join("<br>") || "—"}</td></tr>`).join("")}</tbody></table></div>`
+    : `<p class="note" style="margin:0">Your first season is in progress. When the NBA season ends, your record and season awards are saved here, and you can keep up to ${KEEP_MAX} cards for next season.</p>`;
+}
+function seasonOver(){ return G.started && G.season && SEASON && G.season !== SEASON; }
+function showSeasonEnd(){
+  const N = playedNights(), w = N.reduce((a, n) => a + (n.ffWin ? 1 : 0) + (n.pWin ? 1 : 0) + (n.oWin ? 1 : 0), 0), g = N.reduce((a, n) => a + 2 + (n.opp ? 1 : 0), 0);
+  const aw = SEASON_AWARDS.filter(a => { try{ return a[3](N); }catch(_){ return false; } }).filter((a, i, l) => !(a[0] === "winning" && l.some(x => x[0] === "champ")));
+  const cards = G.cards.slice().sort((a, b) => ((ratingOf(statOf(b.id)) || b).ovr) - ((ratingOf(statOf(a.id)) || a).ovr));
+  $("gOpen").innerHTML = `<div class="opening"><h3>The ${esc(G.season)} season is over</h3>
+    <p style="margin:0 0 6px">${N.length} nights · record <b>${w}–${g - w}</b> · beat your projection ${N.filter(n => n.ffWin).length} times · ${N.filter(n => n.upset).length} upsets</p>
+    ${aw.length ? `<p style="margin:0 0 4px"><b>Season awards:</b></p><ul style="margin:0 0 8px;padding-left:18px">${aw.map(a => `<li>🎖️ ${esc(a[1])}</li>`).join("")}</ul>` : `<p class="note" style="margin:0 0 8px;opacity:.85">No season awards this time.</p>`}
+    <p style="margin:0 0 6px"><b>Pick up to ${KEEP_MAX} keepers</b> to bring into the ${esc(SEASON)} season. Everything else (cards, points, record) starts fresh; your trophies, wish list and scouting stay. Keepers get new ratings from this season's stats and a fresh contract.</p>
+    <div class="keepers">${cards.map(c => `<label><input type="checkbox" data-keep="${c.cid}"> ${esc(c.name)} <small>${(ratingOf(statOf(c.id)) || c).ovr} OVR</small></label>`).join("")}</div>
+    <button class="gbtn" data-newseason style="margin-top:10px">Start the ${esc(SEASON)} season</button></div>`;
+  $("gOpen").querySelectorAll("[data-keep]").forEach(x => x.onchange = () => { const on = $("gOpen").querySelectorAll("[data-keep]:checked"); if(on.length > KEEP_MAX){ x.checked = false; toast2(`Keep up to ${KEEP_MAX}`); } });
+}
+function newSeason(){
+  const N = playedNights(), keepIds = [...$("gOpen").querySelectorAll("[data-keep]:checked")].map(x => x.dataset.keep).slice(0, KEEP_MAX);
+  const w = N.reduce((a, n) => a + (n.ffWin ? 1 : 0) + (n.pWin ? 1 : 0) + (n.oWin ? 1 : 0), 0), g = N.reduce((a, n) => a + 2 + (n.opp ? 1 : 0), 0);
+  const aw = SEASON_AWARDS.filter(a => { try{ return a[3](N); }catch(_){ return false; } }).filter((a, i, l) => !(a[0] === "winning" && l.some(x => x[0] === "champ")));
+  aw.forEach(a => G.trophies.push({k: `season:${G.season}:${a[0]}`, t: `${G.season}: ${a[1]}`, s: `${a[2]} ${G.season.slice(2)}`, d: ymd()}));
+  const best = N.reduce((a, n) => Math.max(a, n.ff || 0), 0);
+  const H = (G.hist || []).concat([{season: G.season, n: N.length, w, l: g - w, ffw: N.filter(n => n.ffWin).length, best, pts: N.reduce((a, n) => a + (n.pts || 0), 0), aw: aw.map(a => a[2])}]);
+  const st = Object.assign({}, G.st, {pastEarned: (G.st.pastEarned || 0) + Math.max(0, balance() + G.spent)});
+  const keep = G.cards.filter(c => keepIds.includes(c.cid)).map(c => { const r = ratingOf(statOf(c.id)) || {ovr: c.ovr, cls: c.tier}; return Object.assign({}, c, {ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25}); });
+  G = Object.assign(blank(), {trophies: G.trophies, wish: G.wish, scout: G.scout, st, hist: H, keep, backup: G.backup, season: SEASON, since: ymd()});
+  gSave(); EARN = {pts: 0, games: 0, list: []}; $("gOpen").innerHTML = ""; drawGame(); window.scrollTo(0, 0);
+  toast2(`Welcome to ${SEASON}${keep.length ? `: ${keep.length} keeper${keep.length === 1 ? "" : "s"} waiting` : ""}. Open your 5 starter packs.`);
+}
 function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
@@ -836,10 +883,10 @@ function drawGame(){
   const started = !!G.started;
   $("gPlay").hidden = !started;
   $("gTrophies").innerHTML = started ? "" : "";
-  $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.</p><button class="gbtn" data-startteam>Open my 5 starter packs</button> <a href="card-rules.html" style="color:inherit;font-weight:600;margin-left:8px">How the game works →</a></div>`;
+  $("gStart").innerHTML = started ? "" : `<div class="opening" style="margin-top:14px"><h3>Start your team</h3><p style="margin:0 0 10px;opacity:.85">Open 5 free starter packs (15 cards) to fill your 10-man roster. Your best 10 go straight into the lineup; you can change it any time.${(G.keep || []).length ? ` Your keepers (${G.keep.map(c => esc(c.name)).join(", ")}) join them.` : ""}</p><button class="gbtn" data-startteam>Open my 5 starter packs</button> <a href="card-rules.html" style="color:inherit;font-weight:600;margin-left:8px">How the game works →</a></div>`;
   if(!started){ drawRules(); return; }
   const free = G.free.length, OVER = overflow().length;
-  $("gPacks").innerHTML = (free ? `<div class="pack t-${G.free[0]}"><b>Free pack${free > 1 ? "s" : ""}</b><div class="cost">${free}<small>waiting</small></div><p>Earned on the weekly ladder.</p><button data-freepack>Open free ${(PACKS.find(x => x.id === G.free[0]) || PACKS[0]).name}</button></div>` : "")
+  $("gPacks").innerHTML = (free ? `<div class="pack t-${G.free[0]}"><b>Free pack${free > 1 ? "s" : ""}</b><div class="cost">${free}<small>waiting</small></div><p>Earned from challenges and team sets.</p><button data-freepack>Open free ${(PACKS.find(x => x.id === G.free[0]) || PACKS[0]).name}</button></div>` : "")
     + PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p><button data-pack="${k.id}"${bal < k.cost || OVER ? " disabled" : ""}>${OVER ? "Roster full: make room" : bal < k.cost ? `Need ${k.cost - bal} more` : "Open pack"}</button></div>`).join("");
   const byId = Object.fromEntries(G.cards.map(c => [c.cid, c]));
   G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
@@ -865,7 +912,7 @@ function drawGame(){
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
   checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gScout").innerHTML = scoutHtml();
-  drawScore(); drawNights(); drawLadder(); drawRules();
+  drawScore(); drawNights(); drawRules(); $("gHist").innerHTML = histHtml(); setTab();
 }
 function drawRules(){
   $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
@@ -881,6 +928,7 @@ function drawRules(){
       <li><b>vs a real team:</b> your five against the NBA starting five closest to yours in OVR that night (if fewer of yours played, their starters who played the most minutes, same number). Win: <b>+${WIN_PTS}</b>; beat a better-rated five: another <b>+${WIN_PTS}</b>.</li></ol></li>
     <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
     <li><b>Bench balance:</b> the bench needs guards, wings and bigs (a backup center helps). When a starter sits, the first bench player at his position subs in, and that night's chemistry uses the five who actually played, so an all-guard bench can leave you with no center. Balanced bench: +5% on subs; lopsided: up to −40%.</li>
+    <li><b>Seasons:</b> when the NBA season ends, your record is saved under Past seasons, you earn season awards (Champion for 60%+ wins, Winning season, Fantasy Five MVP, Giant killer, Perfect ten, Cap wizard, Iron man), and you keep up to ${KEEP_MAX} cards for next season. Everything else starts fresh; trophies, wish list and scouting stay.</li>
     <li><b>Salary cap:</b> each card's salary is the player's <b>real NBA contract</b> this season. Your 10-man lineup's payroll (reserves don't count) has a ${$M(CAP)} cap. You can go over it, but each night costs a luxury tax of 1 point per $1M over; past the ${$M(APRON)} apron it's 2 points per $1M and you can't add players who push you further over. Look for players who outplay their contracts: 💰 on a card means he plays like a much bigger contract, 💸 means he's paid far more than he produces.</li>
     <li><b>Real teammates:</b> players from the same NBA team who play together in your five add +3% each (a pair +3%, three teammates +6%, up to +9%).</li>
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
@@ -892,7 +940,6 @@ function drawRules(){
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
-    <li><b>Weekly ladder:</b> points you win in the nightly games (+${WIN_PTS} a win, +${WIN_PTS} an upset, up to 40 a night) add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
     <li><b>Packs:</b> ${PACKS.map(k => `${k.name.replace(" pack", "")} ${k.cost.toLocaleString()}`).join(", ")} points. Stars are rare: the chance of a top-25 player is about 7% in a Gold pack, 15% in a Ruby and 50% in a Galaxy. <b>Five tiers:</b> Gold, Ruby, Amethyst (84+), Diamond (90+), Galaxy Opal (95+), from where his production per game ranks this season.</li>
     <li><b>Card values move with production.</b> OVR and value come from production per game (the Fantasy Five formula), so minutes count. A top-10 player is worth about 230 points, a top-25 about 100, an average player about 7. Every card shows its value change since you got it: sell high when a bench guy is outplaying his card, or hold and risk selling low.</li></ul>
     ${EARN.list.length ? `<p class="note" style="margin:10px 0 0">Your graded pick games: ${EARN.list.map(g => `${esc(g.away)} @ ${esc(g.home)}: ${g.w} of ${g.n} right, +${g.line} + ${g.bonus} bonus = ${g.p}`).slice(0, 6).join(" · ")}${EARN.list.length > 6 ? "…" : ""} <a href="picks.html">All picks →</a></p>` : ""}
@@ -990,8 +1037,8 @@ function fillRes(){   // put cards that aren't on the roster yet into open reser
 function startTeam(){
   if(G.started) return;
   const k = PACKS[0], cards = []; for(let i = 0; i < 5; i++) cards.push(...pull(k));
-  G.cards = cards; G.started = ymd(); trackPulls(cards, 5);
-  const uniq = []; cards.slice().sort((a, b) => b.ovr - a.ovr).forEach(c => { if(!uniq.some(x => x.id === c.id)) uniq.push(c); });
+  G.cards = (G.keep || []).concat(cards); G.keep = []; G.started = ymd(); G.season = G.season || SEASON; trackPulls(cards, 5);
+  const uniq = []; G.cards.slice().sort((a, b) => b.ovr - a.ovr).forEach(c => { if(!uniq.some(x => x.id === c.id)) uniq.push(c); });
   // starting five: the best guard, the best center, then the three best left; bench: the next five
   const grp = c => posGroup((statOf(c.id) || {}).pos), start = [];
   const gd = uniq.find(c => grp(c) === "g"), ct = uniq.find(c => grp(c) === "c");
@@ -1018,12 +1065,11 @@ function setupGame(){
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], hist: G.hist || [], season: G.season || SEASON, since: G.since || "", st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
     if("freepack" in d){ if(overflow().length) return toast("Your roster is over 20 cards: sell or place the extras first"); const id = G.free.shift(); gSave(); return openPack(PACKS.find(x => x.id === id), true); }
-    if(d.claim){ const [key, pk] = d.claim.split("|"); if(G.claimed[key]) return; G.claimed[key] = 1; G.free.push(pk); gSave(); drawGame(); toast("Free pack added: open it under Card packs"); return; }
     if(d.night){ NSEL = d.night; drawNights(); return; }
     if(t.id === "wishAdd"){ const q = fold($("wishQ").value); if(!q) return; const P = pool(), hit = P.find(p => fold(p.name) === q) || P.find(p => fold(p.name).includes(q));
       if(!hit) return toast("No player in the card pool by that name (needs 15+ minutes a game)"); if(G.wish.includes(hit.id)) return toast("Already on your wish list");
@@ -1050,6 +1096,8 @@ function setupGame(){
       if(G.res.length < RES_MAX && !G.res.includes(cid)) G.res.push(cid); else if(!G.res.includes(cid)) toast("Reserves are full, so he's over the roster limit: sell someone or move him back");
       if(d.gout) snap(); gSave(); drawGame(); return; }
     if(d.buyok){ buyCard(d.buyok); return; }
+    if("newseason" in d){ newSeason(); return; }
+    if(d.gtab){ setTab(d.gtab); window.scrollTo({top: $("gPlay").offsetTop - 70, behavior: "smooth"}); return; }
     if(d.buy){ showBuy(d.buy); return; }
     if(d.sctab){ SCTAB = d.sctab; $("gScout").innerHTML = scoutHtml(); return; }
     if(d.scsal){ SCSAL = d.scsal; $("gScout").innerHTML = scoutHtml(); return; }
@@ -1087,7 +1135,9 @@ async function init(){
   $("legend").innerHTML = TIERS.map(t => `<span class="t-${t[1]}">${t[2]} ${t[0] ? t[0] + "+" : ""}</span>`).join("");
   await Promise.all([window.Injuries ? Injuries.ready : null, window.Injuries ? Injuries.logReady() : null, ...ROT.map(async id => { FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`); })]);
   setupAdd(); drawAll();
-  await earnings(); await playNights(); setupGame();
+  if(G.started && !G.season){ G.season = SEASON; gSave(); }
+  await earnings(); if(!seasonOver()) await playNights(); setupGame();
+  if(seasonOver()) showSeasonEnd();
   { const m = location.hash.match(/buy=([^&]+)/); if(m) showBuy(decodeURIComponent(m[1])); }
   loadForm().then(() => { if(G.started && !$("gameMode").hidden) drawGame(); }).catch(() => {});
 }
