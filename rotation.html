@@ -69,7 +69,7 @@
   .pc-next{display:grid;gap:2px;margin:4px 0 6px;font-size:11.5px;line-height:1.35;} .pc-next span{display:flex;gap:5px;align-items:baseline;white-space:nowrap;overflow:hidden;}
   .pc-next b{font-weight:700;min-width:62px;} .pc-next i{font-style:normal;opacity:.75;font-size:10.5px;} .pc-next .tn b{color:#ffd43b;}
   .pc-bdgs{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;min-height:0;} .bdg{font:700 10.5px Inter,sans-serif;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;white-space:nowrap;}
-  .bdg.hot{background:#e8590c;} .bdg.cold{background:#1c7ed6;} .bdg.inj{background:#c92a2a;}
+  .bdg.hot{background:#e8590c;} .bdg.rook{background:#2f9e44;} .bdg.below{background:#5f3dc4;} .bdg.cold{background:#1c7ed6;} .bdg.inj{background:#c92a2a;}
   .tierdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;} .tierdot.t-gold{background:#d4a017;} .tierdot.t-ruby{background:#c0263d;} .tierdot.t-opal{background:linear-gradient(90deg,#ff6ec7,#7873f5,#4ade80);}
   .overcard{border:2px solid #f59f00;padding:12px 14px;margin:0 0 12px;}
   .empty-slot{border:2px dashed var(--line);border-radius:16px;display:grid;place-items:center;min-height:200px;color:var(--dim);font-weight:600;text-align:center;padding:12px;cursor:pointer;background:none;}
@@ -656,6 +656,7 @@ const MS = [
   ["chem90", "Win a game on a night with chemistry 90+", "Chem 90", () => playedNights().some(n => n.chem >= 90 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["pulseweek", "A full week with no losses vs Pulse (3+ nights)", "Pulse sweep", () => { const by = {}, cur = weekOf(ymd()); playedNights().forEach(n => { const w = weekOf(n.d); if(w < cur) (by[w] = by[w] || []).push(n); }); return Object.values(by).some(l => l.length >= 3 && l.every(n => n.pWin)) ? 1 : 0; }, [1]],
   ["sellhigh", "Sell a card for 100+ more than it was worth when you got it", "Sell high", () => G.st.sellHigh || 0, [1]],
+  ["holds", "Hold a card 7+ days and sell it for more than you got it", "hold & sell", () => G.st.holds || 0, [1, 5, 15]],
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
@@ -686,7 +687,8 @@ function trophyHtml(){
 }
 const award = (k, t, s) => { if(G.trophies.some(x => x.k === k)) return false; G.trophies.push({k, t, s, d: ymd()}); return true; };
 /* ---------- form badges: last 5 games vs season average, from recent box scores ---------- */
-let FORM = {};
+let FORM = {}, CAREER = {}, ROOKIES = new Set();
+const HOLD_DAYS = 7, HOLD_BONUS = 0.5;   // sell a card you've held 7+ days for more than it was worth when you got it: +50% of the gain
 async function loadForm(){
   const ids = [...new Set(G.cards.map(c => c.id))]; if(!ids.length || !SCHED) return;
   const games = (SCHED.games || []).filter(g => g[4] === 3).sort((a, b) => a[1] < b[1] ? 1 : -1).slice(0, 120);
@@ -698,6 +700,10 @@ async function loadForm(){
 }
 function badges(id, name, team){
   const out = [], f = FORM[id];
+  if(ROOKIES.has(id)) out.push(`<span class="bdg rook" title="First NBA season">🆕 Rookie</span>`);
+  const ca = CAREER[id], st = statOf(id);
+  if(ca && ca[0] >= 82 && st && st.g >= 5){ const now = fpg(st), d = (now - ca[1]) / ca[1];
+    if(d <= -0.15) out.push(`<span class="bdg below" title="${now.toFixed(1)} production a game this season vs ${ca[1].toFixed(1)} for his career (${ca[0]} games). If he gets back to his usual level, his card value goes up: a hold (or buy-low) candidate.">📉 Below career −${Math.round(-d * 100)}%</span>`); }
   const inj = window.Injuries && Injuries.find(NBA[team] || team, name);
   if(inj && !/^active$/i.test(inj.status || "")) out.push(`<span class="bdg inj" title="${esc(inj.status || "Injured")}${Injuries.tag ? " · " + esc(Injuries.tag(inj) || "") : ""}">🚑 ${esc(/out/i.test(inj.status || "") ? "Out" : inj.status || "Injured")}</span>`);
   if(f && f.d >= 0.2) out.push(`<span class="bdg hot" title="Last ${f.n} games: ${f.l5.toFixed(1)} production a game, ${Math.round(f.d * 100)}% over his season average">🔥 Hot +${Math.round(f.d * 100)}%</span>`);
@@ -739,7 +745,7 @@ function gCard(c, opts){
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
-    <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him` : " · same as when you got him"}</div>
+    <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him${(() => { if(dv <= 0 || !c.at) return ""; const days = Math.floor((new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5); return days >= HOLD_DAYS ? ` · <b class="up">sell now: +${Math.round(dv * HOLD_BONUS)} hold bonus</b>` : ` · hold bonus in ${HOLD_DAYS - days}d`; })()}` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
       : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
@@ -855,6 +861,7 @@ function drawRules(){
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
     <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
+    <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
     <li><b>Weekly ladder:</b> points you win in the nightly games (+${WIN_PTS} a win, +${WIN_PTS} an upset, up to 40 a night) add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
@@ -869,6 +876,12 @@ function showOpen(title, cards, dupes, wished){
   $("gOpen").innerHTML = `<div class="opening"><h3>${esc(title)}: tap each card to flip it</h3><div class="reveal">${cards.map((c, i) => `<div class="flip" data-flip><div class="inner"><div class="back">FCGP</div><div class="front">${gCard(c, {acts: false, tags: `${c.ovr === best ? '<span class="gtag">Best pull</span>' : ""}${dupes[i] ? '<span class="gtag dupe">Duplicate</span>' : ""}${wished && wished.has(c.id) ? '<span class="gtag">🌠 Wish list!</span>' : ""}`})}</div></div></div>`).join("")}</div>
     <div class="row" style="margin-top:10px"><button class="gbtn alt" data-flipall>Flip all</button><button class="gbtn alt" data-closeopen>Done</button></div></div>`;
   $("gOpen").scrollIntoView({behavior: "smooth", block: "start"});
+}
+function holdBonus(c, v){
+  if(c.val == null || !c.at || v <= c.val) return 0;
+  const days = (new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5;
+  if(days < HOLD_DAYS) return 0;
+  const b = Math.round((v - c.val) * HOLD_BONUS); G.st.holds = (G.st.holds || 0) + 1; G.st.holdPts = (G.st.holdPts || 0) + b; return b;
 }
 function trackPulls(cards, packs){
   const P = pool(); G.st.packs = (G.st.packs || 0) + packs;
@@ -951,17 +964,20 @@ function setupGame(){
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
       if(c.val != null && v - c.val >= 100) G.st.sellHigh = 1;
-      G.sold += v; gSave(); drawGame(); return toast(`Sold ${c.name} for ${v} points`); }
+      const hb = holdBonus(c, v);
+      G.sold += v + hb; gSave(); drawGame(); return toast(hb ? `📈 Held and sold ${c.name} for ${v} + ${hb} hold bonus` : `Sold ${c.name} for ${v} points`); }
     if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(), drop = new Set(); let v = 0;
-      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); const cv = valueOf(ratingOf(statOf(c.id))); v += cv; if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; } else seen.add(c.id); });
+      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); const cv = valueOf(ratingOf(statOf(c.id))); v += cv; } else seen.add(c.id); });
       if(!drop.size) return toast("No duplicates to sell");
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${drop.size} for ${v}?`; return; }
+      let hbs = 0; G.cards.filter(c => drop.has(c.cid)).forEach(c => { const cv = valueOf(ratingOf(statOf(c.id))); if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; hbs += holdBonus(c, cv); }); v += hbs;
       G.cards = G.cards.filter(c => !drop.has(c.cid)); G.res = G.res.filter(x => !drop.has(x)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
   });
 }
 async function init(){
   setupShare();
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
+  Promise.all([getJSON("data/career.json"), getJSON("data/rookies.json")]).then(([ca, rk]) => { CAREER = (ca && ca.players) || {}; ROOKIES = new Set((rk && rk.ids) || []); if(G.started && !$("gameMode").hidden) drawGame(); });
   IDX = idx || []; STATS = st || {players: []}; CT = (ct && ct.players) || {}; SCHED = sc; MORNING = mo; TRADED = tr; SEASON = (STATS && STATS.season) || (sc && sc.season) || "";
   const most = Math.max(1, ...STATS.players.map(p => p.g || 0)); MING = Math.max(1, Math.ceil(most / 2));
   QUAL = STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).map(fpg);

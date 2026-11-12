@@ -328,6 +328,7 @@ def main():
         print(f"No player rows found (HTTP {status}) at {url}")
 
     run_step("rookies", lambda: write_rookies(year))
+    run_step("career production (card game)", lambda: write_career(year))
     run_step("playoffs", lambda: save_playoffs(now, year))
     run_step("bios, drafts, contracts", lambda: __import__("bbr_extra").update(now, year))
     # The NBA's own feed (nba_games.py) turns away GitHub's servers, so games come from ESPN
@@ -344,6 +345,28 @@ def main():
     run_step("team pages", lambda: __import__("build_teams").build(now, year))
     run_step("Pulse picks and storylines", lambda: __import__("predict").update(now, year))
     return 0
+
+
+def write_career(year):
+    """data/career.json: each current player's per-game production in earlier seasons (card game formula:
+    PTS + 2*AST + 2*REB + 3*STL + BLK - 4*TOV), to flag players playing below their career level."""
+    import glob
+    cur = {p.get("id") for p in ((load_json(STATS_PATH, {}) or {}).get("players") or []) if p.get("id")}
+    tot = {}
+    for fn in glob.glob(os.path.join(DATA_DIR, "season-*.json")):
+        if fn.endswith(f"season-{year}.json"):
+            continue
+        for p in (load_json(fn, {}) or {}).get("players", []):
+            i = p.get("id")
+            if i not in cur or not p.get("g"):
+                continue
+            t = tot.setdefault(i, [0, 0.0, 0])
+            t[0] += p["g"]
+            t[1] += (p.get("pts", 0) + 2 * p.get("ast", 0) + 2 * p.get("trb", 0) + 3 * p.get("stl", 0) + p.get("blk", 0) - 4 * p.get("tov", 0))
+            t[2] += 1
+    out = {i: [g, round(prod / g, 2), n] for i, (g, prod, n) in tot.items() if g}
+    with open(os.path.join(DATA_DIR, "career.json"), "w", encoding="utf-8") as f:
+        json.dump({"season": season_label(year), "cols": ["g", "prodPerGame", "seasons"], "players": out}, f, separators=(",", ":"))
 
 
 def write_rookies(year):
