@@ -59,7 +59,11 @@
   .pc-acts button{flex:1;padding:4px 0;border-radius:7px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:12px;}
   .pc-acts button:hover{background:rgba(0,0,0,.45);}
   #gWish img,#gSets img{width:22px;height:22px;vertical-align:middle;object-fit:contain;margin-right:2px;}
-  .trophies{padding:12px 14px;margin-top:14px;} .shelf{display:flex;gap:8px;overflow-x:auto;padding:8px 0 2px;}
+  .trophies{padding:12px 14px;margin-top:14px;}
+  .mslist{margin-top:8px;} .mslist summary{cursor:pointer;font-weight:600;font-size:14px;}
+  .mslist ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;}
+  .mslist li{display:grid;grid-template-columns:28px 1fr auto;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:10px;opacity:.55;font-size:13px;}
+  .mslist li.on{opacity:1;border-color:#f5c542;} .mslist li span{font-size:18px;filter:grayscale(1);} .mslist li.on span{filter:none;} .mslist li small{color:var(--dim);white-space:nowrap;} .shelf{display:flex;gap:8px;overflow-x:auto;padding:8px 0 2px;}
   .tro{flex:0 0 auto;width:78px;text-align:center;background:var(--row,#f6f8fb);border:1px solid var(--line);border-radius:12px;padding:6px 4px;}
   .tro span{font-size:26px;display:block;line-height:1.2;} .tro small{display:block;font-size:10.5px;line-height:1.25;color:var(--dim);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .pc-bdgs{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;min-height:0;} .bdg{font:700 10.5px Inter,sans-serif;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;white-space:nowrap;}
@@ -403,7 +407,7 @@ const LAD1 = 80, LAD2 = 140, LAD3 = 200;
 const CAP = 1000, APRON = 1500, MATE = 0.03, MATE_MAX = 0.09;
 const LADDER = [[LAD1, "gold"], [LAD2, "ruby"], [LAD3, "opal"]], FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], st: {}, n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -488,7 +492,7 @@ async function playNight(d){
     target: proj, ffWin: ff >= proj, pf, pulse: pulseFive.map(x => ({n: x.name, p: prodOf(x.r), o: x.ovr})), pWin: ff > pf,
     opp: opp ? {t: opp.t, prod: opp.prod, avg: Math.round(opp.avg), l: opp.l.map(r => ({n: r[1], p: prodOf(r)}))} : null, oWin: opp ? ff > opp.prod : false, upset: opp ? opp.avg > myAvg && ff > opp.prod : false, myAvg: Math.round(myAvg)};
   res.won = (res.ffWin ? WIN_PTS : 0) + (res.pWin ? WIN_PTS : 0) + (res.oWin ? WIN_PTS : 0) + (res.upset ? WIN_PTS : 0);
-  res.mates = mates; res.mmult = mateMult; res.ovrs = five.map(x => (ratingOf(statOf(x.id)) || {ovr: 70}).ovr);
+  res.mates = mates; res.mt = Math.max(0, ...Object.values(tc)); res.mmult = mateMult; res.ovrs = five.map(x => (ratingOf(statOf(x.id)) || {ovr: 70}).ovr);
   res.payroll = payrollOf(L.start.concat(L.bench)); res.tax = taxOf(res.payroll);
   res.pts = res.won - res.tax;
   return res;
@@ -631,12 +635,51 @@ function wishHtml(){
     <p class="note" style="margin:8px 0 0">Pick up to ${WISH_MAX} players you're hoping for. Pull one from any pack and you get a 🌠 trophy (once per player). Swap players in and out any time; it doesn't change pack odds.</p>`;
 }
 /* ---------- trophy case ---------- */
+/* ---------- milestones: [id, name, shelf label, progress(), targets]; one trophy per target (🥉🥈🥇 for tiers, ⭐ for one-offs) ---------- */
+const playedNights = () => Object.values(G.nights).filter(n => !n.none && n.ff != null).sort((a, b) => a.d < b.d ? -1 : 1);
+const tierOfId = id => (ratingOf(statOf(id)) || {cls: "gold"}).cls;
+const MS = [
+  ["opal1", "Pull your first Galaxy Opal", "1st Opal", () => G.st.opals || 0, [1]],
+  ["opal5", "Own 5 Galaxy Opals at once", "5 Opals", () => new Set(G.cards.filter(c => tierOfId(c.id) === "opal").map(c => c.id)).size, [5]],
+  ["tiers", "Own a card of every tier at once", "All 5 tiers", () => new Set(G.cards.map(c => tierOfId(c.id))).size, [5]],
+  ["top3", "Pull a top-3 player from a pack", "Top-3 pull", () => G.st.top3 || 0, [1]],
+  ["packs", "Open packs", "packs", () => G.st.packs || 0, [25, 100]],
+  ["perfect", "Go 3–0 in a night", "3–0 night", () => playedNights().filter(n => n.ffWin && n.pWin && n.oWin).length, [1]],
+  ["streak", "Win streak in one game (Fantasy Five, vs Pulse or vs a real team)", "win streak", () => Math.max(0, ...["ffWin", "pWin", "oWin"].map(k => record(playedNights(), k).best)), [5, 10]],
+  ["wins", "Nightly game wins", "wins", () => playedNights().reduce((a, n) => a + (n.ffWin ? 1 : 0) + (n.pWin ? 1 : 0) + (n.oWin ? 1 : 0), 0), [25, 100, 250]],
+  ["proj50", "Beat your projection by 50+", "+50 night", () => playedNights().some(n => n.target != null && n.ff - n.target >= 50) ? 1 : 0, [1]],
+  ["upsets", "Win 5 upsets", "5 upsets", () => playedNights().filter(n => n.upset).length, [5]],
+  ["ff300", "Score 300+ in Fantasy Five", "300 night", () => playedNights().some(n => n.ff >= 300) ? 1 : 0, [1]],
+  ["chem90", "Win a game on a night with chemistry 90+", "Chem 90", () => playedNights().some(n => n.chem >= 90 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
+  ["pulseweek", "A full week with no losses vs Pulse (3+ nights)", "Pulse sweep", () => { const by = {}, cur = weekOf(ymd()); playedNights().forEach(n => { const w = weekOf(n.d); if(w < cur) (by[w] = by[w] || []).push(n); }); return Object.values(by).some(l => l.length >= 3 && l.every(n => n.pWin)) ? 1 : 0; }, [1]],
+  ["sellhigh", "Sell a card for 100+ more than it was worth when you got it", "Sell high", () => G.st.sellHigh || 0, [1]],
+  ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll != null && n.payroll <= CAP)) ? 1 : 0; }, [1]],
+  ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
+  ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
+  ["earned", "Earn points (all-time)", "points", () => Math.max(0, balance() + G.spent), [1000, 5000, 25000]],
+  ["lines3", "Hit all 3 lines in one game", "3 for 3", () => EARN.list.some(g => g.w >= 3) ? 1 : 0, [1]],
+  ["daily", "Daily bonus streak", "day streak", () => G.st.dbest || 0, [7, 30]],
+  ["chal10", "Complete 10 weekly challenges", "10 challenges", () => G.trophies.filter(x => x.k.startsWith("chal:")).length, [10]],
+  ["chalweek", "Clear all three challenges in one week", "Clean sweep", () => { const by = {}; G.trophies.filter(x => x.k.startsWith("chal:")).forEach(x => { const w = x.k.slice(5, 15); by[w] = (by[w] || 0) + 1; }); return Object.values(by).some(n => n >= 3) ? 1 : 0; }, [1]]];
+const MEDAL = (i, n) => n === 1 ? "⭐" : (n === 2 ? ["🥈", "🥇"] : ["🥉", "🥈", "🥇"])[i];
+const msLabel = (m, t) => m[4].length > 1 ? (t >= 1000 ? (t / 1000) + "K" : t) + " " + m[2] : m[2];
+function checkMilestones(){
+  if(!G.started) return [];
+  const got = [];
+  MS.forEach(m => { let v = 0; try{ v = m[3](); }catch(_){} m[4].forEach((t, i) => { if(v >= t && award(`ms:${m[0]}:${t}`, m[4].length > 1 ? `${m[1]}: ${t.toLocaleString()}` : m[1], msLabel(m, t))) got.push(MEDAL(i, m[4].length) + " " + msLabel(m, t)); }); });
+  if(got.length){ gSave(); if(window.fcToast) setTimeout(() => fcToast(`New troph${got.length === 1 ? "y" : "ies"}: ${got.slice(0, 3).join(", ")}${got.length > 3 ? "…" : ""}`), 400); }
+  return got;
+}
 function trophyHtml(){
-  const T = G.trophies || [];
-  if(!T.length) return `<div class="trophies card"><b>🏆 Trophy case</b><span class="note"> Empty for now. Complete team sets and weekly challenges, or pull a player from your wish list, to fill it.</span></div>`;
-  const icon = k => k.startsWith("set:") ? "🏅" : k.startsWith("chal:") ? "🏆" : k.startsWith("wish:") ? "🌠" : "⭐";
+  const T = G.trophies || [], total = MS.reduce((a, m) => a + m[4].length, 0), msGot = T.filter(x => x.k.startsWith("ms:")).length;
+  const icon = x => { if(x.k.startsWith("set:")) return "🏅"; if(x.k.startsWith("chal:")) return "🏆"; if(x.k.startsWith("wish:")) return "🌠";
+    const [, id, t] = x.k.split(":"), m = MS.find(y => y[0] === id); return m ? MEDAL(m[4].indexOf(+t), m[4].length) : "⭐"; };
+  const list = MS.map(m => { let v = 0; try{ v = m[3](); }catch(_){}
+    return m[4].map((t, i) => { const have = T.some(x => x.k === `ms:${m[0]}:${t}`);
+      return `<li class="${have ? "on" : ""}"><span>${MEDAL(i, m[4].length)}</span><b>${esc(m[4].length > 1 ? `${m[1]}: ${t.toLocaleString()}` : m[1])}</b><small>${have ? "Earned ✓" : t > 1 ? `${Math.min(v, t).toLocaleString()} / ${t.toLocaleString()}` : "Not yet"}</small></li>`; }).join(""); }).join("");
   return `<div class="trophies card"><div class="row" style="justify-content:space-between"><b>🏆 Trophy case</b><span class="note">${T.length} troph${T.length === 1 ? "y" : "ies"}</span></div>
-    <div class="shelf">${T.slice().reverse().map(x => `<div class="tro" title="${esc(x.t)} · ${esc(x.d)}"><span>${icon(x.k)}</span><small>${esc(x.s || x.t)}</small></div>`).join("")}</div></div>`;
+    ${T.length ? `<div class="shelf">${T.slice().reverse().map(x => `<div class="tro" title="${esc(x.t)} · ${esc(x.d)}"><span>${icon(x)}</span><small>${esc(x.s || x.t)}</small></div>`).join("")}</div>` : `<p class="note" style="margin:6px 0 0">Empty for now. Hit milestones, complete team sets and weekly challenges, or pull a player from your wish list to fill it.</p>`}
+    <details class="mslist"><summary>Milestone trophies: ${msGot} of ${total} earned</summary><ul>${list}</ul></details></div>`;
 }
 const award = (k, t, s) => { if(G.trophies.some(x => x.k === k)) return false; G.trophies.push({k, t, s, d: ymd()}); return true; };
 /* ---------- form badges: last 5 games vs season average, from recent box scores ---------- */
@@ -769,7 +812,7 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml();
+  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml();
   drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
@@ -790,6 +833,7 @@ function drawRules(){
     <li><b>Real teammates:</b> players from the same NBA team who play together in your five add +3% each (a pair +3%, three teammates +6%, up to +9%).</li>
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
+    <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
     <li><b>Weekly ladder:</b> points you win in the nightly games (+${WIN_PTS} a win, +${WIN_PTS} an upset, up to 40 a night) add up Monday to Sunday. ${LADDER.map(([n, pk]) => `${n} = free ${(PACKS.find(x => x.id === pk) || {}).name}`).join(", ")}.</li>
@@ -805,11 +849,16 @@ function showOpen(title, cards, dupes, wished){
     <div class="row" style="margin-top:10px"><button class="gbtn alt" data-flipall>Flip all</button><button class="gbtn alt" data-closeopen>Done</button></div></div>`;
   $("gOpen").scrollIntoView({behavior: "smooth", block: "start"});
 }
+function trackPulls(cards, packs){
+  const P = pool(); G.st.packs = (G.st.packs || 0) + packs;
+  cards.forEach(c => { if(c.tier === "opal") G.st.opals = (G.st.opals || 0) + 1; const r = P.findIndex(p => p.id === c.id) + 1; if(r && r <= 3) G.st.top3 = (G.st.top3 || 0) + 1; });
+}
 function openPack(k, free){
   if(!k || (!free && balance() < k.cost)) return;
   if(overflow().length){ if(window.fcToast) fcToast("Your roster is over 20 cards: sell or place the extras first"); return; }
   const owned = new Set(G.cards.map(c => c.id)), cards = pull(k); if(!cards.length) return;
   if(!free) G.spent += k.cost;
+  trackPulls(cards, 1);
   G.cards.push(...cards); cards.forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); }); const wished = checkWish(cards); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)), wished);
 }
 const overflow = () => G.cards.filter(c => !G.start.includes(c.cid) && !G.bench.includes(c.cid) && !G.res.includes(c.cid));
@@ -819,7 +868,7 @@ function fillRes(){   // put cards that aren't on the roster yet into open reser
 function startTeam(){
   if(G.started) return;
   const k = PACKS[0], cards = []; for(let i = 0; i < 5; i++) cards.push(...pull(k));
-  G.cards = cards; G.started = ymd();
+  G.cards = cards; G.started = ymd(); trackPulls(cards, 5);
   const uniq = []; cards.slice().sort((a, b) => b.ovr - a.ovr).forEach(c => { if(!uniq.some(x => x.id === c.id)) uniq.push(c); });
   // starting five: the best guard, the best center, then the three best left; bench: the next five
   const grp = c => posGroup((statOf(c.id) || {}).pos), start = [];
@@ -838,7 +887,7 @@ function setupGame(){
   let m0 = "follow"; try{ m0 = localStorage.getItem("fcgp.rotmode") || "follow"; }catch(_){}
   if(/#game/.test(location.hash)) m0 = "game";
   mode(m0);
-  $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
+  $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
   $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } });
   $("gameMode").addEventListener("click", e => {
@@ -847,7 +896,7 @@ function setupGame(){
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || []}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
@@ -880,9 +929,10 @@ function setupGame(){
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
+      if(c.val != null && v - c.val >= 100) G.st.sellHigh = 1;
       G.sold += v; gSave(); drawGame(); return toast(`Sold ${c.name} for ${v} points`); }
     if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(), drop = new Set(); let v = 0;
-      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); v += valueOf(ratingOf(statOf(c.id))); } else seen.add(c.id); });
+      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); const cv = valueOf(ratingOf(statOf(c.id))); v += cv; if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; } else seen.add(c.id); });
       if(!drop.size) return toast("No duplicates to sell");
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${drop.size} for ${v}?`; return; }
       G.cards = G.cards.filter(c => !drop.has(c.cid)); G.res = G.res.filter(x => !drop.has(x)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
