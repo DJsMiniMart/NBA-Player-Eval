@@ -191,6 +191,7 @@ function heroHtml(team){
         <div class="s">Career ${f3(career)}</div>
         <button class="pp-back" id="ppCompare" style="margin-top:8px">Compare with another player</button>
         <button class="pp-back" id="ppRot" style="margin-top:8px"></button>
+        ${cardBuyBtn()}
       </div>
     </div>
   </div></div>`;
@@ -707,6 +708,19 @@ function playoffsBlock(){
   return `<div class="pp-grid">${statLineCard(t, "Playoff career stat line", "per game, every playoff run",
       `<div class="pp-note">${series} playoff run${series===1?"":"s"} · ${t.g} games · ${Math.round(t.pts).toLocaleString()} points. Pulse worked out from playoff totals.</div>`)}</div>
     <div class="pp-gap"></div><div class="pp-grid">${careerCard(list, "Playoffs, season by season", false, "per game · playoffs")}</div>`;
+}
+
+/* ---------- The Game: buy this player's card (price = 4.5x card value; same formula as rotation.html) ---------- */
+function cardBuyBtn(){
+  if(!LG || !REC || isRetired()) return "";
+  const P = LG.players, st = P.find(p => p.id === REC.id); if(!st || !st.g || !st.mp) return "";
+  const f = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 3 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0)) / p.g : 0;
+  const most = Math.max(1, ...P.map(p => p.g || 0)), MING = Math.max(1, Math.ceil(most / 2));
+  const Q = P.filter(p => p.g >= MING && p.mp / p.g >= 15).map(f); if(!Q.length) return "";
+  const early = !(st.g >= MING && st.mp / st.g >= 15), med = Q.slice().sort((a, b) => a - b)[Q.length >> 1];
+  const v = early ? (f(st) * st.g + med * 5) / (st.g + 5) : f(st), pc = Q.filter(x => x < v).length / Q.length;
+  const value = Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.pow(pc, 2.5)))), price = Math.max(50, Math.round(value * 4.5));
+  return `<a class="pp-back" href="rotation.html#buy=${encodeURIComponent(REC.id)}" style="margin-top:8px;display:inline-block;text-decoration:none" title="Buy his card in The Game">🃏 Buy his card · ${price.toLocaleString()} pts</a>`;
 }
 
 /* ---------- stat filters: the same game filters as the team page, applied to his game logs ---------- */

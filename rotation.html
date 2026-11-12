@@ -69,6 +69,7 @@
   .pc-next{display:grid;gap:2px;margin:4px 0 6px;font-size:11.5px;line-height:1.35;} .pc-next span{display:flex;gap:5px;align-items:baseline;white-space:nowrap;overflow:hidden;}
   .pc-next b{font-weight:700;min-width:62px;} .pc-next i{font-style:normal;opacity:.75;font-size:10.5px;} .pc-next .tn b{color:#ffd43b;}
   .pc-bdgs{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;min-height:0;} .bdg{font:700 10.5px Inter,sans-serif;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;white-space:nowrap;}
+  .pc-line.ctr{font-size:12px;} .pc-line.ctr.low{background:rgba(245,159,0,.35);} .pc-line.ctr.exp{background:rgba(201,42,42,.55);}
   .bdg.hot{background:#e8590c;} .bdg.rook{background:#2f9e44;} .bdg.below{background:#5f3dc4;} .bdg.cold{background:#1c7ed6;} .bdg.inj{background:#c92a2a;}
   .tierdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;} .tierdot.t-gold{background:#d4a017;} .tierdot.t-ruby{background:#c0263d;} .tierdot.t-opal{background:linear-gradient(90deg,#ff6ec7,#7873f5,#4ade80);}
   .overcard{border:2px solid #f59f00;padding:12px 14px;margin:0 0 12px;}
@@ -438,7 +439,7 @@ function pull(k){
   const pick = odds => { let x = Math.random(), lo = 0;
     for(const [top, ch] of odds){ const hi = Math.min(top || P.length, P.length); if(x < ch || top === odds[odds.length - 1][0]) return P[lo + Math.floor(Math.random() * Math.max(1, hi - lo))]; x -= ch; lo = hi; }
     return P[P.length - 1]; };
-  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd()}; }).sort(() => Math.random() - .5);
+  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25}; }).sort(() => Math.random() - .5);
 }
 /* ---------- lineup snapshots: a night is played with the lineup you had before its first tip-off ---------- */
 function firstTip(d){ const t = ((SCHED && SCHED.games) || []).filter(g => ymd(new Date(g[1])) === d).map(g => g[1]).sort()[0]; return t ? new Date(t) : null; }
@@ -464,8 +465,9 @@ async function playNight(d){
   const nm = id => { const st = statOf(id), ix = IDX.find(x => x[0] === id); return (st && st.name) || (ix && ix[1]) || id; };
   // option 1: Fantasy Five, with bench players subbing in (in bench order) for starters who didn't play
   const used = new Set(), five = [], grpOf = id => posGroup((statOf(id) || {}).pos);
-  const playedBench = L.bench.filter(id => lines.get(fold(nm(id))));
-  L.start.forEach(id => { const r = lines.get(fold(nm(id)));
+  const gone = id => { const c = G.cards.find(x => x.id === id && x.gl != null); return c && c.gl === 0 && !G.cards.some(x => x.id === id && x.gl > 0); };   // contract up: he sits
+  const playedBench = L.bench.filter(id => !gone(id) && lines.get(fold(nm(id))));
+  L.start.forEach(id => { const r = gone(id) ? null : lines.get(fold(nm(id)));
     if(r){ five.push({id, name: nm(id), r, sub: false}); used.add(id); return; }
     const want = grpOf(id), sub = playedBench.find(b => !used.has(b) && grpOf(b) === want) || playedBench.find(b => !used.has(b));   // same position first
     if(sub){ five.push({id: sub, name: nm(sub), r: lines.get(fold(nm(sub))), sub: true, for: nm(id)}); used.add(sub); } });
@@ -495,10 +497,15 @@ async function playNight(d){
     target: proj, ffWin: ff >= proj, pf, pulse: pulseFive.map(x => ({n: x.name, p: prodOf(x.r), o: x.ovr})), pWin: ff > pf,
     opp: opp ? {t: opp.t, prod: opp.prod, avg: Math.round(opp.avg), l: opp.l.map(r => ({n: r[1], p: prodOf(r)}))} : null, oWin: opp ? ff > opp.prod : false, upset: opp ? opp.avg > myAvg && ff > opp.prod : false, myAvg: Math.round(myAvg)};
   res.won = (res.ffWin ? WIN_PTS : 0) + (res.pWin ? WIN_PTS : 0) + (res.oWin ? WIN_PTS : 0) + (res.upset ? WIN_PTS : 0);
-  res.mates = mates; res.mt = Math.max(0, ...Object.values(tc)); res.mmult = mateMult; res.ovrs = five.map(x => (ratingOf(statOf(x.id)) || {ovr: 70}).ovr);
+  res.ids = five.map(x => x.id); res.mates = mates; res.mt = Math.max(0, ...Object.values(tc)); res.mmult = mateMult; res.ovrs = five.map(x => (ratingOf(statOf(x.id)) || {ovr: 70}).ovr);
   res.payroll = payrollOf(L.start.concat(L.bench)); res.tax = taxOf(res.payroll);
   res.pts = res.won - res.tax;
   return res;
+}
+function useContracts(ids){
+  ids.forEach(id => { const inLine = G.cards.filter(c => c.id === id && (G.start.includes(c.cid) || G.bench.includes(c.cid))), c = inLine[0] || G.cards.find(x => x.id === id);
+    if(!c || c.gl == null) return; c.gl = Math.max(0, c.gl - 1);
+    if(c.gl === 0) (G.expired = G.expired || []).push(c.name); });
 }
 async function playNights(){
   if(!G.started) return;
@@ -506,7 +513,7 @@ async function playNights(){
   for(let d = G.started; d <= yest; d = addD(d, 1)){
     if(G.nights[d]) continue;
     const r = await playNight(d);
-    if(r){ G.nights[d] = r; G.game += r.pts; changed = true; }
+    if(r){ G.nights[d] = r; G.game += r.pts; changed = true; useContracts(r.ids || []); }
     else if(!((SCHED && SCHED.games) || []).some(g => ymd(new Date(g[1])) === d)) G.nights[d] = {d, none: true, pts: 0};
   }
   if(changed) gSave();
@@ -688,7 +695,14 @@ function trophyHtml(){
 const award = (k, t, s) => { if(G.trophies.some(x => x.k === k)) return false; G.trophies.push({k, t, s, d: ymd()}); return true; };
 /* ---------- form badges: last 5 games vs season average, from recent box scores ---------- */
 let FORM = {}, CAREER = {}, ROOKIES = new Set();
-const HOLD_DAYS = 7, HOLD_BONUS = 0.5;   // sell a card you've held 7+ days for more than it was worth when you got it: +50% of the gain
+const HOLD_DAYS = 7, HOLD_BONUS = 0.5;
+/* contracts: every card plays a set number of games for you (games he actually plays in your five), by tier when you got him;
+   with 3 or fewer left you can re-sign him for half his current value; at 0 he leaves your lineup until you do */
+const CLEN = {opal: 12, diamond: 15, amethyst: 18, ruby: 20, gold: 25}, RESIGN = 0.5, RESIGN_AT = 3;
+const BUY_MULT = 4.5, BUY_MIN = 50;   // buying a card outright: 4.5x its value (the best card ~1,800), at least 50
+const contractLen = id => CLEN[(ratingOf(statOf(id)) || {cls: "gold"}).cls] || 25;
+const resignCost = id => Math.max(10, Math.round(valueOf(ratingOf(statOf(id))) * RESIGN));
+const buyPrice = id => Math.max(BUY_MIN, Math.round(valueOf(ratingOf(statOf(id))) * BUY_MULT));   // sell a card you've held 7+ days for more than it was worth when you got it: +50% of the gain
 async function loadForm(){
   const ids = [...new Set(G.cards.map(c => c.id))]; if(!ids.length || !SCHED) return;
   const games = (SCHED.games || []).filter(g => g[4] === 3).sort((a, b) => a[1] < b[1] ? 1 : -1).slice(0, 120);
@@ -745,10 +759,11 @@ function gCard(c, opts){
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
+    ${c.gl != null && opts.acts !== false ? `<div class="pc-line ctr ${c.gl === 0 ? "exp" : c.gl <= RESIGN_AT ? "low" : ""}">📝 ${c.gl === 0 ? "<b>Contract expired</b>: he sits until you re-sign him" : `<b>${c.gl}</b> game${c.gl === 1 ? "" : "s"} left on his contract`}</div>` : ""}
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him${(() => { if(dv <= 0 || !c.at) return ""; const days = Math.floor((new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5); return days >= HOLD_DAYS ? ` · <b class="up">sell now: +${Math.round(dv * HOLD_BONUS)} hold bonus</b>` : ` · hold bonus in ${HOLD_DAYS - days}d`; })()}` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
-      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
+      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}${c.gl != null && c.gl <= RESIGN_AT ? `<button data-gresign="${c.cid}" title="Re-sign for ${contractLen(c.id)} more games">Re-sign ${resignCost(c.id)}</button>` : ""}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
   </div></div>`;
 }
 function drawNights(){
@@ -821,7 +836,9 @@ function drawGame(){
   const byId = Object.fromEntries(G.cards.map(c => [c.cid, c]));
   G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
   G.res = G.res.filter(x => byId[x] && !G.start.includes(x) && !G.bench.includes(x));
-  if(G.resNew){ delete G.resNew; fillRes(); gSave(); }   // older saves: best 10 cards outside the lineup become reserves
+  if(G.resNew){ delete G.resNew; fillRes(); gSave(); }
+  { let fix = false; G.cards.forEach(c => { if(c.gl == null){ c.gl = contractLen(c.id); fix = true; } }); if(fix) gSave(); }
+  if(G.expired && G.expired.length){ toast2(`📝 Contract${G.expired.length === 1 ? "" : "s"} up: ${G.expired.slice(0, 3).join(", ")}${G.expired.length > 3 ? "…" : ""} expired: they sit until you re-sign them (button on the card).`); G.expired = []; gSave(); }   // older saves: best 10 cards outside the lineup become reserves
   const ovrs = G.start.map(x => ratingOf(statOf(byId[x].id))).filter(Boolean);
   $("gLineupNote").textContent = ovrs.length ? `starting five OVR ${Math.round(ovrs.reduce((a, b) => a + b.ovr, 0) / ovrs.length)} · roster value ${G.start.concat(G.bench).reduce((a, x) => a + valueOf(ratingOf(statOf(byId[x].id))), 0)}` : "";
   const tip = firstTip(ymd());
@@ -861,6 +878,8 @@ function drawRules(){
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
     <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
+    <li><b>Contracts:</b> every card has a contract for a set number of games he actually plays for you: Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 (by his tier when you got him). With ${RESIGN_AT} or fewer left you can re-sign him for half his current value (another full contract). At 0 he sits (a bench player subs in) until you re-sign him, and he still counts on your payroll.</li>
+    <li><b>Buy a card:</b> on any player's page, tap "Buy his card". Price is ${BUY_MULT}× his card value (the best cards cost about 1,800; at least ${BUY_MIN}). He goes to your reserves with a fresh contract. Great for grabbing an underpaid player before everyone else notices.</li>
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
@@ -882,6 +901,28 @@ function holdBonus(c, v){
   const days = (new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5;
   if(days < HOLD_DAYS) return 0;
   const b = Math.round((v - c.val) * HOLD_BONUS); G.st.holds = (G.st.holds || 0) + 1; G.st.holdPts = (G.st.holdPts || 0) + b; return b;
+}
+const toast2 = m => { if(window.fcToast) setTimeout(() => fcToast(m), 500); };
+/* ---------- buy a card outright (from a player page): 4.5x his card value ---------- */
+function showBuy(id){
+  const st = statOf(id), r = ratingOf(st);
+  history.replaceState(null, "", location.pathname + "#game");
+  if(!st || !r){ toast2("That player has no stats this season, so there's no card to buy yet."); return; }
+  const price = buyPrice(id), bal = balance(), own = G.cards.some(c => c.id === id), over = overflow().length, full = G.res.length >= RES_MAX;
+  const why = !G.started ? "Start your team first (open your 5 free starter packs), then come back." : bal < price ? `You need ${(price - bal).toLocaleString()} more points.` : over ? "Your roster is over 20 cards: sell or place the extras first." : full ? "Your reserves are full: sell a reserve to make room." : "";
+  $("gOpen").innerHTML = `<div class="opening"><h3>Buy ${esc(st.name)}'s card</h3>
+    <div class="reveal" style="grid-template-columns:minmax(0,260px)">${gCard({cid: "preview", id, name: st.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), gl: CLEN[r.cls]}, {acts: false})}</div>
+    <p style="margin:10px 0 4px"><b>Price: ${price.toLocaleString()} points</b> · you have ${bal.toLocaleString()} · ${$M(salaryOf(id))} salary · ${CLEN[r.cls]}-game contract${own ? " · <b>you already own him</b>" : ""}</p>
+    <p class="note" style="margin:0 0 8px;opacity:.85">Buying costs ${BUY_MULT}× his card value (worth ${valueOf(r)} if you sold him today). He goes to your reserves. The best cards cost about 1,800.</p>
+    ${why ? `<p style="margin:0 0 8px"><b>${esc(why)}</b></p>` : ""}
+    <div class="row"><button class="gbtn" data-buyok="${esc(id)}"${why ? " disabled" : ""}>Buy for ${price.toLocaleString()}</button><button class="gbtn alt" data-closeopen>Not now</button></div></div>`;
+  setTimeout(() => $("gOpen").scrollIntoView({behavior: "smooth", block: "start"}), 200);
+}
+function buyCard(id){
+  const st = statOf(id), r = ratingOf(st), price = buyPrice(id);
+  if(!st || !r || !G.started || balance() < price || overflow().length || G.res.length >= RES_MAX) return;
+  G.n++; const c = {cid: "c" + Date.now().toString(36) + G.n, id, name: st.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, bought: price};
+  G.spent += price; G.cards.push(c); G.res.push(c.cid); G.st.buys = (G.st.buys || 0) + 1; checkWish([c]); gSave(); $("gOpen").innerHTML = ""; drawGame(); toast2(`🃏 Bought ${st.name} for ${price.toLocaleString()}: he's in your reserves`);
 }
 function trackPulls(cards, packs){
   const P = pool(); G.st.packs = (G.st.packs || 0) + packs;
@@ -919,7 +960,7 @@ function setupGame(){
   const mode = m => { tabs.forEach(b => b.classList.toggle("on", b.dataset.mode === m)); $("followMode").hidden = m !== "follow"; $("gameMode").hidden = m !== "game"; try{ localStorage.setItem("fcgp.rotmode", m); }catch(_){} if(m === "game") drawGame(); };
   tabs.forEach(b => b.onclick = () => mode(b.dataset.mode));
   let m0 = "follow"; try{ m0 = localStorage.getItem("fcgp.rotmode") || "follow"; }catch(_){}
-  if(/#game/.test(location.hash)) m0 = "game";
+  if(/#(game|buy)/.test(location.hash)) m0 = "game";
   mode(m0);
   $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
@@ -951,6 +992,7 @@ function setupGame(){
     const sameP = cid => { const c = cardOf(cid); return G.start.concat(G.bench).find(x => x !== cid && cardOf(x) && cardOf(x).id === c.id); };
     if(d.gstart || d.gbench){ const cid = d.gstart || d.gbench, to = d.gstart ? "start" : "bench";
       if(sameP(cid)) return toast("He's already in your lineup");
+      if(cardOf(cid).gl === 0) return toast(`His contract is up: re-sign him for ${resignCost(cardOf(cid).id)} points first`);
       if(G[to].length >= 5) return toast(to === "start" ? "Starting five is full: take someone out first" : "Bench is full: take someone out first");
       { const inLine = G.start.includes(cid) || G.bench.includes(cid), pay = payrollOf(lineupIds()), add = inLine ? 0 : salaryOf(cardOf(cid).id);
         if(add && pay + add > APRON) return toast(`That puts your payroll at ${$M(pay + add)}, past the ${$M(APRON)} apron. Move someone out first.`); }
@@ -960,6 +1002,11 @@ function setupGame(){
       G.start = G.start.filter(x => x !== cid); G.bench = G.bench.filter(x => x !== cid);
       if(G.res.length < RES_MAX && !G.res.includes(cid)) G.res.push(cid); else if(!G.res.includes(cid)) toast("Reserves are full, so he's over the roster limit: sell someone or move him back");
       if(d.gout) snap(); gSave(); drawGame(); return; }
+    if(d.buyok){ buyCard(d.buyok); return; }
+    if(d.gresign){ const c = cardOf(d.gresign); if(!c) return; const cost = resignCost(c.id);
+      if(balance() < cost) return toast(`Re-signing him costs ${cost}: you have ${balance()}`);
+      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? −${cost}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Re-sign ${cost}`; } }, 3000); return; }
+      G.spent += cost; c.gl = (c.gl || 0) + contractLen(c.id); G.st.resigns = (G.st.resigns || 0) + 1; gSave(); drawGame(); return toast(`📝 Re-signed ${c.name}: ${c.gl} games left`); }
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
@@ -985,6 +1032,7 @@ async function init(){
   await Promise.all([window.Injuries ? Injuries.ready : null, window.Injuries ? Injuries.logReady() : null, ...ROT.map(async id => { FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`); })]);
   setupAdd(); drawAll();
   await earnings(); await playNights(); setupGame();
+  { const m = location.hash.match(/buy=([^&]+)/); if(m) showBuy(decodeURIComponent(m[1])); }
   loadForm().then(() => { if(G.started && !$("gameMode").hidden) drawGame(); }).catch(() => {});
 }
 document.addEventListener("prefs", () => drawQuick());
