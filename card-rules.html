@@ -90,7 +90,7 @@
   <h2 id="cards">Cards</h2>
   <div class="card">
     <h3>Overall rating (OVR)</h3>
-    <p style="margin:0">Every card's OVR comes from the player's <b>production per game</b> this season, using the same formula the nightly games score: <b>PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV</b>, averaged over the games he's played. Players are ranked against everyone qualified (at least half as many games as the league leader, and 15+ minutes a game), and the rank becomes an OVR from about 60 to 99, steepest at the top.</p>
+    <p style="margin:0">Every card's OVR comes from the player's <b>production per game</b> this season, using the same formula the nightly games score: <b>PTS + 2×AST + 2×REB + 3×STL + BLK − 4×TOV</b>, averaged over the games he's played. Players are ranked against everyone qualified (at least half as many games as the league leader, and 15+ minutes a game), and the rank becomes an OVR from about 60 to 99, steepest at the top.</p>
     <p style="margin:8px 0 0"><b>Why production and not Pulse?</b> Pulse is per minute: it shows how good a player is while he's on the floor, so an efficient 15-minute backup can rank with the stars. But your card earns what the player actually puts up in a night, so minutes matter. A 35-minute starter putting up 45 a night outranks a 17-minute backup putting up 20, even if the backup is more efficient. The card shows this as <b>PROD</b>.</p>
     <p style="margin:8px 0 0">Ratings <b>update as the season goes</b>: a player who earns more minutes or heats up gets a higher OVR on every copy of his card. Early in the season, players with only a few games are pulled toward the league middle so one big night doesn't make a 95.</p>
     <h3>Five tiers</h3>
@@ -161,18 +161,19 @@
   <div class="card">
     <p style="margin:0 0 8px">Every night with NBA games, your lineup plays three games, all decided by that night's real box scores. Results show up once <b>every</b> game from that night is final (usually the next morning). Nights with no games, or before your team existed, don't count.</p>
     <h3>Your score: Fantasy Five production</h3>
-    <p style="margin:0 0 6px">Each of your five players earns his <b>Pulse production</b> for the night (game totals, not per minute):</p>
-    <div class="formula" style="font:600 18px/1.4 'Barlow Condensed',sans-serif;text-align:center;padding:14px;background:#0b0b0d;color:#fff;border-radius:12px">PTS + 2×AST + 2×REB + 4×STL + BLK − 4×TOV</div>
-    <div class="ex">A 30-point, 10-rebound, 5-assist, 2-steal, 1-block, 3-turnover night = 30 + 10 + 20 + 8 + 1 − 12 = <b>57</b>.</div>
+    <p style="margin:0 0 6px">Each of your five players earns his <b>production</b> for the night (game totals, not per minute):</p>
+    <div class="formula" style="font:600 18px/1.4 'Barlow Condensed',sans-serif;text-align:center;padding:14px;background:#0b0b0d;color:#fff;border-radius:12px">PTS + 2×AST + 2×REB + 3×STL + BLK − 4×TOV</div>
+    <div class="ex">A 30-point, 10-rebound, 5-assist, 2-steal, 1-block, 3-turnover night = 30 + 10 + 20 + 6 + 1 − 12 = <b>55</b>.</div>
     <p style="margin:0">Add up your five, then apply your <a href="#chem">chemistry</a> bonus or penalty. That's your <b>Fantasy Five score</b>, and it's the number used in all three games.</p>
     <h3>Who plays: subs</h3>
     <p style="margin:0">A starter who doesn't play that night (injured, resting, or no game) is replaced by the <b>first bench player at his position</b> who did play: a guard for a guard, a wing for a wing, a big for a big. If there's nobody at that position, the first bench player who played comes in. A sub's production is adjusted by your <a href="#bench">bench balance</a>. If you run out of subs, the empty spot scores 0.</p>
     <h3>Game 1 · Fantasy Five</h3>
-    <p style="margin:0">Reach <b>120</b>: <b class="r" style="color:var(--good)">+10</b>. Most nights land somewhere between 80 and 160, so it takes a good night from a well-built five.</p>
+    <p style="margin:0">Your target is your own <b>projection</b>: the season production per game of the five who played for you that night, added up. Beat it: <b class="r" style="color:var(--good)">+10</b>. Your score includes chemistry and bench adjustments and the projection doesn't, so a well-built five has the edge and a poorly built one has to play over its head. A stacked team has a big projection too, so it only wins by playing like it.</p>
+    <div class="ex">Your five average 38, 30, 27, 22 and 19 a game: projection <b>136</b>. Tonight they put up 141, and chemistry 72 adds 5% → 148. You beat your projection: <b class="r">+10</b>.</div>
     <h3>Game 2 · vs Pulse</h3>
-    <p style="margin:0">Pulse builds a five from players who played that night (none of yours), with about the same total OVR as your starters. Beat its total production: <b style="color:var(--good)">+10</b>. Pulse's five gets no chemistry adjustment, so a well-built lineup has the edge.</p>
+    <p style="margin:0">Pulse builds a five from players who played that night (none of yours), with about the same total OVR as your players who played. If only 3 of yours played, Pulse picks 3, so a light night is a fair fight. Beat its total production: <b style="color:var(--good)">+10</b>. Pulse's five gets no chemistry adjustment, so a well-built lineup has the edge.</p>
     <h3>Game 3 · vs a real team</h3>
-    <p style="margin:0">Your five against the <b>actual starting five</b> of the NBA team whose starters' average OVR was closest to yours that night. Beat their total production: <b style="color:var(--good)">+10</b>. If their starters were rated higher than yours and you still won, that's an <b>upset: another +10</b>. Their five gets no chemistry adjustment either.</p>
+    <p style="margin:0">Your five against the <b>actual starting five</b> of the NBA team whose starters' average OVR was closest to yours that night. If fewer of yours played, it's the same number of their starters (the ones who played the most minutes). Beat their total production: <b style="color:var(--good)">+10</b>. If their starters were rated higher than yours and you still won, that's an <b>upset: another +10</b>. Their five gets no chemistry adjustment either.</p>
     <p class="note" style="margin:8px 0 0"><b>Ties count as losses</b> in the head-to-head games: you have to outscore the other five.</p>
   </div>
 
@@ -202,7 +203,7 @@
         <tr><td><b>No center</b> in the five</td><td style="color:var(--bad);font-weight:700">another −20%</td></tr>
       </tbody></table></div>
     <p class="note">The total penalty can't go past −60%. Chemistry is figured on <b>the five who actually played that night</b>, subs included, so the lineup card on the game page is a preview.</p>
-    <div class="ex warn"><b>A center and four star forwards:</b> great players, but no guard, too few assists and too many shots. Chemistry 38 (−20%) plus no guard (−20%) = <b class="l">−40%</b>. They'd need 200 production just to reach 120.</div>
+    <div class="ex warn"><b>A center and four star forwards:</b> great players, but no guard, too few assists and too many shots. Chemistry 38 (−20%) plus no guard (−20%) = <b class="l">−40%</b>. If their projection is 230, they'd need about 380 to beat it: they lose Fantasy Five almost every night.</div>
     <div class="ex warn"><b>The five best guards:</b> no center, almost no rim protection, and five players who all need the ball. Chemistry 38 plus no center = <b class="l">−40%</b>.</div>
     <div class="ex tip"><b>Balanced stars</b> (a point guard, a shooting guard, a wing, a power forward and a center): chemistry 75 = <b class="r">+5%</b>. <b>A balanced lineup of role players</b> can hit 80+ and get the full <b class="r">+10%</b>, because they don't fight over the ball.</div>
   </div>
@@ -241,18 +242,18 @@
       <li><b>Sub:</b> the first guard on your bench who played comes in for the SG. He has 22 production; bench balance +5% makes it <b>23</b>.</li>
       <li><b>Production:</b> 23 + your other four (38, 29, 31, 24) = <b>145</b>.</li>
       <li><b>Chemistry</b> is rechecked with the sub in the five: still 72, so +5% → <b>152</b>.</li>
-      <li><b>Fantasy Five:</b> 152 beats 120 → <b class="r" style="color:var(--good)">+10</b>.</li>
+      <li><b>Fantasy Five:</b> your projection was 141 (your five's season averages added up), and 152 beats it → <b class="r" style="color:var(--good)">+10</b>.</li>
       <li><b>vs Pulse:</b> Pulse's five had 138 → you win, <b style="color:var(--good)">+10</b>.</li>
       <li><b>vs a real team:</b> the closest starting five by OVR was rated a little higher than yours and had 149 → you win <b style="color:var(--good)">+10</b> and the upset <b style="color:var(--good)">+10</b>.</li>
     </ol>
-    <p style="margin:0">That's a perfect 3–0 night and <b>40 points</b>. The 152 also goes toward your weekly ladder total.</p>
+    <p style="margin:0">That's a perfect 3–0 night and <b>40 points</b>, and all 40 go toward your weekly ladder.</p>
   </div>
 
   <h2 id="ladder">Weekly ladder</h2>
   <div class="card">
-    <p style="margin:0 0 6px">Your Fantasy Five scores add up from Monday to Sunday (the score itself, not the 10-point wins). Hit a rung and claim a free pack:</p>
+    <p style="margin:0 0 6px">The points you win in the nightly games (+10 a win, +10 an upset, up to 40 a night) add up from Monday to Sunday. Hit a rung and claim a free pack:</p>
     <div class="tw"><table><thead><tr><th>Weekly total</th><th>Reward</th></tr></thead>
-      <tbody><tr><td>600</td><td>Free <span class="t-gold"><b>Gold</b></span> pack</td></tr><tr><td>900</td><td>Free <span class="t-ruby"><b>Ruby</b></span> pack</td></tr><tr><td>1,200</td><td>Free <span class="t-opal"><b>Galaxy</b></span> pack</td></tr></tbody></table></div>
+      <tbody><tr><td>80</td><td>Free <span class="t-gold"><b>Gold</b></span> pack</td></tr><tr><td>140</td><td>Free <span class="t-ruby"><b>Ruby</b></span> pack</td></tr><tr><td>200</td><td>Free <span class="t-opal"><b>Galaxy</b></span> pack</td></tr></tbody></table></div>
     <p class="note" style="margin:6px 0 0">You can claim all three in a big week. The ladder resets every Monday; unclaimed rungs from past weeks can't be claimed later, so tap Claim when you get there.</p>
   </div>
 
