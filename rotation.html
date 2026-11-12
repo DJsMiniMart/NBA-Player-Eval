@@ -59,6 +59,12 @@
   .pc-acts button{flex:1;padding:4px 0;border-radius:7px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:12px;}
   .pc-acts button:hover{background:rgba(0,0,0,.45);}
   #gWish img,#gSets img{width:22px;height:22px;vertical-align:middle;object-fit:contain;margin-right:2px;}
+  .sc-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;} .sc-tabs button{border-radius:999px;font-weight:600;padding:5px 11px;font-size:13px;} .sc-tabs button.on{background:#0b0b0d;color:#fff;border-color:#0b0b0d;}
+  @media (prefers-color-scheme: dark){ .sc-tabs button.on{background:#e8edf6;color:#0b1220;border-color:#e8edf6;} }
+  .sc-row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line);align-items:center;}
+  .sc-row .nm{font-weight:700;} .sc-row .nm img{width:20px;height:20px;vertical-align:middle;margin-right:4px;object-fit:contain;} .sc-row .meta{font-size:12.5px;color:var(--dim);grid-column:1/-1;line-height:1.45;}
+  .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
+  .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
   .trophies{padding:12px 14px;margin-top:14px;}
   .mslist{margin-top:8px;} .mslist summary{cursor:pointer;font-weight:600;font-size:14px;}
   .mslist ul{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;}
@@ -195,6 +201,8 @@
     <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
     <p class="note" id="gLock" style="margin:0 0 6px"></p>
     <section class="lineup" id="gLineup"></section>
+    <h2 data-jump="Scout">Scout <small>buy low, play cheap, sell high</small></h2>
+    <div class="card" style="padding:10px 14px" id="gScout"></div>
     <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
     <div class="card" style="padding:6px 14px 12px" id="gWish"></div>
     <h2 data-jump="Team sets">Team sets <small>5 players from one team = free Gold pack + trophy</small></h2>
@@ -411,7 +419,7 @@ const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
 const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
 const LADDER = [[LAD1, "gold"], [LAD2, "ruby"], [LAD3, "opal"]], FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], st: {}, n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -856,7 +864,7 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml();
+  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gScout").innerHTML = scoutHtml();
   drawScore(); drawNights(); drawLadder(); drawRules();
 }
 function drawRules(){
@@ -880,6 +888,7 @@ function drawRules(){
     <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
     <li><b>Contracts:</b> every card has a contract for a set number of games he actually plays for you: Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 (by his tier when you got him). With ${RESIGN_AT} or fewer left you can re-sign him for half his current value (another full contract). At 0 he sits (a bench player subs in) until you re-sign him, and he still counts on your payroll.</li>
     <li><b>Buy a card:</b> on any player's page, tap "Buy his card". Price is ${BUY_MULT}× his card value (the best cards cost about 1,800; at least ${BUY_MIN}). He goes to your reserves with a fresh contract. Great for grabbing an underpaid player before everyone else notices.</li>
+    <li><b>Scout:</b> the Buy-low list finds veterans playing 10%+ below their career production, with their salary, buy price and what they'd sell for if they bounce back. Filter by salary, sort by upside, and add anyone to My scouting to track his price.</li>
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
@@ -904,6 +913,44 @@ function holdBonus(c, v){
 }
 const toast2 = m => { if(window.fcToast) setTimeout(() => fcToast(m), 500); };
 /* ---------- buy a card outright (from a player page): 4.5x his card value ---------- */
+/* ---------- scout: slumping players vs their career level, priced to buy low; plus your own watch list ---------- */
+let SCTAB = "auto", SCSAL = "all", SCSORT = "profit";
+const SCOUT_MAX = 15;
+function valueAtFpg(x){ const pc = QUAL.length ? QUAL.filter(q => q < x).length / QUAL.length : .5; return Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.pow(pc, 2.5)))); }
+function scoutInfo(id){
+  const st = statOf(id); if(!st || !st.g) return null;
+  const r = ratingOf(st), now = fpg(st), ca = CAREER[id], val = valueOf(r), price = buyPrice(id), sal = salaryOf(id);
+  const info = {id, st, r, now, val, price, sal, mpg: st.mp / st.g};
+  if(ca && ca[0] >= 82){ info.car = ca[1]; info.gap = (now - ca[1]) / ca[1]; const bv = valueAtFpg(ca[1]); info.bounceVal = bv; info.sellAt = bv + Math.max(0, Math.round((bv - val) * HOLD_BONUS)); info.profit = info.sellAt - price; }
+  return info;
+}
+function scoutRow(x, mine){
+  const st = x.st, w = mine ? G.scout.find(s => s.id === x.id) : null, dp = w && w.p ? x.price - w.p : 0, owned = G.cards.some(c => c.id === x.id);
+  return `<div class="sc-row"><span class="nm">${logo(st.team)}<a href="pe.html#/player/${encodeURIComponent(x.id)}">${esc(st.name)}</a> <span class="note" style="font-weight:500">${esc(st.pos || "")} · ${x.r ? x.r.ovr + " OVR" : ""}${ROOKIES.has(x.id) ? " · 🆕" : ""}${owned ? " · <b>yours</b>" : ""}</span></span>
+    <span class="acts">${mine ? `<button data-scoutout="${esc(x.id)}">Remove</button>` : `<button data-scoutadd="${esc(x.id)}"${G.scout.some(s => s.id === x.id) ? " disabled" : ""}>${G.scout.some(s => s.id === x.id) ? "Watching" : "Watch"}</button>`}<button class="gbtn" data-buy="${esc(x.id)}">Buy ${x.price.toLocaleString()}</button></span>
+    <span class="meta"><b>${$M(x.sal)}</b> salary · <b>${x.now.toFixed(1)}</b> production a game${x.car != null ? ` vs <b>${x.car.toFixed(1)}</b> career (<span class="${x.gap < 0 ? "sc-dn" : "sc-up"}">${x.gap > 0 ? "+" : "−"}${Math.abs(Math.round(x.gap * 100))}%</span>)` : x.r && ROOKIES.has(x.id) ? " · rookie, no career yet" : ""} · ${x.mpg.toFixed(0)} min
+    ${x.car != null && x.gap < 0 ? `<br>If he gets back to his career level: value ${x.val} → <b>${x.bounceVal}</b>, sells for about <b>${x.sellAt}</b> after 7 days (${x.profit >= 0 ? `<span class="sc-up">+${x.profit}</span>` : `<span class="sc-dn">−${-x.profit}</span>`} vs the price)` : ""}
+    ${w ? `<br>Watching since ${new Date(w.d + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"})} at ${w.p}: ${dp ? `<span class="${dp > 0 ? "sc-up" : "sc-dn"}">${dp > 0 ? "▲" : "▼"}${Math.abs(dp)}</span> price` : "price unchanged"}` : ""}
+    <br>${nextGames(st.team).map(g => `${g.today ? "<b>Tonight</b>" : g.d.toLocaleDateString("en-US", {weekday: "short"})} ${g.home ? "vs" : "@"} ${esc(g.opp)} ${g.rec}`).join(" · ")}</span></div>`;
+}
+function scoutHtml(){
+  const tabs = `<div class="sc-tabs"><button class="${SCTAB === "auto" ? "on" : ""}" data-sctab="auto">Buy-low list</button><button class="${SCTAB === "mine" ? "on" : ""}" data-sctab="mine">My scouting (${G.scout.length})</button></div>`;
+  if(SCTAB === "mine"){
+    const P = STATS ? STATS.players.filter(p => p.g) : [];
+    const rows = G.scout.map(w => scoutInfo(w.id)).filter(Boolean).map(x => scoutRow(x, true)).join("");
+    return tabs + (rows || `<p class="note" style="margin:4px 0">Add players you want to keep an eye on. You'll see their price move from the day you added them.</p>`)
+      + (G.scout.length < SCOUT_MAX ? `<div class="row" style="gap:8px;margin-top:8px"><input list="scoutOpts" id="scoutQ" placeholder="Add any player to watch…" style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit"><button class="gbtn" id="scoutAddQ">Add</button>
+        <datalist id="scoutOpts">${P.filter(p => !G.scout.some(s => s.id === p.id)).map(p => `<option value="${esc(p.name)}">`).join("")}</datalist></div>` : `<p class="note">Your scouting list is full (${SCOUT_MAX}).</p>`);
+  }
+  const salMax = {all: Infinity, "10": 10e6, "20": 20e6}[SCSAL];
+  let L = (STATS ? STATS.players : []).filter(p => p.g >= 5 && p.mp / p.g >= 12).map(p => scoutInfo(p.id)).filter(x => x && x.car != null && x.gap <= -0.1 && x.sal <= salMax);
+  L.sort(SCSORT === "cheap" ? (a, b) => a.price - b.price : SCSORT === "slump" ? (a, b) => a.gap - b.gap : (a, b) => b.profit - a.profit);
+  const chip = (k, v, l) => `<button class="chip ${(k === "sal" ? SCSAL : SCSORT) === v ? "on" : ""}" data-sc${k}="${v}" style="border-radius:999px;font-weight:600">${l}</button>`;
+  return tabs + `<div class="chips" style="margin-bottom:6px">${chip("sal", "all", "Any salary")}${chip("sal", "20", "Under $20M")}${chip("sal", "10", "Under $10M")}<span style="width:8px"></span>${chip("sort", "profit", "Biggest upside")}${chip("sort", "slump", "Biggest slump")}${chip("sort", "cheap", "Cheapest")}</div>
+    <p class="note" style="margin:0 0 4px">Veterans (82+ career games) playing 10%+ below their career production. ${L.length} match.</p>
+    ${L.slice(0, 15).map(x => scoutRow(x, false)).join("") || `<p class="note">No one matches right now.</p>`}
+    <p class="note" style="margin:8px 0 0">Price is 4.5× his card value today. "Sells for" assumes he returns to his career production and you hold him 7+ days for the hold bonus. A slump can also be an injury, age or a smaller role, so check his page.</p>`;
+}
 function showBuy(id){
   const st = statOf(id), r = ratingOf(st);
   history.replaceState(null, "", location.pathname + "#game");
@@ -964,14 +1011,14 @@ function setupGame(){
   mode(m0);
   $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
-  $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } });
+  $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } if(e.key === "Enter" && e.target.id === "scoutQ"){ e.preventDefault(); $("scoutAddQ").click(); } });
   $("gameMode").addEventListener("click", e => {
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
@@ -1003,6 +1050,15 @@ function setupGame(){
       if(G.res.length < RES_MAX && !G.res.includes(cid)) G.res.push(cid); else if(!G.res.includes(cid)) toast("Reserves are full, so he's over the roster limit: sell someone or move him back");
       if(d.gout) snap(); gSave(); drawGame(); return; }
     if(d.buyok){ buyCard(d.buyok); return; }
+    if(d.buy){ showBuy(d.buy); return; }
+    if(d.sctab){ SCTAB = d.sctab; $("gScout").innerHTML = scoutHtml(); return; }
+    if(d.scsal){ SCSAL = d.scsal; $("gScout").innerHTML = scoutHtml(); return; }
+    if(d.scsort){ SCSORT = d.scsort; $("gScout").innerHTML = scoutHtml(); return; }
+    if(d.scoutadd){ if(G.scout.length >= SCOUT_MAX) return toast(`Your scouting list holds ${SCOUT_MAX}`); if(!G.scout.some(s => s.id === d.scoutadd)){ G.scout.push({id: d.scoutadd, d: ymd(), p: buyPrice(d.scoutadd)}); gSave(); } $("gScout").innerHTML = scoutHtml(); return toast("Added to My scouting"); }
+    if(d.scoutout){ G.scout = G.scout.filter(s => s.id !== d.scoutout); gSave(); $("gScout").innerHTML = scoutHtml(); return; }
+    if(t.id === "scoutAddQ"){ const q = fold($("scoutQ").value); if(!q) return; const P = STATS.players.filter(p => p.g), hit = P.find(p => fold(p.name) === q) || P.find(p => fold(p.name).includes(q));
+      if(!hit) return toast("No player with games this season by that name"); if(G.scout.some(s => s.id === hit.id)) return toast("Already on your list"); if(G.scout.length >= SCOUT_MAX) return toast(`Your scouting list holds ${SCOUT_MAX}`);
+      G.scout.push({id: hit.id, d: ymd(), p: buyPrice(hit.id)}); gSave(); SCTAB = "mine"; $("gScout").innerHTML = scoutHtml(); return toast(`Watching ${hit.name}`); }
     if(d.gresign){ const c = cardOf(d.gresign); if(!c) return; const cost = resignCost(c.id);
       if(balance() < cost) return toast(`Re-signing him costs ${cost}: you have ${balance()}`);
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? −${cost}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Re-sign ${cost}`; } }, 3000); return; }
