@@ -125,15 +125,15 @@
 
   <h2 id="packs">Packs</h2>
   <div class="card">
-    <p style="margin:0 0 8px">Every pack has 3 cards. Cards come from the same qualified-player pool (ranked by Pulse). Within each range, every player is equally likely, so a top-150 card could be the MVP or the 150th-best player.</p>
+    <p style="margin:0 0 8px">Every pack has 3 cards from the qualified-player pool, ranked by Pulse. Card 1 is the pack's "hit"; cards 2 and 3 are depth. Each card is drawn from rank ranges with the odds below, and every player inside a range is equally likely.</p>
     <div class="tw"><table>
-      <thead><tr><th>Pack</th><th>Cost</th><th>Card 1</th><th>Cards 2 and 3</th></tr></thead>
+      <thead><tr><th>Pack</th><th>Cost</th><th>Card 1 (the hit)</th><th>Cards 2 and 3</th><th>Chance of any top-25</th></tr></thead>
       <tbody>
-        <tr><td class="w t-gold">Gold</td><td>150</td><td>A top-150 player</td><td>Anyone in the pool</td></tr>
-        <tr><td class="w t-ruby">Ruby</td><td>300</td><td>A top-75 player</td><td>Top 200</td></tr>
-        <tr><td class="w t-opal">Galaxy</td><td>500</td><td>A top-25 player</td><td>Top 150</td></tr>
+        <tr><td class="w t-gold">Gold</td><td>300</td><td>Top 25: 3%<br>26–75: 12%<br>76–150: 85%</td><td>Top 25: 2%<br>26–75: 8%<br>76–150: 25%<br>Rest: 65%</td><td>about 7%</td></tr>
+        <tr><td class="w t-ruby">Ruby</td><td>750</td><td>Top 25: 10%<br>26–75: 40%<br>76–150: 50%</td><td>Top 25: 3%<br>26–75: 12%<br>76–150: 35%<br>Rest: 50%</td><td>about 15%</td></tr>
+        <tr><td class="w t-opal">Galaxy</td><td>1,500</td><td>Top 10: 12%<br>11–25: 33%<br>26–75: 55%</td><td>Top 25: 5%<br>26–75: 20%<br>76–150: 45%<br>Rest: 30%</td><td>about 50% (top 10: about 16%)</td></tr>
       </tbody></table></div>
-    <p class="note" style="margin:8px 0 0">Cards are shuffled before you flip them, so the best card could be in any spot. Duplicates are marked when you open a pack. Free packs from the <a href="#ladder">weekly ladder</a> work the same way.</p>
+    <p class="note" style="margin:8px 0 0">Your 5 free starter packs are Gold packs, so most teams start with no top-25 player; about 1 in 3 starts with one. Cards are shuffled before you flip them. Duplicates are marked when you open a pack. Free packs from the <a href="#ladder">weekly ladder</a> work the same way.</p>
   </div>
 
   <h2 id="points">Earning points</h2>
@@ -141,7 +141,7 @@
     <h3>1 · Daily bonus: +20</h3>
     <p style="margin:0">Tap "Claim daily bonus" once a day.</p>
     <h3>2 · Picks on The Morning Press</h3>
-    <p style="margin:0 0 6px">Under Coming up → Your pick, each game has three lines: the winner (moneyline), the spread and the total (over/under). Each game you pick pays two ways, added together:</p>
+    <p style="margin:0 0 6px">Under Coming up → Your pick, each game has three lines: the winner (moneyline), the spread and the total (over/under). <b>Only the first 3 games you pick each day earn points</b> (counted by when you made the pick, and only games since you started your team), so pick the games you feel best about first. Each of those games pays two ways, added together:</p>
     <ul style="margin:0">
       <li><b>Every winning line pays:</b> spread right = <b>25</b>; total right = <b>25</b>; winner right = <b>25 × the payout</b> (at least 10). A push (exactly on the line) pays <b>5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's lines you got right: 1 = <b>+10</b>, 2 = <b>+25</b>, all 3 = <b>+50</b>.</li>
@@ -250,7 +250,7 @@
   <div class="card">
     <p style="margin:0 0 6px">Your Fantasy Five scores add up from Monday to Sunday (the score itself, not the 10-point wins). Hit a rung and claim a free pack:</p>
     <div class="tw"><table><thead><tr><th>Weekly total</th><th>Reward</th></tr></thead>
-      <tbody><tr><td>400</td><td>Free <span class="t-gold"><b>Gold</b></span> pack</td></tr><tr><td>700</td><td>Free <span class="t-ruby"><b>Ruby</b></span> pack</td></tr><tr><td>1,000</td><td>Free <span class="t-opal"><b>Galaxy</b></span> pack</td></tr></tbody></table></div>
+      <tbody><tr><td>600</td><td>Free <span class="t-gold"><b>Gold</b></span> pack</td></tr><tr><td>900</td><td>Free <span class="t-ruby"><b>Ruby</b></span> pack</td></tr><tr><td>1,200</td><td>Free <span class="t-opal"><b>Galaxy</b></span> pack</td></tr></tbody></table></div>
     <p class="note" style="margin:6px 0 0">You can claim all three in a big week. The ladder resets every Monday; unclaimed rungs from past weeks can't be claimed later, so tap Claim when you get there.</p>
   </div>
 
@@ -259,6 +259,7 @@
     <ul style="margin:0">
       <li><b>Scoreboard:</b> your win-loss record in each of the three games, your last 10 nights, current and best streaks, this week's record, best night, average score, perfect nights and upsets.</li>
       <li><b>Every night is saved</b>, so you can scroll back through past results. If you don't open the page for a few days, those nights are scored when you come back, using the lineup you had for each night.</li>
+      <li><b>Start over:</b> the "Start over with a new team" button under How it works wipes your cards, points and record, and only picks from that day on count.</li>
       <li><b>Saving:</b> your team stays saved when you close the browser. <b>Sign in</b> (Menu → Settings, or the button under the scoreboard) to keep it in your account and play from any device. Without signing in, it lives only on that device; use <b>Backup code</b> to keep a copy.</li>
     </ul>
   </div>
@@ -270,7 +271,8 @@
     <li><b>Check the injury report</b> before tip-off. A starter who sits is replaced from your bench, so a healthy starter beats a slightly better one who's questionable.</li>
     <li><b>Keep a backup center.</b> It's the bench spot that saves the most nights.</li>
     <li><b>Watch values.</b> Sell a hot bench card at its peak and put the points toward a Galaxy pack.</li>
-    <li><b>Hit the picks.</b> All three lines right in one game (138 in the example above) is worth almost a full Gold pack.</li>
+    <li><b>Budget for it.</b> A good day of picks plus your nightly games and daily bonus is roughly 150 to 250 points, so a Galaxy pack takes about a week of saving.</li>
+    <li><b>Choose your 3 pick games carefully.</b> Only the first 3 you pick each day count, and getting all three lines right in one game (138 in the example above) is worth almost half a Gold pack.</li>
   </ul></div>
 
   <h2 id="faq">FAQ</h2>
