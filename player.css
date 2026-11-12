@@ -233,3 +233,10 @@
 .pp-seg button{border:0;background:none;padding:5px 12px;border-radius:999px;font:700 12.5px Inter,system-ui,sans-serif;color:var(--dim,#5b6475);cursor:pointer;white-space:nowrap;}
 .pp-seg button.on{background:var(--ink,#0f172a);color:var(--bg,#fff);}
 .pp-switchbar{display:flex;justify-content:center;margin:18px 0 6px;}
+
+/* stat filters (same as the team page) */
+.pp-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 10px;margin-bottom:10px;}
+.pp-fsel label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--dim,#5b6475);margin-bottom:3px;}
+.pp-fsel select{width:100%;font:500 13.5px Inter,system-ui,sans-serif;padding:6px 8px;border-radius:8px;border:1px solid var(--line,#dde2ea);background:var(--panel,#fff);color:inherit;}
+.pp-fsum{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:14px;}
+.pp-fsum button{padding:5px 11px;font-size:12.5px;border-radius:999px;}

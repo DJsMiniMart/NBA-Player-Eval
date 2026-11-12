@@ -264,7 +264,7 @@ let LG = null, lgP = null;
 function leagueData(){
   return lgP || (lgP = Promise.all([getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json")]).then(([st, ct, sc]) => {
     const tg = {}; ((sc && sc.games) || []).forEach(g => { if(g[4] === 3){ tg[g[2]] = (tg[g[2]] || 0) + 1; tg[g[3]] = (tg[g[3]] || 0) + 1; } });
-    LG = {players: (st && st.players) || [], season: st && st.season, contracts: (ct && ct.players) || {}, teamG: tg}; return LG;
+    LG = {players: (st && st.players) || [], season: st && st.season, contracts: (ct && ct.players) || {}, teamG: tg, sched: (sc && sc.games) || []}; return LG;
   }).catch(() => null));
 }
 const NBA_OF = {BRK: "BKN", CHO: "CHA", PHO: "PHX"};
@@ -709,14 +709,78 @@ function playoffsBlock(){
     <div class="pp-gap"></div><div class="pp-grid">${careerCard(list, "Playoffs, season by season", false, "per game · playoffs")}</div>`;
 }
 
+/* ---------- stat filters: the same game filters as the team page, applied to his game logs ---------- */
+const FDIV = {Atlantic:["BOS","BKN","NYK","PHI","TOR"], Central:["CHI","CLE","DET","IND","MIL"], Southeast:["ATL","CHA","MIA","ORL","WAS"],
+  Northwest:["DEN","MIN","OKC","POR","UTA"], Pacific:["GSW","LAC","LAL","PHX","SAC"], Southwest:["DAL","HOU","MEM","NOP","SAS"]};
+const FDIV_OF = {}, FCONF_OF = {};
+Object.entries(FDIV).forEach(([d, l]) => l.forEach(t => { FDIV_OF[t] = d; FCONF_OF[t] = ["Atlantic", "Central", "Southeast"].includes(d) ? "East" : "West"; }));
+const nbaCode = c => ({BRK: "BKN", CHO: "CHA", PHO: "PHX", NJN: "BKN", SEA: "OKC", NOH: "NOP", NOK: "NOP", CHH: "CHA", VAN: "MEM"})[c] || c;
+const PF = {};   // filters per section: PF[key] = {games, loc, opp, res, conf, rest, month, close, role}
+const PF0 = () => ({games: "all", loc: "all", opp: "all", res: "all", conf: "all", rest: "all", month: "all", close: "all", role: "all"});
+let SCHINFO = null;
+function schedInfo(){
+  if(SCHINFO || !LG || !LG.sched.length) return SCHINFO;
+  const rec = {}, dates = {}, byGid = {};
+  LG.sched.forEach(g => { byGid[g[0]] = g; const d = String(g[1]).slice(0, 10); [g[2], g[3]].forEach(t => (dates[t] = dates[t] || []).push(d));
+    if(g[4] === 3){ const hw = g[5] > g[6]; [[g[2], hw], [g[3], !hw]].forEach(([t, w]) => { const r = rec[t] = rec[t] || {w: 0, l: 0}; w ? r.w++ : r.l++; }); } });
+  Object.values(dates).forEach(l => l.sort());
+  return (SCHINFO = {rec, dates, byGid});
+}
+function filterLogs(rows, key, sel){
+  const F = PF[key] || PF0(), cols = REC.logCols || [], ix = Object.fromEntries(cols.map((c, i) => [c, i]));
+  const cur = sel === "season" || sel === currentLabel(), S = cur ? schedInfo() : null;
+  const days = d => new Date(d + "T00:00:00Z").getTime() / 864e5;
+  const list = rows.slice().sort((a, b) => String(a[ix.date]).localeCompare(String(b[ix.date])));
+  const out = list.filter((r, i) => {
+    const opp = nbaCode(r[ix.opp]), home = !!r[ix.home], win = r[ix.res] === "W", d = String(r[ix.date]).slice(0, 10);
+    let rest = 9;
+    const sg = S && S.byGid[r[ix.gid]], team = sg ? (home ? sg[2] : sg[3]) : null;
+    if(team && S.dates[team]){ const prev = S.dates[team].filter(x => x < d).pop(); if(prev) rest = Math.round(days(d) - days(prev)) - 1; }
+    else if(i){ rest = Math.round(days(d) - days(String(list[i - 1][ix.date]).slice(0, 10))) - 1; }
+    const oppRec = S && S.rec[opp], oppPct = oppRec && oppRec.w + oppRec.l ? oppRec.w / (oppRec.w + oppRec.l) : null, margin = Math.abs(+r[ix.tm] || 0);
+    return (F.loc === "all" || (F.loc === "home") === home) && (F.res === "all" || (F.res === "w") === win) &&
+      (F.opp === "all" || (oppPct != null && (F.opp === "above" ? oppPct > .5 : oppPct <= .5))) &&
+      (F.conf === "all" || (F.conf === "div" ? team && FDIV_OF[opp] === FDIV_OF[team] : FCONF_OF[opp] === F.conf)) &&
+      (F.rest === "all" || (F.rest === "b2b" ? rest === 0 : F.rest === "1" ? rest === 1 : rest >= 2 && rest < 9)) &&
+      (F.month === "all" || d.slice(0, 7) === F.month) &&
+      (F.close === "all" || (F.close === "close" ? margin <= 5 : margin >= 15)) &&
+      (F.role === "all" || (F.role === "start") === !!r[ix.start]);
+  });
+  return F.games === "all" ? out : out.slice(-(+F.games));
+}
+function filterCard(allRows, rows, key, sel){
+  const F = PF[key] || (PF[key] = PF0()), cur = sel === "season" || sel === currentLabel();
+  const months = [...new Set(logObjs(allRows).map(g => String(g.date).slice(0, 7)))].sort();
+  const mName = m => `${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}`;
+  const opt = (id, label, opts) => `<div class="pp-fsel"><label for="pf-${key}-${id}">${label}</label><select id="pf-${key}-${id}" data-pf="${key}" data-k="${id}">${opts.map(([v, t]) => `<option value="${v}"${F[id] === v ? " selected" : ""}>${t}</option>`).join("")}</select></div>`;
+  const any = Object.values(F).some(v => v !== "all");
+  const gs = logObjs(rows), n = gs.length, S = f => gs.reduce((t, g) => t + (+g[f] || 0), 0), w = gs.filter(g => g.res === "W").length;
+  const line = n ? [["G", n], ["MIN", f1(S("min") / n)], ["PTS", f1(S("pts") / n)], ["REB", f1((S("drb") + S("orb")) / n)], ["AST", f1(S("ast") / n)], ["STL", f1(S("stl") / n)], ["BLK", f1(S("blk") / n)], ["TOV", f1(S("tov") / n)],
+    ["FG%", pct(S("fgm"), S("fga"))], ["3P%", pct(S("f3m"), S("f3a"))], ["FT%", pct(S("ftm"), S("fta"))]] : [];
+  return `<div class="pp-card c12 pp-filters"><h3>Filter stats <small>${any ? "filtered: this stat line, best games, highs, splits and the game log" : "same filters as the team page"}</small></h3>
+    <div class="pp-fgrid">${[
+      opt("games", "Games", [["all", cur ? "Whole season" : "All games"], ["5", "Last 5"], ["10", "Last 10"], ["15", "Last 15"], ["20", "Last 20"], ["30", "Last 30"]]),
+      opt("loc", "Home / away", [["all", "All"], ["home", "Home"], ["away", "Away"]]),
+      cur ? opt("opp", "Opponent", [["all", "All"], ["above", "Above .500"], ["below", ".500 or below"]]) : "",
+      opt("res", "Result", [["all", "All"], ["w", "Wins"], ["l", "Losses"]]),
+      opt("conf", "Opp. conference", [["all", "All"], ["East", "East"], ["West", "West"], ["div", "Own division"]]),
+      opt("rest", "Rest", [["all", "All"], ["b2b", "Back-to-backs"], ["1", "1 day of rest"], ["2", "2+ days of rest"]]),
+      opt("month", "Month", [["all", "All"]].concat(months.map(m => [m, mName(m)]))),
+      opt("close", "Game type", [["all", "All"], ["close", "Close (≤5 pts)"], ["blowout", "Blowouts (15+)"]]),
+      opt("role", "Role", [["all", "All"], ["start", "Started"], ["bench", "Off the bench"]])].join("")}</div>
+    <div class="pp-fsum"><span><b>${n}</b> game${n === 1 ? "" : "s"} match${n ? ` · his team ${w}-${n - w}` : ""}</span>${any ? `<button data-pfclear="${key}">Clear filters</button>` : ""}</div>
+    ${n ? `<div class="pp-line">${line.map(([k, v]) => `<div class="pp-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("")}<div class="pp-stat hl"><div class="k">Pulse</div><div class="v">${f3(sumEval(gs))}</div></div></div>` : `<div class="pp-empty">No games match these filters.</div>`}
+    ${any ? `<div class="pp-note">The shooting chart, passing, steals and blocks count every game in this selection; they can't be split by game.</div>` : ""}${cur ? "" : `<div class="pp-note">Opponent record filter is for this season only. Rest is counted from his own games.</div>`}</div>`;
+}
+
 /* ---------- page ---------- */
 function gameBoxes(G, L, team, key, withOnOff, sel){
-  const c = withOnOff ? "c6" : "c4";
-  return `<div class="pp-grid">${shootingCard(G, L, sel)}<div class="c5 pp-col">${passList((G&&G.assists)||[], "Assists to", "made shots they set up", "No assists recorded for this selection.")}${passList((G&&G.assistedBy)||[], "Assisted by", "who sets them up", "No assisted makes recorded for this selection.")}</div>
-    <div class="c6 pp-col">${assistedCard(G)}</div><div class="c6 pp-col">${top5Card(G)}</div>
-    ${highsCard(G, key === "season" ? "Season highs" : "Career highs", key === "season" ? "single game, this season" : "single game, since " + ((Object.keys(REC.games||{}).sort()[0]) || ""), c)}${withOnOff ? onOffCard(G) : ""}
+  const c = withOnOff ? "c6" : "c4", all = (G && G.logs) || [], Gf = Object.assign({}, G, {logs: filterLogs(all, key, sel)});
+  return `<div class="pp-grid">${filterCard(all, Gf.logs, key, sel)}</div><div class="pp-gap"></div><div class="pp-grid">${shootingCard(G, L, sel)}<div class="c5 pp-col">${passList((G&&G.assists)||[], "Assists to", "made shots they set up", "No assists recorded for this selection.")}${passList((G&&G.assistedBy)||[], "Assisted by", "who sets them up", "No assisted makes recorded for this selection.")}</div>
+    <div class="c6 pp-col">${assistedCard(G)}</div><div class="c6 pp-col">${top5Card(Gf)}</div>
+    ${highsCard(Gf, key === "season" ? "Season highs" : "Career highs", key === "season" ? "single game, this season" : "single game, since " + ((Object.keys(REC.games||{}).sort()[0]) || ""), c)}${withOnOff ? onOffCard(G) : ""}
     ${stealsCard(G, team, c)}${blocksCard(G, team, c)}
-    ${splitsCard(G, key)}${gameLogCard(G, key)}</div>`;
+    ${splitsCard(Gf, key)}${gameLogCard(Gf, key)}</div>`;
 }
 /* ---------- Pulse insights (insights.py; each one was tested on past seasons before it went on the page) ---------- */
 const pctS = v => v == null ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v * 100)) + "%";
@@ -911,6 +975,8 @@ function render(){
   EL.querySelectorAll("[data-trsel]").forEach(b => b.onclick = () => { TRSEL = +b.dataset.trsel; const y = window.scrollY; render(); window.scrollTo(0, y); });
   const sel = EL.querySelector("#ppSeason"); if(sel) sel.onchange = () => { SEL = sel.value; LOGS_ALL.career = false; render(); };
   EL.querySelectorAll("[data-logmore]").forEach(b => b.onclick = () => { LOGS_ALL[b.dataset.logmore] = !LOGS_ALL[b.dataset.logmore]; render(); });
+  EL.querySelectorAll("[data-pf]").forEach(s => s.onchange = () => { const k = s.dataset.pf; PF[k] = PF[k] || PF0(); PF[k][s.dataset.k] = s.value; const y = window.scrollY; render(); window.scrollTo(0, y); });
+  EL.querySelectorAll("[data-pfclear]").forEach(b => b.onclick = () => { PF[b.dataset.pfclear] = PF0(); const y = window.scrollY; render(); window.scrollTo(0, y); });
   EL.querySelectorAll("[data-split]").forEach(b => b.onclick = () => { SPLIT[b.dataset.split] = b.dataset.v; const y = window.scrollY; render(); window.scrollTo(0, y); });
 }
 
