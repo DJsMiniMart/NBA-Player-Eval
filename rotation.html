@@ -192,7 +192,7 @@
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
   </div>
   <div id="gameMode" hidden>
-    <div class="wallet card"><div><span>Your points</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">Daily bonus</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
+    <div class="wallet card"><div><span>Slush fund</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">Daily bonus</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
     <div id="gTrophies"></div>
     <div id="gStart"></div>
     <div id="gOpen"></div>
@@ -437,7 +437,13 @@ const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "n
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
 const gSave = () => { try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(_){} };
-const balance = () => EARN.pts + G.game + G.bonus + G.sold - G.spent;
+const balance = () => EARN.pts + G.game + G.bonus + G.sold + (G.refund || 0) - G.spent;   // the slush fund
+/* operational funds: a re-signed contract's points move out of the slush fund into that player's own fund and are used up game by game.
+   Sell him with games left and the buyout keeps half of what's left; the other half comes back to the slush fund. */
+const BUYOUT = 0.5;
+const opsTotal = () => G.cards.reduce((a, c) => a + (c.fund ? c.fund.left : 0), 0);
+const perGame = c => c.fund && c.fund.left > 0 && c.gl > 0 ? c.fund.left / c.gl : 0;
+const buyoutBack = c => c.fund && c.fund.left > 0 ? Math.floor(c.fund.left * (1 - BUYOUT)) : 0;
 const ymd = d => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const addD = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
 /* card value: from where his production per game ranks (percentile), steep at the top like a real market: a top-10 player is worth ~230, a top-25 ~100, a median player ~7 */
@@ -526,7 +532,9 @@ async function playNight(d){
 function weekOf(d){ const x = new Date(d + "T12:00:00"); const dow = (x.getDay() + 6) % 7; return addD(d, -dow); }
 function useContracts(ids){
   ids.forEach(id => { const inLine = G.cards.filter(c => c.id === id && (G.start.includes(c.cid) || G.bench.includes(c.cid))), c = inLine[0] || G.cards.find(x => x.id === id);
-    if(!c || c.gl == null) return; c.ten = (c.ten || 0) + 1; c.gl = Math.max(0, c.gl - 1);
+    if(!c || c.gl == null) return; c.ten = (c.ten || 0) + 1;
+    if(c.fund && c.fund.left > 0){ const take = c.gl > 1 ? c.fund.left / c.gl : c.fund.left; c.fund.left = Math.max(0, c.fund.left - take); G.st.opsUsed = (G.st.opsUsed || 0) + take; }
+    c.gl = Math.max(0, c.gl - 1);
     if(c.gl === 0){ c.exp = ymd(); (G.expired = G.expired || []).push(c.name); } });
 }
 async function playNights(){
@@ -691,7 +699,7 @@ const MS = [
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
-  ["earned", "Earn points (all-time)", "points", () => Math.max(0, (G.st.pastEarned || 0) + balance() + G.spent), [1000, 5000, 25000]],
+  ["earned", "Earn points (all-time)", "points", () => Math.max(0, (G.st.pastEarned || 0) + balance() + G.spent - (G.refund || 0)), [1000, 5000, 25000]],
   ["lines3", "Hit all 3 lines in one game", "3 for 3", () => EARN.list.some(g => g.w >= 3) ? 1 : 0, [1]],
   ["daily", "Daily bonus streak", "day streak", () => G.st.dbest || 0, [7, 30]],
   ["chal10", "Complete 10 weekly challenges", "10 challenges", () => G.trophies.filter(x => x.k.startsWith("chal:")).length, [10]],
@@ -787,7 +795,7 @@ function gCard(c, opts){
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
-    ${c.gl != null && opts.acts !== false ? `<div class="pc-line ctr ${c.gl === 0 ? "exp" : c.gl <= RESIGN_AT ? "low" : ""}">📝 ${c.gl === 0 ? `<b>Contract expired</b>: he sits until you re-sign him${c.ten && c.exp && !c.lapsed ? ` · re-sign within ${Math.max(0, GRACE - daysSince(c.exp))}d to keep his ${(c.ten || 0) >= BIRD_EARLY ? "Bird rights" : "games toward Bird rights"}` : ""}` : `<b>${c.gl}</b> game${c.gl === 1 ? "" : "s"} left${c.len ? ` of ${c.len}` : ""}`}<br><small>${birdOf(c) ? `${BIRD[birdOf(c)].icon} <b>${BIRD[birdOf(c)].name}</b> · ` : ""}${c.ten || 0} games with you${!birdOf(c) ? ` · Early Bird at ${BIRD_EARLY}` : birdOf(c) === "early" ? ` · Full Bird at ${BIRD_FULL}` : ""}</small></div>` : ""}
+    ${c.gl != null && opts.acts !== false ? `<div class="pc-line ctr ${c.gl === 0 ? "exp" : c.gl <= RESIGN_AT ? "low" : ""}">📝 ${c.gl === 0 ? `<b>Contract expired</b>: he sits until you re-sign him${c.ten && c.exp && !c.lapsed ? ` · re-sign within ${Math.max(0, GRACE - daysSince(c.exp))}d to keep his ${(c.ten || 0) >= BIRD_EARLY ? "Bird rights" : "games toward Bird rights"}` : ""}` : `<b>${c.gl}</b> game${c.gl === 1 ? "" : "s"} left${c.len ? ` of ${c.len}` : ""}${c.fund && c.fund.left > 0 ? ` · ${perGame(c).toFixed(1)} a game · <b>${Math.round(c.fund.left)}</b> in his fund` : ""}`}<br><small>${birdOf(c) ? `${BIRD[birdOf(c)].icon} <b>${BIRD[birdOf(c)].name}</b> · ` : ""}${c.ten || 0} games with you${!birdOf(c) ? ` · Early Bird at ${BIRD_EARLY}` : birdOf(c) === "early" ? ` · Full Bird at ${BIRD_FULL}` : ""}</small></div>` : ""}
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him${(() => { if(dv <= 0 || !c.at) return ""; const days = Math.floor((new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5); return days >= HOLD_DAYS ? ` · <b class="up">sell now: +${Math.round(dv * HOLD_BONUS)} hold bonus</b>` : ` · hold bonus in ${HOLD_DAYS - days}d`; })()}` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
@@ -884,7 +892,7 @@ function newSeason(){
   aw.forEach(a => G.trophies.push({k: `season:${G.season}:${a[0]}`, t: `${G.season}: ${a[1]}`, s: `${a[2]} ${G.season.slice(2)}`, d: ymd()}));
   const best = N.reduce((a, n) => Math.max(a, n.ff || 0), 0);
   const H = (G.hist || []).concat([{season: G.season, n: N.length, w, l: g - w, ffw: N.filter(n => n.ffWin).length, best, pts: N.reduce((a, n) => a + (n.pts || 0), 0), aw: aw.map(a => a[2])}]);
-  const st = Object.assign({}, G.st, {pastEarned: (G.st.pastEarned || 0) + Math.max(0, balance() + G.spent)});
+  const st = Object.assign({}, G.st, {pastEarned: (G.st.pastEarned || 0) + Math.max(0, balance() + G.spent - (G.refund || 0))});
   const keep = G.cards.filter(c => keepIds.includes(c.cid)).map(c => { const r = ratingOf(statOf(c.id)) || {ovr: c.ovr, cls: c.tier}; return Object.assign({}, c, {ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, exp: null, lapsed: false}); });
   G = Object.assign(blank(), {trophies: G.trophies, wish: G.wish, scout: G.scout, st, hist: H, keep, backup: G.backup, season: SEASON, since: ymd()});
   gSave(); EARN = {pts: 0, games: 0, list: []}; $("gOpen").innerHTML = ""; drawGame(); window.scrollTo(0, 0);
@@ -893,7 +901,8 @@ function newSeason(){
 function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
-  $("gPtsNote").textContent = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold} from sales · ${G.spent} spent on packs`;
+  { const ops = Math.round(opsTotal()), nOps = G.cards.filter(c => c.fund && c.fund.left > 0).length;
+    $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
   const today = ymd(); $("gDaily").disabled = G.daily === today; $("gDaily").textContent = G.daily === today ? "Daily bonus claimed ✓" : `Claim daily bonus (+${DAILY})`;
   const started = !!G.started;
   $("gPlay").hidden = !started;
@@ -955,7 +964,8 @@ function drawRules(){
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
     <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
-    <li><b>Contracts:</b> every card has a contract for games he actually plays for you. New cards start on a rookie deal by tier (Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 games). With 3 or fewer left, re-sign him on a <b>Short (15 games, 0.6× his card value)</b>, <b>Standard (30, 1.0×)</b> or <b>Long (60, 1.5×)</b> deal: longer costs less per game. At 0 he sits until you re-sign him; wait more than ${GRACE} days and his Bird rights lapse.</li>
+    <li><b>Contracts:</b> every card has a contract for games he actually plays for you. New cards start on a rookie deal by tier (Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 games), already paid for by the pack or purchase. With 3 or fewer left, re-sign him on a <b>Short (15 games, 0.6× his card value)</b>, <b>Standard (30, 1.0×)</b> or <b>Long (60, 1.5×)</b> deal: longer costs less per game. At 0 he sits until you re-sign him; wait more than ${GRACE} days and his Bird rights lapse.</li>
+    <li><b>Slush fund and operational funds:</b> your points (picks, nightly games, bonuses, sales) are your <b>slush fund</b>, used for packs, buying cards and contracts. When you re-sign a player, the deal's points move into his own <b>operational fund</b> and are used up one game at a time, only for him (a 15-game deal for 150 = 10 a game). Sell him with games left and the <b>buyout</b> keeps ${Math.round(BUYOUT * 100)}% of what's left in his fund; the rest comes back to your slush fund.</li>
     <li><b>Bird rights:</b> games he plays for you add up across every deal. 🐣 <b>Early Bird</b> at ${BIRD_EARLY} games: re-signing costs 25% less and 25% of his salary doesn't count toward your cap or tax. 🐦 <b>Full Bird</b> at ${BIRD_FULL}: 50% less and half his salary doesn't count. Selling the card resets it; keepers keep it.</li>
     <li><b>Buy a card:</b> on any player's page, tap "Buy his card". Price is ${BUY_MULT}× his card value (the best cards cost about 1,800; at least ${BUY_MIN}). He goes to your reserves with a fresh contract. Great for grabbing an underpaid player before everyone else notices.</li>
     <li><b>Scout:</b> the Buy-low list finds veterans playing 10%+ below their career production, with their salary, buy price and what they'd sell for if they bounce back. Filter by salary, sort by upside, and add anyone to My scouting to track his price.</li>
@@ -1026,7 +1036,7 @@ function showResign(c){
     <p style="margin:0 0 8px">${c.gl ? `${c.gl} game${c.gl === 1 ? "" : "s"} left on his deal; the new one is added on.` : "His contract is up."} ${c.ten || 0} games with you${b ? ` · <b>${BIRD[b].icon} ${BIRD[b].name}</b>: ${Math.round((1 - BIRD[b].disc) * 100)}% off` : ` · Early Bird at ${BIRD_EARLY}, Full Bird at ${BIRD_FULL}`}. You have ${bal.toLocaleString()} points.</p>
     <div class="deals">${DEALS.map(([len, f, name]) => { const cost = dealCost(c, len), after = (c.ten || 0) + len, gets = after >= BIRD_FULL ? "Full Bird by the end" : after >= BIRD_EARLY ? "Early Bird by the end" : "";
       return `<button class="deal" data-dealpick="${c.cid}|${len}"${bal < cost ? " disabled" : ""}><b>${name}</b><span>${len} games</span><strong>${cost.toLocaleString()} pts</strong><small>${(cost / len).toFixed(1)} a game${gets ? ` · ${gets}` : ""}</small></button>`; }).join("")}</div>
-    <p class="note" style="margin:8px 0;opacity:.85">Longer deals cost less per game, but if he slumps you've paid for games you may not want. Card value for selling still follows his play.</p>
+    <p class="note" style="margin:8px 0;opacity:.85">The deal's points move from your slush fund into his operational fund and are used up one game at a time, only for him. Longer deals cost less per game. Sell him with games left and the buyout keeps half of what's left in his fund; the other half comes back to you.</p>
     <button class="gbtn alt" data-closeopen>Not now</button></div>`;
   setTimeout(() => $("gOpen").scrollIntoView({behavior: "smooth", block: "start"}), 100);
 }
@@ -1097,7 +1107,7 @@ function setupGame(){
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], hist: G.hist || [], season: G.season || SEASON, since: G.since || "", st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, refund: G.refund || 0, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], hist: G.hist || [], season: G.season || SEASON, since: G.since || "", st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
@@ -1142,19 +1152,21 @@ function setupGame(){
     if(d.gresign){ const c = cardOf(d.gresign); if(c) showResign(c); return; }
     if(d.dealpick){ const [cid, len] = d.dealpick.split("|"), c = cardOf(cid); if(!c) return; const L = +len, cost = dealCost(c, L);
       if(balance() < cost) return toast(`That deal costs ${cost}: you have ${balance()}`);
-      const was = birdOf(c); G.spent += cost; c.gl = (c.gl || 0) + L; c.len = L; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
-      gSave(); $("gOpen").innerHTML = ""; drawGame(); return toast(`📝 Re-signed ${c.name}: ${L}-game deal for ${cost}${was ? ` (${BIRD[was].name} discount)` : ""}`); }
+      const was = birdOf(c); G.spent += cost; c.fund = {left: ((c.fund && c.fund.left) || 0) + cost, total: cost}; c.gl = (c.gl || 0) + L; c.len = c.gl; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
+      gSave(); $("gOpen").innerHTML = ""; drawGame(); return toast(`📝 Re-signed ${c.name}: ${cost} moved to his operational fund, ${(cost / L).toFixed(1)} a game for ${L} games${was ? ` (${BIRD[was].name} discount)` : ""}`); }
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
-      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
+      const back = buyoutBack(c);
+      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = back ? `Sure? +${v} +${back} back` : `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
+      if(back){ G.refund = (G.refund || 0) + back; G.st.buyouts = (G.st.buyouts || 0) + 1; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
       if(c.val != null && v - c.val >= 100) G.st.sellHigh = 1;
       const hb = holdBonus(c, v);
-      G.sold += v + hb; gSave(); drawGame(); return toast(hb ? `📈 Held and sold ${c.name} for ${v} + ${hb} hold bonus` : `Sold ${c.name} for ${v} points`); }
+      G.sold += v + hb; gSave(); drawGame(); return toast(`${hb ? `📈 Held and sold ${c.name} for ${v} + ${hb} hold bonus` : `Sold ${c.name} for ${v} points`}${back ? ` · buyout: ${back} of his operational fund back` : ""}`); }
     if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(), drop = new Set(); let v = 0;
       G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); const cv = valueOf(ratingOf(statOf(c.id))); v += cv; } else seen.add(c.id); });
       if(!drop.size) return toast("No duplicates to sell");
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${drop.size} for ${v}?`; return; }
-      let hbs = 0; G.cards.filter(c => drop.has(c.cid)).forEach(c => { const cv = valueOf(ratingOf(statOf(c.id))); if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; hbs += holdBonus(c, cv); }); v += hbs;
+      let hbs = 0; G.cards.filter(c => drop.has(c.cid)).forEach(c => { const cv = valueOf(ratingOf(statOf(c.id))); if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; hbs += holdBonus(c, cv); const bk = buyoutBack(c); if(bk) G.refund = (G.refund || 0) + bk; }); v += hbs;
       G.cards = G.cards.filter(c => !drop.has(c.cid)); G.res = G.res.filter(x => !drop.has(x)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
   });
 }
