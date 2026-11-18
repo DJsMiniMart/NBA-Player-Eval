@@ -66,7 +66,12 @@
   .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
   .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
   .keepers{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;max-height:320px;overflow-y:auto;} .keepers label{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.25);border-radius:10px;cursor:pointer;} .keepers small{opacity:.7;margin-left:auto;}
-  .wheel-wrap{position:relative;width:280px;height:280px;margin:6px auto 0;} .wheel-ptr{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:26px;z-index:2;color:#ffd43b;text-shadow:0 2px 4px rgba(0,0,0,.5);}
+  .mk-row{display:grid;grid-template-columns:minmax(0,1fr) 62px 54px 40px auto;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;}
+  .mk-row .nm img{width:18px;height:18px;vertical-align:middle;margin-right:4px;object-fit:contain;} .mk-row small{color:var(--dim);font-size:11.5px;}
+  .mk-row .num{text-align:right;line-height:1.2;} .mk-row .num small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+  .mk-row .gbtn{padding:6px 10px;font-size:13px;min-width:62px;}
+  @media (max-width:520px){ .mk-row{grid-template-columns:minmax(0,1fr) 52px 42px auto;gap:6px;} .mk-row .num small{font-size:9px;letter-spacing:0;} .mk-row span.num:nth-of-type(4){display:none;} .mk-row .gbtn{min-width:0;padding:6px 8px;} }
+  .wheel-wrap{position:relative;width:280px;height:280px;margin:6px auto 0;} .opening:has(.wheel-wrap){overflow:hidden;} .wheel-ptr{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:26px;z-index:2;color:#ffd43b;text-shadow:0 2px 4px rgba(0,0,0,.5);}
   .wheel{width:280px;height:280px;border-radius:50%;position:relative;border:6px solid #ffd43b;box-shadow:0 6px 24px rgba(0,0,0,.4);}
   .wheel span{position:absolute;left:50%;top:50%;margin:-11px 0 0 -11px;width:22px;height:22px;font-size:15px;line-height:22px;text-align:center;}
   .wheel .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:#0b0b0d;border:4px solid #ffd43b;display:grid;place-items:center;font-size:24px;}
@@ -216,6 +221,8 @@
     <div data-gpane="market" hidden>
     <h2 data-jump="Scout">Scout <small>buy low, play cheap, sell high</small></h2>
     <div class="card" style="padding:10px 14px" id="gScout"></div>
+    <h2 data-jump="Player market">Player market <small>every player, his price and what he'd do to your payroll</small></h2>
+    <div class="card" style="padding:10px 14px" id="gMarket"></div>
     <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
     <div class="packs" id="gPacks"></div>
     <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
@@ -914,7 +921,7 @@ function drawGame(){
   $("gPts").textContent = bal.toLocaleString();
   { const ops = Math.round(opsTotal()), nOps = G.cards.filter(c => c.fund && c.fund.left > 0).length;
     $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent${G.spin === ymd() && G.spins[0] ? `<br>🎡 Today's prize: ${esc(G.spins[0].t)}` : ""}<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
-  const today = ymd(), canSpin = G.spin !== today || (G.spinX || 0) > 0; $("gDaily").disabled = false; $("gDaily").textContent = canSpin ? (G.spin === today ? "🎡 Spin again!" : "🎡 Spin the wheel") : "🎡 Spun today ✓";
+  const today = ymd(), canSpin = G.spin !== today || (G.spinX || 0) > 0; $("gDaily").disabled = false; $("gDaily").textContent = canSpin ? (G.spin === today ? "🎡 Spin again!" : `🎡 Daily +${DAILY} & spin`) : "🎡 Spun today ✓";
   const started = !!G.started;
   $("gPlay").hidden = !started;
   $("gTrophies").innerHTML = started ? "" : "";
@@ -953,13 +960,13 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gScout").innerHTML = scoutHtml();
+  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gScout").innerHTML = scoutHtml(); $("gMarket").innerHTML = marketHtml();
   drawScore(); drawNights(); drawRules(); $("gHist").innerHTML = histHtml(); setTab();
 }
 function drawRules(){
   $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
     <li><b>Start your team</b> with 5 free packs (15 cards). Your roster holds 20: 5 starters, 5 on the bench and 10 reserves. Reserves never play or sub in; keep them to sell or move up. New cards land in your reserves, and you can't open packs while you're over 20.</li>
-    <li><b>Daily prize wheel:</b> one spin a day (🎡 at the top). Prizes: points (+10 up to a 500 jackpot), free Gold/Ruby/Galaxy packs, a Gold card, a wish-list player, a Scout's pick, boosts for your next night (double points, tax holiday, +5% Fantasy Five), +5 contract games, a 50% re-sign coupon, 25% off a pack, spin again, a mystery box, or a bust. Spin 7 days in a row for a free Gold pack, 30 for a free Ruby pack.</li>
+    <li><b>Daily check-in and prize wheel:</b> tap 🎡 at the top once a day for <b>+${DAILY}</b> and a spin. Prizes: points (+10 up to a 500 jackpot), free Gold/Ruby/Galaxy packs, a Gold card, a wish-list player, a Scout's pick, boosts for your next night (double points, tax holiday, +5% Fantasy Five), +5 contract games, a 50% re-sign coupon, 25% off a pack, spin again, a mystery box, or a bust. Spin 7 days in a row for a free Gold pack, 30 for a free Ruby pack.</li>
     <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
@@ -980,6 +987,7 @@ function drawRules(){
     <li><b>Slush fund and operational funds:</b> your points (picks, nightly games, bonuses, sales) are your <b>slush fund</b>, used for packs, buying cards and contracts. When you re-sign a player, the deal's points move into his own <b>operational fund</b> and are used up one game at a time, only for him (a 15-game deal for 150 = 10 a game). Sell him with games left and the <b>buyout</b> keeps ${Math.round(BUYOUT * 100)}% of what's left in his fund; the rest comes back to your slush fund.</li>
     <li><b>Bird rights:</b> games he plays for you add up across every deal. 🐣 <b>Early Bird</b> at ${BIRD_EARLY} games: re-signing costs 25% less and 25% of his salary doesn't count toward your cap or tax. 🐦 <b>Full Bird</b> at ${BIRD_FULL}: 50% less and half his salary doesn't count. Selling the card resets it; keepers keep it.</li>
     <li><b>Buy a card:</b> on any player's page, tap "Buy his card". Price is ${BUY_MULT}× his card value (the best cards cost about 1,800; at least ${BUY_MIN}). He goes to your reserves with a fresh contract. Great for grabbing an underpaid player before everyone else notices.</li>
+    <li><b>Player market:</b> every player this season with his salary, buy price (free-agent price), sell value and what he'd add to your luxury tax each night. Search, filter by position and sort by price, OVR, production or best production per salary dollar.</li>
     <li><b>Scout:</b> the Buy-low list finds veterans playing 10%+ below their career production, with their salary, buy price and what they'd sell for if they bounce back. Filter by salary, sort by upside, and add anyone to My scouting to track his price.</li>
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
@@ -1024,6 +1032,28 @@ function scoutRow(x, mine){
     ${w ? `<br>Watching since ${new Date(w.d + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"})} at ${w.p}: ${dp ? `<span class="${dp > 0 ? "sc-up" : "sc-dn"}">${dp > 0 ? "▲" : "▼"}${Math.abs(dp)}</span> price` : "price unchanged"}` : ""}
     <br>${nextGames(st.team).map(g => `${g.today ? "<b>Tonight</b>" : g.d.toLocaleDateString("en-US", {weekday: "short"})} ${g.home ? "vs" : "@"} ${esc(g.opp)} ${g.rec}`).join(" · ")}</span></div>`;
 }
+/* ---------- player market: every player with games this season ---------- */
+let MK = {q: "", pos: "all", sort: "price", n: 25};
+function marketRows(){
+  const q = fold(MK.q), ids = lineupIds(), pay = payrollOf(ids), tax0 = taxOf(pay);
+  let L = (STATS ? STATS.players : []).filter(p => p.g && p.mp && (!q || fold(p.name).includes(q) || fold(nick(p.team)).includes(q) || fold(p.team).includes(q)) && (MK.pos === "all" || posGroup(p.pos) === MK.pos || (MK.pos === "b" && posGroup(p.pos) === "c")));
+  L = L.map(p => { const r = ratingOf(p), sal = salaryOf(p.id), prod = fpg(p); return {p, r, sal, prod, price: buyPrice(p.id), val: valueOf(r), per: prod / Math.max(1, sal / 1e6), tax: ids.includes(p.id) ? 0 : taxOf(pay + sal) - tax0}; });
+  const by = {price: (a, b) => b.price - a.price, cheap: (a, b) => a.price - b.price, ovr: (a, b) => b.r.ovr - a.r.ovr, prod: (a, b) => b.prod - a.prod, bargain: (a, b) => b.per - a.per, salary: (a, b) => a.sal - b.sal};
+  return L.sort(by[MK.sort] || by.price);
+}
+function marketHtml(){
+  const L = marketRows(), bal = balance(), owned = new Set(G.cards.map(c => c.id)), daily = DAILY + 32;
+  const chip = (k, v, l) => `<button class="chip ${MK[k] === v ? "on" : ""}" data-mk${k}="${v}" style="border-radius:999px;font-weight:600">${l}</button>`;
+  return `<div class="row" style="gap:8px;margin:0 0 8px"><input id="mkQ" value="${esc(MK.q)}" placeholder="Search a player or team…" style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit"></div>
+    <div class="chips" style="margin-bottom:4px">${chip("pos", "all", "All")}${chip("pos", "g", "Guards")}${chip("pos", "w", "Wings")}${chip("pos", "b", "Bigs")}${chip("pos", "c", "Centers")}</div>
+    <div class="chips" style="margin-bottom:8px">${chip("sort", "price", "Priciest")}${chip("sort", "cheap", "Cheapest")}${chip("sort", "ovr", "OVR")}${chip("sort", "prod", "Production")}${chip("sort", "bargain", "Best per $")}${chip("sort", "salary", "Lowest salary")}</div>
+    <p class="note" style="margin:0 0 4px">${L.length} players · you have <b>${bal.toLocaleString()}</b> · "Tax/night" is what adding him to your lineup would cost you each night in luxury tax. Your daily +${DAILY} and a wheel spin average about ${daily} a day, enough to cover the tax on about $${daily}M over the cap.</p>
+    <div class="mk">${L.slice(0, MK.n).map(x => { const pl = playsLike(x.p), bdg = pl && pl.ok && pl.sal ? (pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` <span class="sc-up">💰</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` <span class="sc-dn">💸</span>` : "") : "";
+      return `<div class="mk-row"><span class="nm">${logo(x.p.team)}<a href="pe.html#/player/${encodeURIComponent(x.p.id)}">${esc(x.p.name)}</a>${bdg}${owned.has(x.p.id) ? ` <span class="note">· yours</span>` : ""}<br><small>${esc(x.p.pos || "")} · ${x.r.ovr} ${esc(x.r.tier)} · ${x.prod.toFixed(1)} prod</small></span>
+        <span class="num"><b>${$M(x.sal)}</b><small>salary</small></span><span class="num"><b>${x.tax ? `<span class="sc-dn">−${x.tax}</span>` : "0"}</b><small>tax/nt</small></span><span class="num"><b>${x.val}</b><small>sell</small></span>
+        <button class="gbtn" data-buy="${esc(x.p.id)}"${bal < x.price ? ' style="opacity:.55"' : ""}>${x.price.toLocaleString()}</button></div>`; }).join("")}</div>
+    ${L.length > MK.n ? `<div style="text-align:center;margin-top:8px"><button class="chip" data-mkmore style="border-radius:999px;font-weight:600">Show 25 more</button></div>` : ""}`;
+}
 function buyLowList(){ return (STATS ? STATS.players : []).filter(p => p.g >= 5 && p.mp / p.g >= 12).map(p => scoutInfo(p.id)).filter(x => x && x.car != null && x.gap <= -0.1).sort((a, b) => b.profit - a.profit); }
 function scoutHtml(){
   const tabs = `<div class="sc-tabs"><button class="${SCTAB === "auto" ? "on" : ""}" data-sctab="auto">Buy-low list</button><button class="${SCTAB === "mine" ? "on" : ""}" data-sctab="mine">My scouting (${G.scout.length})</button></div>`;
@@ -1062,7 +1092,7 @@ function wheelSvg(){
 }
 function showWheel(){
   const today = ymd(), can = G.spin !== today || (G.spinX || 0) > 0, streak = G.st.dlast === today || G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) : 0;
-  $("gOpen").innerHTML = `<div class="opening" style="text-align:center"><h3>🎡 Daily prize wheel</h3>${wheelSvg()}
+  $("gOpen").innerHTML = `<div class="opening" style="text-align:center"><h3>🎡 Daily check-in: +${DAILY} and a spin</h3>${wheelSvg()}
     <p id="wheelMsg" style="margin:10px 0 6px;min-height:24px;font-weight:700">${can ? "" : `Today's prize: ${esc((G.spins[0] || {}).t || "—")}. Come back tomorrow!`}</p>
     <p class="note" id="wheelStreak" style="margin:0 0 8px;opacity:.85">Spin streak: <b>${streak} day${streak === 1 ? "" : "s"}</b> · 7 days in a row = free Gold pack · 30 = free Ruby pack</p>
     <div class="row" style="justify-content:center"><button class="gbtn" data-spin${can ? "" : " disabled"}>${can ? (G.spin === today ? "Spin again" : "Spin") : "Spun today ✓"}</button><button class="gbtn alt" data-closeopen>Close</button></div>
@@ -1072,10 +1102,10 @@ function showWheel(){
 function spin(){
   const today = ymd(); if(G.spin === today && !(G.spinX > 0)) return;
   const again = G.spin === today; if(again) G.spinX--;
-  if(!again){ G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : G.st.dlast === today ? (G.st.dstreak || 1) : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; }
+  if(!again){ G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : G.st.dlast === today ? (G.st.dstreak || 1) : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; }
   G.spin = today;
   let P = pickPrize(WHEEL); const i = WHEEL.indexOf(P);
-  let text = applyPrize(P);
+  let text = applyPrize(P) + (again ? "" : ` (plus your daily +${DAILY})`);
   if(!again && G.st.dstreak === 7){ G.free.push("gold"); text += " · 🔥 7-day streak: free Gold pack!"; }
   if(!again && G.st.dstreak === 30){ G.free.push("ruby"); text += " · 🔥 30-day streak: free Ruby pack!"; }
   G.spins.unshift({d: today, t: text}); G.spins = G.spins.slice(0, 10); gSave();
@@ -1172,6 +1202,7 @@ function setupGame(){
   mode(m0);
   $("gDaily").onclick = () => { showWheel(); return; const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
+  let mkT = null; $("gameMode").addEventListener("input", e => { if(e.target.id !== "mkQ") return; clearTimeout(mkT); mkT = setTimeout(() => { MK.q = e.target.value; MK.n = 25; const pos = e.target.selectionStart; $("gMarket").innerHTML = marketHtml(); const q = $("mkQ"); q.focus(); try{ q.setSelectionRange(pos, pos); }catch(_){} }, 250); });
   $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } if(e.key === "Enter" && e.target.id === "scoutQ"){ e.preventDefault(); $("scoutAddQ").click(); } });
   $("gameMode").addEventListener("click", e => {
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
@@ -1211,6 +1242,9 @@ function setupGame(){
       if(d.gout) snap(); gSave(); drawGame(); return; }
     if(d.buyok){ buyCard(d.buyok); return; }
     if("spin" in d){ spin(); return; }
+    if(d.mkpos){ MK.pos = d.mkpos; MK.n = 25; $("gMarket").innerHTML = marketHtml(); return; }
+    if(d.mksort){ MK.sort = d.mksort; MK.n = 25; $("gMarket").innerHTML = marketHtml(); return; }
+    if("mkmore" in d){ MK.n += 25; $("gMarket").innerHTML = marketHtml(); return; }
     if("newseason" in d){ newSeason(); return; }
     if(d.gtab){ setTab(d.gtab); window.scrollTo({top: $("gPlay").offsetTop - 70, behavior: "smooth"}); return; }
     if(d.buy){ showBuy(d.buy); return; }
