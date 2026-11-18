@@ -77,6 +77,18 @@
   .mk-row .num{text-align:right;line-height:1.2;} .mk-row .num small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
   .mk-row .gbtn{padding:6px 10px;font-size:13px;min-width:62px;}
   @media (max-width:520px){ .mk-row{grid-template-columns:minmax(0,1fr) 52px 42px auto;gap:6px;} .mk-row .num small{font-size:9px;letter-spacing:0;} .mk-row span.num:nth-of-type(4){display:none;} .mk-row .gbtn{min-width:0;padding:6px 8px;} }
+  .pc-art{position:relative;height:132px;margin:-12px -12px 2px;border-radius:13px 13px 0 0;overflow:hidden;background:radial-gradient(120% 90% at 50% 10%,rgba(255,255,255,.28),rgba(0,0,0,.25) 70%);}
+  .pc-art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.75));pointer-events:none;}
+  .pc-face{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:118%;max-width:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
+  .pc-art .pc-ovr{position:absolute;left:10px;top:8px;z-index:2;} .pc-art .pc-tier{position:absolute;right:10px;top:8px;z-index:2;}
+  .pc-plate{position:absolute;left:10px;right:10px;bottom:6px;z-index:2;} .pc-plate .pc-name{text-shadow:0 2px 6px rgba(0,0,0,.6);} .pc-plate .pc-sub{opacity:.92;}
+  .ac-photo{position:relative;height:120px;margin:-12px -12px 0;border-radius:13px 13px 0 0;overflow:hidden;background:radial-gradient(110% 90% at 50% 15%,rgba(255,255,255,.22),transparent 70%);}
+  .ac-face{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:115%;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
+  .t-legend .ac-face{filter:sepia(.55) saturate(1.3) contrast(1.05) drop-shadow(0 0 10px rgba(255,200,40,.5));}
+  .ac-crown{position:absolute;inset:0;display:grid;place-items:center;font-size:64px;filter:drop-shadow(0 0 14px rgba(255,200,40,.8));}
+  .ac-top{margin-top:-30px;position:relative;z-index:2;}
+  .bdg.potw{background:#0ca678;} .bdg.aw{background:#e67700;}
+  @media (max-width:640px){ .pc-art{height:112px;} .ac-photo{height:100px;} }
   .album .ac .pc-in{gap:5px;min-height:250px;position:relative;overflow:hidden;} .ac-top{display:flex;justify-content:space-between;align-items:center;gap:6px;} .ac-top img{width:30px;height:30px;border-radius:50%;background:#fff;}
   .ac-kind{font:800 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.35);}
   .ac-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto;} .ac-chips span{font:700 10.5px Inter,sans-serif;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.35);}
@@ -249,14 +261,14 @@
     <div class="cards album" id="gAlbum"></div>
     </div>
     <div data-gpane="market" hidden>
-    <h2 data-jump="Scout">Scout <small>buy low, play cheap, sell high</small></h2>
-    <div class="card" style="padding:10px 14px" id="gScout"></div>
-    <h2 data-jump="Player market">Player market <small>every player, his price and what he'd do to your payroll</small></h2>
-    <div class="card" style="padding:10px 14px" id="gMarket"></div>
     <h2 data-jump="Packs">Card packs <small>3 cards in every pack</small></h2>
     <div class="packs" id="gPacks"></div>
     <h2 data-jump="Wish list">Wish list <small>pull one for a 🌠 trophy</small></h2>
     <div class="card" style="padding:6px 14px 12px" id="gWish"></div>
+    <h2 data-jump="Player market">Player market <small>every player, his price and what he'd do to your payroll</small></h2>
+    <div class="card" style="padding:10px 14px" id="gMarket"></div>
+    <h2 data-jump="Scout">Scout <small>buy low, play cheap, sell high</small></h2>
+    <div class="card" style="padding:10px 14px" id="gScout"></div>
     </div>
     <div data-gpane="progress" hidden>
     <h2 data-jump="Scoreboard">Scoreboard <small id="gScoreNote"></small></h2>
@@ -803,7 +815,8 @@ function trophyHtml(){
 }
 const award = (k, t, s) => { if(G.trophies.some(x => x.k === k)) return false; G.trophies.push({k, t, s, d: ymd()}); return true; };
 /* ---------- form badges: last 5 games vs season average, from recent box scores ---------- */
-let FORM = {}, CAREER = {}, ROOKIES = new Set(), LAST10 = {}, FLIP = new Set(), POTW = null;
+let FORM = {}, CAREER = {}, ROOKIES = new Set(), LAST10 = {}, FLIP = new Set(), POTW = null, ESPN = {};
+const face = (espn, cls) => espn ? `<img class="${cls || "pc-face"}" src="https://a.espncdn.com/i/headshots/nba/players/full/${encodeURIComponent(espn)}.png" alt="" loading="lazy" onerror="this.remove()">` : "";
 const HOLD_DAYS = 7, HOLD_BONUS = 0.5;
 /* contracts: every card plays a set number of games for you (games he actually plays in your five), by tier when you got him;
    with 3 or fewer left you can re-sign him for half his current value; at 0 he leaves your lineup until you do */
@@ -838,13 +851,18 @@ async function loadForm(){
     boxes.forEach((b, i) => { if(!b) return; const d = ymd(new Date(games[i][1])); if(d < wk || d >= end) return;
       Object.entries(b.teams || {}).forEach(([tc, T]) => (T.players || []).forEach(r => { if(!(+r[3] > 0)) return; const t = tot[r[1]] = tot[r[1]] || {name: r[1], team: NBA[tc] || tc, prod: 0, g: 0}; t.prod += prodOf(r); t.g++; })); });
     const top = Object.values(tot).sort((a, b) => b.prod - a.prod)[0];
-    if(top){ const st = (STATS ? STATS.players : []).find(p => fold(p.name) === fold(top.name)); POTW = {wk, id: st ? st.id : "", name: top.name, team: st ? st.team : top.team, prod: top.prod, g: top.g}; } }
+    if(top){ const st = (STATS ? STATS.players : []).find(p => fold(p.name) === fold(top.name)); POTW = {wk, id: st ? st.id : "", name: top.name, team: st ? st.team : top.team, prod: top.prod, g: top.g};
+      // own him? his Player of the Week card goes straight into your album (once a week)
+      const key = `potw:${POTW.wk}:${POTW.id}`;
+      if(POTW.id && G.started && G.cards.some(c => c.id === POTW.id) && !G.album.some(a => a.key === key)){ const ev = eventPool().find(x => x.key === key); if(ev){ addAlbum(ev); gSave(); toast2(`🏅 Your player ${POTW.name} is Player of the Week! His card is in your album.`); } } } }
   FORM = {};
   Object.entries(got).forEach(([id, l]) => { const st = statOf(id), avg = fpg(st); if(l.length < 3 || !avg) return; const l5 = l.reduce((a, b) => a + b, 0) / l.length, d = (l5 - avg) / avg; FORM[id] = {l5, n: l.length, d}; });
 }
 function badges(id, name, team){
   const out = [], f = FORM[id];
   if(ROOKIES.has(id)) out.push(`<span class="bdg rook" title="First NBA season">🆕 Rookie</span>`);
+  if(POTW && POTW.id === id) out.push(`<span class="bdg potw" title="Player of the Week: ${POTW.prod} production in ${POTW.g} games last week">🏅 Player of the Week</span>`);
+  ((LEG && LEG.awards) || []).filter(a => a.id === id && ["mvp", "fmvp", "dpoy", "roy"].includes(a.award)).forEach(a => out.push(`<span class="bdg aw" title="${esc(a.label)}: ${a.years.join(", ")}">${AWICON[a.award]} ${a.years.length > 1 ? a.years.length + "× " : ""}${esc(a.award === "mvp" ? "MVP" : a.award === "fmvp" ? "Finals MVP" : a.award === "dpoy" ? "DPOY" : "ROY")}</span>`));
   { const bc = cardFor(id), b = birdOf(bc); if(b) out.push(`<span class="bdg bird" title="${BIRD[b].name}: ${bc.ten} games with you. Re-signing costs ${Math.round((1 - BIRD[b].disc) * 100)}% less, and ${Math.round((1 - BIRD[b].cap) * 100)}% of his salary doesn't count toward your cap or tax.">${BIRD[b].icon} ${BIRD[b].name}</span>`); }
   const ca = CAREER[id], st = statOf(id);
   if(ca && ca[0] >= 82 && st && st.g >= 5){ const now = fpg(st), d = (now - ca[1]) / ca[1];
@@ -906,9 +924,8 @@ function gCard(c, opts){
   const v = valueOf(r), dv = v - (c.val || v), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid), inRes = G.res.includes(c.cid);
   if(opts.acts !== false && FLIP.has(c.cid)) return cardBack(c);
   return `<div class="pc t-${r.cls}"${opts.acts !== false ? ` data-cid="${c.cid}" title="Tap the card to flip it"` : ""}><div class="pc-in">
-    <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div></div>
-    <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div>
-    <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div>
+    <div class="pc-art">${face(ESPN[c.id])}<div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div>
+      <div class="pc-plate"><div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div><div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div></div></div>
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
@@ -1130,6 +1147,7 @@ function albumCard(a, n){
   const chips = lg ? [a.titles ? `💍 ${a.titles}× champion` : "", a.mvp ? `🏆 ${a.mvp}× MVP` : "", a.fmvp ? `${a.fmvp}× Finals MVP` : "", a.allstar ? `⭐ ${a.allstar}× All-Star` : ""].filter(Boolean)
     : a.kind === "award" ? [a.years.map(y => `${y - 1}-${String(y).slice(2)}`).join(" · ")] : [a.sub || ""];
   return `<div class="pc ac ${cls}"><div class="pc-in">${lg ? '<i class="foil"></i><i class="spark"></i>' : ""}
+    <div class="ac-photo">${face(lg ? a.espn : ESPN[a.id], "ac-face")}${lg && !a.espn ? '<span class="ac-crown">👑</span>' : ""}</div>
     <div class="ac-top"><span class="ac-kind">${lg ? "👑 Legend" : a.kind === "award" ? `${AWICON[a.award] || "🏅"} ${esc(a.label)}` : esc(a.label)}</span>${team}</div>
     <div class="pc-name">${a.id && !lg ? `<a href="pe.html#/player/${encodeURIComponent(a.id)}">${esc(a.name)}</a>` : a.id ? `<a href="pe.html#/player/${encodeURIComponent(a.id)}">${esc(a.name)}</a>` : esc(a.name)}</div>
     <div class="pc-sub">${[lg ? a.pos : (statOf(a.id) || {}).pos, lg && a.from ? `${a.from}–${a.to}` : "", !lg && a.team ? nick(a.team) : ""].filter(Boolean).map(esc).join(" · ")}</div>
@@ -1459,6 +1477,7 @@ function setupGame(){
 async function init(){
   setupShare();
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
+  getJSON("data/idmap.json").then(m => { Object.entries(m || {}).forEach(([e, b]) => { ESPN[b] = e; }); if(G.started && !$("gameMode").hidden) drawGame(); });
   getJSON("data/legends.json").then(d => { LEG = d; if(G.started && !$("gameMode").hidden && $("gAlbum")) $("gAlbum").innerHTML = albumHtml(); });
   Promise.all([getJSON("data/career.json"), getJSON("data/rookies.json")]).then(([ca, rk]) => { CAREER = (ca && ca.players) || {}; ROOKIES = new Set((rk && rk.ids) || []); if(G.started && !$("gameMode").hidden) drawGame(); });
   IDX = idx || []; STATS = st || {players: []}; CT = (ct && ct.players) || {}; SCHED = sc; MORNING = mo; TRADED = tr; SEASON = (STATS && STATS.season) || (sc && sc.season) || "";
