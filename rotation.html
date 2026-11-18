@@ -66,6 +66,12 @@
   .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
   .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
   .keepers{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;max-height:320px;overflow-y:auto;} .keepers label{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.25);border-radius:10px;cursor:pointer;} .keepers small{opacity:.7;margin-left:auto;}
+  .pc[data-cid]{cursor:pointer;} .pc.flipping{animation:pcflip .35s ease;} @keyframes pcflip{from{transform:perspective(900px) rotateY(90deg);}to{transform:perspective(900px) rotateY(0);}}
+  .pc-back{font-size:11.5px;line-height:1.35;} .bk-head b{display:block;font:700 17px/1.15 "Barlow Condensed",sans-serif;text-transform:uppercase;} .bk-head span{opacity:.85;font-size:11.5px;}
+  .bk-t{width:100%;border-collapse:collapse;margin:6px 0 2px;font-variant-numeric:tabular-nums;} .bk-t th,.bk-t td{padding:2px 1px;text-align:right;font-size:10px;white-space:nowrap;} .bk-t{table-layout:auto;} .bk-t th:first-child,.bk-t td:first-child{text-align:left;}
+  .bk-t thead th{opacity:.7;font-weight:600;font-size:9.5px;text-transform:uppercase;} .bk-t tbody tr{border-top:1px solid rgba(255,255,255,.15);} .bk-t tbody th{font-weight:700;}
+  .bk-l td.hi{color:#8ce99a;font-weight:700;} .bk-l td.lo{color:#ffa8a8;font-weight:700;}
+  .bk-h{margin:8px 0 2px;font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;opacity:.8;} .bk-n{margin:0;font-size:11.5px;opacity:.95;} .bk-tap{margin:8px 0 0;font-size:11px;opacity:.75;} .bk-tap a{color:inherit;}
   .mk-row{display:grid;grid-template-columns:minmax(0,1fr) 62px 54px 40px auto;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;}
   .mk-row .nm img{width:18px;height:18px;vertical-align:middle;margin-right:4px;object-fit:contain;} .mk-row small{color:var(--dim);font-size:11.5px;}
   .mk-row .num{text-align:right;line-height:1.2;} .mk-row .num small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
@@ -743,7 +749,7 @@ function trophyHtml(){
 }
 const award = (k, t, s) => { if(G.trophies.some(x => x.k === k)) return false; G.trophies.push({k, t, s, d: ymd()}); return true; };
 /* ---------- form badges: last 5 games vs season average, from recent box scores ---------- */
-let FORM = {}, CAREER = {}, ROOKIES = new Set();
+let FORM = {}, CAREER = {}, ROOKIES = new Set(), LAST10 = {}, FLIP = new Set();
 const HOLD_DAYS = 7, HOLD_BONUS = 0.5;
 /* contracts: every card plays a set number of games for you (games he actually plays in your five), by tier when you got him;
    with 3 or fewer left you can re-sign him for half his current value; at 0 he leaves your lineup until you do */
@@ -767,7 +773,13 @@ async function loadForm(){
   const games = (SCHED.games || []).filter(g => g[4] === 3).sort((a, b) => a[1] < b[1] ? 1 : -1).slice(0, 120);
   const boxes = await Promise.all(games.map(g => getBox(g[0])));
   const want = new Map(ids.map(id => { const st = statOf(id); return [fold((st && st.name) || ""), id]; })), got = {};
-  boxes.forEach((b, i) => { if(!b) return; Object.values(b.teams || {}).forEach(T => (T.players || []).forEach(r => { const id = want.get(fold(r[1])); if(id && +r[3] > 0 && (got[id] = got[id] || []).length < 5) got[id].push(prodOf(r)); })); });
+  LAST10 = {};
+  boxes.forEach((b, i) => { if(!b) return; const g = games[i], tk = Object.keys(b.teams || {});
+    Object.entries(b.teams || {}).forEach(([tc, T]) => (T.players || []).forEach(r => { const id = want.get(fold(r[1])); if(!id || !(+r[3] > 0)) return;
+      const L = LAST10[id] = LAST10[id] || []; if(L.length >= 10) return;
+      const opp = tk.find(k => k !== tc) || "", home = NBA[g[2]] === tc || g[2] === tc || g[2] === (NBA[tc] || tc);
+      L.push({d: ymd(new Date(g[1])), opp: NBA[opp] || opp, home, min: +r[3], pts: +r[4] || 0, ast: +r[5] || 0, reb: (+r[6] || 0) + (+r[7] || 0), stl: +r[8] || 0, blk: +r[9] || 0, p: prodOf(r)}); })); });
+  Object.entries(LAST10).forEach(([id, L]) => { got[id] = L.slice(0, 5).map(x => x.p); });
   FORM = {};
   Object.entries(got).forEach(([id, l]) => { const st = statOf(id), avg = fpg(st); if(l.length < 3 || !avg) return; const l5 = l.reduce((a, b) => a + b, 0) / l.length, d = (l5 - avg) / avg; FORM[id] = {l5, n: l.length, d}; });
 }
@@ -802,11 +814,35 @@ function nextHtml(team){
   return `<div class="pc-next" title="Next 3 games (opponent's record)">${L.map(x => `<span class="${x.today ? "tn" : ""}"><b>${day(x)}</b> ${x.home ? "vs" : "@"} ${esc(x.opp)}${x.rec ? ` <i>${x.rec}</i>` : ""}</span>`).join("")}</div>`;
 }
 function matesNow(ids){ const tc = {}; ids.forEach(id => { const st = statOf(id); if(st && st.team) tc[st.team] = (tc[st.team] || 0) + 1; }); return Object.values(tc).reduce((a, n) => a + Math.max(0, n - 1), 0); }
+/* back of the card: this season, career, last 10 games, contract and his history with you */
+function cardBack(c){
+  const st = statOf(c.id) || {}, r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier}, g = st.g || 0, per = k => g ? (st[k] / g).toFixed(1) : "—";
+  const pct = (m, a) => a ? (100 * m / a).toFixed(1) : "—", ca = CAREER[c.id], L = LAST10[c.id] || [], avg = fpg(st);
+  const ct = CT[c.id], yrs = ct ? (ct.years || []).filter(y => y[0] >= SEASON) : [];
+  const days = c.at ? daysSince(c.at) : 0, v = valueOf(r), b = birdOf(c);
+  const md3 = d => { const x = new Date(d + "T12:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
+  const row = (lab, a) => `<tr><th>${lab}</th>${a.map(x => `<td>${x}</td>`).join("")}</tr>`;
+  return `<div class="pc t-${r.cls} pc-flipped" data-cid="${c.cid}"><div class="pc-in pc-back">
+    <div class="bk-head"><b>${esc(c.name)}</b><span>${esc(st.pos || "")} · ${esc(nick(st.team || ""))}${st.age ? ` · age ${st.age}` : ""} · ${r.ovr} OVR</span></div>
+    ${(() => { const cur = [g, per("mp"), per("pts"), per("trb"), per("ast"), per("stl"), per("blk"), pct(st.fg, st.fga), pct(st.fg3, st.fg3a), avg ? avg.toFixed(1) : "—"];
+      const car = ca && ca.length > 3 ? [ca[0], ca[8], ca[3], ca[4], ca[5], ca[6], ca[7], ca[9] != null ? (ca[9] * 100).toFixed(1) : "—", ca[10] != null ? (ca[10] * 100).toFixed(1) : "—", ca[1].toFixed(1)] : null;
+      const tbl = (heads, idx) => `<table class="bk-t"><thead><tr><th></th>${heads.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${row(esc(SEASON.slice(2)), idx.map(k => cur[k]))}${car ? row("Career", idx.map(k => car[k])) : ""}</tbody></table>`;
+      return tbl(["PTS", "REB", "AST", "PROD"], [2, 3, 4, 9]) + tbl(["MIN", "STL", "BLK", "FG%", "3P%"], [1, 5, 6, 7, 8]) + (car ? `<p class="bk-n" style="opacity:.75">Career: ${car[0]} games before this season</p>` : `<p class="bk-n" style="opacity:.75">${ROOKIES.has(c.id) ? "Rookie: first NBA season" : "No earlier seasons on record"}</p>`); })()}
+    <div class="bk-h">Last ${L.length || 10} games${L.length ? ` · ${(L.reduce((a, x) => a + x.p, 0) / L.length).toFixed(1)} prod` : ""}</div>
+    ${L.length ? `<table class="bk-t bk-l"><thead><tr><th>Date</th><th>Opp</th><th>P / R / A</th><th>PROD</th></tr></thead><tbody>${L.map(x => `<tr><td>${md3(x.d)}</td><td>${x.home ? "vs" : "@"} ${esc(x.opp)}</td><td>${x.pts} / ${x.reb} / ${x.ast}</td><td class="${avg && x.p >= avg * 1.2 ? "hi" : avg && x.p <= avg * 0.8 ? "lo" : ""}">${x.p}</td></tr>`).join("")}</tbody></table>` : `<p class="bk-n">Loading recent games…</p>`}
+    <div class="bk-h">Contract</div>
+    <p class="bk-n">${yrs.length ? yrs.map(y => `${esc(y[0].slice(2))}: <b>${$M(+String(y[1]).replace(/[^\d]/g, "") || 0)}</b>${y[2] ? ` (${esc(/player/i.test(y[2]) ? "PO" : /team/i.test(y[2]) ? "TO" : y[2])})` : ""}`).join(" · ") : `${$M(salaryOf(c.id))} this season`}</p>
+    <div class="bk-h">With you</div>
+    <p class="bk-n">Since ${c.at ? md3(c.at) : "—"} (${days} day${days === 1 ? "" : "s"}) · value ${c.val != null ? c.val : "—"} → ${v} · ${c.ten || 0} games with you${b ? ` · ${BIRD[b].icon} ${BIRD[b].name}` : ""} · ${c.gl != null ? `${c.gl} games left on his deal` : ""}${c.bought ? ` · bought for ${c.bought.toLocaleString()}` : ""}</p>
+    <p class="bk-tap">Tap to flip back · <a href="pe.html#/player/${encodeURIComponent(c.id)}">Full player page →</a></p>
+  </div></div>`;
+}
 function gCard(c, opts){
   opts = opts || {};
   const st = statOf(c.id), r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier, pc: 0}, team = st ? st.team : "", g = st && st.g, per = k => g ? (st[k] / g).toFixed(1) : "—";
   const v = valueOf(r), dv = v - (c.val || v), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid), inRes = G.res.includes(c.cid);
-  return `<div class="pc t-${r.cls}"><div class="pc-in">
+  if(opts.acts !== false && FLIP.has(c.cid)) return cardBack(c);
+  return `<div class="pc t-${r.cls}"${opts.acts !== false ? ` data-cid="${c.cid}" title="Tap the card to flip it"` : ""}><div class="pc-in">
     <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div></div>
     <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div>
     <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div>
@@ -1205,6 +1241,9 @@ function setupGame(){
   let mkT = null; $("gameMode").addEventListener("input", e => { if(e.target.id !== "mkQ") return; clearTimeout(mkT); mkT = setTimeout(() => { MK.q = e.target.value; MK.n = 25; const pos = e.target.selectionStart; $("gMarket").innerHTML = marketHtml(); const q = $("mkQ"); q.focus(); try{ q.setSelectionRange(pos, pos); }catch(_){} }, 250); });
   $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } if(e.key === "Enter" && e.target.id === "scoutQ"){ e.preventDefault(); $("scoutAddQ").click(); } });
   $("gameMode").addEventListener("click", e => {
+    { const pc = e.target.closest(".pc[data-cid]"); if(pc && !e.target.closest("button,a,input,label")){ const cid = pc.dataset.cid; FLIP.has(cid) ? FLIP.delete(cid) : FLIP.add(cid);
+      const c = G.cards.find(x => x.cid === cid); if(c){ const tmp = document.createElement("div"); tmp.innerHTML = gCard(c); const nw = tmp.firstElementChild; nw.classList.add("flipping"); pc.replaceWith(nw);
+        if(FLIP.has(cid) && !LAST10[c.id]) loadForm().then(() => { const el = document.querySelector(`.pc[data-cid="${cid}"]`); if(el && FLIP.has(cid)){ const t2 = document.createElement("div"); t2.innerHTML = gCard(c); el.replaceWith(t2.firstElementChild); } }); } return; } }
     const t = e.target.closest("button,[data-flip]"); if(!t) return;
     const d = t.dataset, toast = m => window.fcToast && fcToast(m);
     if("startteam" in d) return startTeam();

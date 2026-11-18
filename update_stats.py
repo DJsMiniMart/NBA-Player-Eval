@@ -360,13 +360,22 @@ def write_career(year):
             i = p.get("id")
             if i not in cur or not p.get("g"):
                 continue
-            t = tot.setdefault(i, [0, 0.0, 0])
+            t = tot.setdefault(i, [0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             t[0] += p["g"]
             t[1] += (p.get("pts", 0) + 2 * p.get("ast", 0) + 2 * p.get("trb", 0) + 3 * p.get("stl", 0) + p.get("blk", 0) - 4 * p.get("tov", 0))
             t[2] += 1
-    out = {i: [g, round(prod / g, 2), n] for i, (g, prod, n) in tot.items() if g}
+            for j, k in enumerate(["pts", "trb", "ast", "stl", "blk", "mp", "fg", "fga", "fg3", "fg3a"]):
+                t[3 + j] += p.get(k, 0) or 0
+    out = {}
+    for i, t in tot.items():
+        g = t[0]
+        if not g:
+            continue
+        pts, trb, ast, stl, blk, mp, fg, fga, fg3, fg3a = t[3:]
+        out[i] = [g, round(t[1] / g, 2), t[2], round(pts / g, 1), round(trb / g, 1), round(ast / g, 1), round(stl / g, 1), round(blk / g, 1),
+                  round(mp / g, 1), round(fg / fga, 3) if fga else None, round(fg3 / fg3a, 3) if fg3a else None]
     with open(os.path.join(DATA_DIR, "career.json"), "w", encoding="utf-8") as f:
-        json.dump({"season": season_label(year), "cols": ["g", "prodPerGame", "seasons"], "players": out}, f, separators=(",", ":"))
+        json.dump({"season": season_label(year), "cols": ["g", "prodPerGame", "seasons", "pts", "reb", "ast", "stl", "blk", "min", "fgPct", "fg3Pct"], "players": out}, f, separators=(",", ":"))
 
 
 def write_rookies(year):
