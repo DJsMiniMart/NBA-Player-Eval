@@ -10,8 +10,8 @@ const SPREAD_ODDS = -110;
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
 
 function load(){
-  try{ const d = JSON.parse(localStorage.getItem(KEY) || "{}"); return d && typeof d === "object" && d.picks ? d : {picks:{}}; }
-  catch(_){ return {picks:{}}; }
+  try{ const d = JSON.parse(localStorage.getItem(KEY) || "{}"); const o = d && typeof d === "object" && d.picks ? d : {picks:{}}; o.props = o.props || {}; o.parlays = o.parlays || {}; o.locks = o.locks || {}; return o; }
+  catch(_){ return {picks:{}, props:{}, parlays:{}, locks:{}}; }
 }
 function save(d){ try{ localStorage.setItem(KEY, JSON.stringify(d)); return true; }catch(_){ return false; } }
 let DB = load();
@@ -69,14 +69,85 @@ function make(u, o, type, side){
 /* tap a bet: pick it, switch to the other side, or (tapping your pick again) take it back */
 function toggle(u, o, type, side){
   if(started(u.t)) return {ok:false, why:"This game has started, so picks are locked."};
-  const k = pid(u.id, type), cur = DB.picks[k];
-  if(cur && cur.side === side){ delete DB.picks[k]; }
+  const k = pid(u.id, type), cur = DB.picks[k], night = nightOf(u.t);
+  if(!cur && used(night) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night. Take one back to make another.`};
+  if(cur && cur.side === side){ delete DB.picks[k]; if(DB.locks[night] === k) delete DB.locks[night]; Object.keys(DB.parlays).forEach(x => { if(DB.parlays[x].legs.includes(k)) delete DB.parlays[x]; }); }
   else { const p = make(u, o, type, side); if(!p) return {ok:false, why:"That line isn't available."}; DB.picks[k] = p; }
   const ok = save(DB);
   listeners.forEach(f => f());
   return ok ? {ok:true} : {ok:false, why:"This browser won't let the site save (private mode?)."};
 }
 const pickOf = (gid, type) => DB.picks[pid(gid, type)] || null;
+
+/* ---------- nightly limit: 10 picks a night, counting game lines, player props and parlay tickets ---------- */
+const LIMIT = 10;
+const pad = n => String(n).padStart(2, "0");
+const nightOf = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const used = night => Object.values(DB.picks).filter(p => nightOf(p.t) === night).length + Object.values(DB.props).filter(p => nightOf(p.t) === night).length + Object.values(DB.parlays).filter(p => p.night === night).length;
+const done = () => { const ok = save(DB); listeners.forEach(f => f()); return ok ? {ok:true} : {ok:false, why:"This browser won't let the site save (private mode?)."}; };
+
+/* ---------- Lock of the Day: one pick a night counts double if it wins and costs 25 if it loses ---------- */
+function setLock(k){
+  const p = DB.picks[k]; if(!p) return {ok:false, why:"Pick that bet first."};
+  if(started(p.t)) return {ok:false, why:"That game has started."};
+  const night = nightOf(p.t), cur = DB.locks[night];
+  if(cur && cur !== k && DB.picks[cur] && started(DB.picks[cur].t)) return {ok:false, why:"Your lock for that night is already in a game that started."};
+  if(cur === k) delete DB.locks[night]; else DB.locks[night] = k;
+  return done();
+}
+const lockOf = night => DB.locks[night] || null;
+
+/* ---------- Pulse props: over/under a player's points, rebounds or assists; the line is his season average (to the half point) ---------- */
+function propsFor(u, P){
+  if(!P || !P.players) return [];
+  const C = P.cols, ix = k => C.indexOf(k), out = [];
+  [u.away, u.home].forEach(team => {
+    const L = P.players.filter(r => r[ix("team")] === team && r[ix("g")] >= 3 && r[ix("min")] / r[ix("g")] >= 20).map(r => ({id: String(r[ix("id")]), name: r[ix("name")], team, g: r[ix("g")],
+      pts: r[ix("pts")] / r[ix("g")], reb: (r[ix("dreb")] + r[ix("oreb")]) / r[ix("g")], ast: r[ix("ast")] / r[ix("g")]}));
+    const seen = new Set(), add = (x, stat) => { if(!x || seen.has(x.id + stat)) return; seen.add(x.id + stat); out.push({key: `${u.id}:${x.id}:${stat}`, gid: u.id, t: u.t, pid: x.id, name: x.name, team, stat, line: Math.floor(x[stat]) + 0.5}); };
+    L.slice().sort((a, b) => b.pts - a.pts).slice(0, 2).forEach(x => add(x, "pts"));
+    add(L.slice().sort((a, b) => b.reb - a.reb)[0], "reb");
+    add(L.slice().sort((a, b) => b.ast - a.ast)[0], "ast");
+  });
+  return out;
+}
+function toggleProp(pr, side){
+  if(started(pr.t)) return {ok:false, why:"This game has started, so props are locked."};
+  const cur = DB.props[pr.key];
+  if(cur && cur.side === side){ delete DB.props[pr.key]; return done(); }
+  if(!cur && used(nightOf(pr.t)) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night.`};
+  DB.props[pr.key] = Object.assign({}, pr, {side, at: new Date().toISOString()});
+  return done();
+}
+const propOf = key => DB.props[key] || null;
+async function gradeProps(boxOf){
+  const out = [];
+  for(const p of Object.values(DB.props)){
+    if(Date.now() - new Date(p.t) < 2.5 * 36e5){ out.push(Object.assign({}, p, {res: null})); continue; }
+    const b = await boxOf(p.gid); if(!b){ out.push(Object.assign({}, p, {res: null})); continue; }
+    let row = null; Object.values(b.teams || {}).forEach(T => (T.players || []).forEach(r => { if(String(r[0]) === p.pid) row = r; }));
+    if(!row || !(+row[3] > 0)){ out.push(Object.assign({}, p, {res: "V", val: null})); continue; }   // didn't play: void
+    const val = p.stat === "pts" ? +row[4] : p.stat === "ast" ? +row[5] : (+row[6]) + (+row[7]);
+    out.push(Object.assign({}, p, {val, res: val === p.line ? "P" : ((val > p.line) === (p.side === "over") ? "W" : "L")}));
+  }
+  return out;
+}
+
+/* ---------- parlays: 2-4 of your game-line picks from different games on the same night; all must win ---------- */
+const PARLAY_MULT = {2: 2.5, 3: 6, 4: 12};
+function makeParlay(keys){
+  const legs = [...new Set(keys)].filter(k => DB.picks[k]);
+  if(legs.length < 2 || legs.length > 4) return {ok:false, why:"A parlay needs 2 to 4 picks."};
+  const P = legs.map(k => DB.picks[k]), night = nightOf(P[0].t);
+  if(P.some(p => nightOf(p.t) !== night)) return {ok:false, why:"Parlay legs must all be on the same night."};
+  if(new Set(P.map(p => p.gid)).size !== legs.length) return {ok:false, why:"Each leg has to be from a different game."};
+  if(P.some(p => started(p.t))) return {ok:false, why:"One of those games has started."};
+  if(used(night) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night.`};
+  const id = "x" + Date.now().toString(36);
+  DB.parlays[id] = {id, night, legs, t: P.map(p => p.t).sort()[0], at: new Date().toISOString()};
+  return done();
+}
+function removeParlay(id){ const x = DB.parlays[id]; if(x && started(x.t)) return {ok:false, why:"That parlay's first game has started."}; delete DB.parlays[id]; return done(); }
 
 /* grade one side of a bet from the final score */
 function gradeBet(b, type, home, away, hs, as){
@@ -130,11 +201,13 @@ function exportData(){ return JSON.stringify(DB, null, 1); }
 function importData(text){
   const d = JSON.parse(text);
   if(!d || typeof d.picks !== "object") throw new Error("That file isn't a My Picks backup.");
-  Object.assign(DB.picks, d.picks); save(DB); listeners.forEach(f => f());
+  Object.assign(DB.picks, d.picks); Object.assign(DB.props, d.props || {}); Object.assign(DB.parlays, d.parlays || {}); Object.assign(DB.locks, d.locks || {}); save(DB); listeners.forEach(f => f());
   return Object.keys(d.picks).length;
 }
-function remove(k){ delete DB.picks[k]; save(DB); listeners.forEach(f => f()); }
+function remove(k){ const p = DB.picks[k]; delete DB.picks[k]; if(p && DB.locks[nightOf(p.t)] === k) delete DB.locks[nightOf(p.t)]; Object.keys(DB.parlays).forEach(x => { if(DB.parlays[x].legs.includes(k)) delete DB.parlays[x]; }); save(DB); listeners.forEach(f => f()); }
 
 window.MyPicks = {options, toggle, pickOf, started, finals, graded, record, betText, profit, exportData, importData, remove,
-  all: () => DB.picks, count: () => Object.keys(DB.picks).length, onChange: f => listeners.push(f), SPREAD_ODDS};
+  all: () => DB.picks, count: () => Object.keys(DB.picks).length, onChange: f => listeners.push(f), SPREAD_ODDS,
+  LIMIT, nightOf, used, setLock, lockOf, locks: () => DB.locks, propsFor, toggleProp, propOf, props: () => DB.props, gradeProps,
+  PARLAY_MULT, makeParlay, removeParlay, parlays: () => DB.parlays, key: pid};
 })();

@@ -18,7 +18,7 @@ function strip(list, opts){
     <b>${esc(c.h)}</b>${c.sub ? `<small>${esc(c.sub)}</small>` : ""}</a>`).join("")}</div>`;
 }
 const css = document.createElement("style");
-css.textContent = `.clips{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity;}
+css.textContent = `.clips{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity;max-width:100%;min-width:0;}
 .clip{flex:0 0 210px;scroll-snap-align:start;text-decoration:none;color:inherit;display:block;}
 .clip .th{display:block;position:relative;aspect-ratio:16/9;border-radius:10px;background:#0b0b0d center/cover no-repeat;overflow:hidden;}
 .clip .th i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;color:#fff;font-size:26px;text-shadow:0 2px 8px rgba(0,0,0,.6);background:linear-gradient(transparent 50%,rgba(0,0,0,.35));}

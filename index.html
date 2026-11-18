@@ -72,7 +72,8 @@
 
   /* layout */
   .cols{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start;}
-  @media (max-width:960px){ .cols{grid-template-columns:1fr;} }
+  @media (max-width:960px){ .cols{grid-template-columns:minmax(0,1fr);} }
+  #standings{overflow-x:auto;}
 
   /* scores */
   .scores{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
@@ -220,6 +221,11 @@
   .up .mp .r > span{color:var(--dim);font-size:11px;font-weight:600;}
   .up .mp button{font:600 12px Inter,sans-serif;padding:5px 4px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;}
   .up .mp button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .up .mp .r{grid-template-columns:62px 1fr 1fr 30px;} .up .mp .r i{display:block;} .up .mp .lk{padding:4px 0;font-size:12px;} .up .mp .lk:not(.on){opacity:.5;} .up .mp .lk.on{background:#f59f00;border-color:#f59f00;}
+  .up .mp .props{margin-top:6px;border-top:1px dashed var(--line);padding-top:4px;} .up .mp .props summary{cursor:pointer;font-size:11.5px;font-weight:700;color:var(--dim);}
+  .up .mp .props summary small{font-weight:500;} .up .mp .pr > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .parlay{padding:10px 14px;margin:0 0 12px;font-size:13.5px;} .pl-t{margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--row,#f6f8fb);} .pl-t button{margin-left:6px;border:none;background:none;cursor:pointer;color:var(--dim);}
+  .pl-b{margin-top:8px;} .pl-b summary{cursor:pointer;font-weight:600;} .pl-legs{display:grid;gap:4px;margin:8px 0;} .pl-legs label{display:flex;gap:6px;align-items:center;}
   .up .mp button:disabled{cursor:default;opacity:.55;} .up .mp button.on:disabled{opacity:1;}
   .up .mlink{display:block;padding:9px 14px;border-top:1px solid var(--line);font-size:12.5px;font-weight:700;text-decoration:none;color:var(--court);background:var(--panel);}
   .up .mlink:hover{text-decoration:underline;}
@@ -316,6 +322,7 @@
       <label class="cal" title="Pick a date"><span aria-hidden="true">📅</span><input type="date" id="upCal" aria-label="Pick a date"></label>
     </div>
     <p class="note" id="upDaySum" style="margin:-4px 2px 10px" hidden></p>
+    <div id="upParlay" class="bet"></div>
     <div class="upgrid" id="upcoming"><div class="card empty">Loading the schedule…</div></div>
     <p class="note bet" id="upLines" style="margin:8px 2px 0"></p>
   </section>
@@ -730,12 +737,30 @@ function myPicksHtml(u){
   const btn = x => { const cur = MyPicks.pickOf(u.id, x.type), on = cur && cur.side === x.side;
     const txt = x.type === "ml" ? `${esc(x.side)} ${sgnNum(x.odds)}` : x.type === "spread" ? `${esc(x.side)} ${x.line === 0 ? "PK" : sgnNum(x.line)}` : `${x.side === "over" ? "O" : "U"} ${x.line}`;
     return `<button class="${on ? "on" : ""}" data-mp="${esc(u.id)}|${x.type}|${esc(x.side)}"${locked ? " disabled" : ""} title="${on ? "Your pick. Tap again to take it back" : "Pick this"}">${txt}</button>`; };
-  const row = (type, label) => { const r = opts.filter(x => x.type === type); return r.length ? `<div class="r"><span>${label}</span>${r.map(btn).join("")}</div>` : ""; };
+  const night = MyPicks.nightOf(u.t), lk = MyPicks.lockOf(night);
+  const lockBtn = type => { const k = MyPicks.key(u.id, type); if(!MyPicks.pickOf(u.id, type)) return `<i></i>`; const on = lk === k; return `<button class="lk ${on ? "on" : ""}" data-lock="${esc(k)}"${locked ? " disabled" : ""} title="${on ? "Your Lock of the Day: pays double, −25 if it loses. Tap to remove." : "Make this your Lock of the Day: double if it wins, −25 if it loses"}">🔒</button>`; };
+  const row = (type, label) => { const r = opts.filter(x => x.type === type); return r.length ? `<div class="r"><span>${label}</span>${r.map(btn).join("")}${lockBtn(type)}</div>` : ""; };
   const mine = ["ml", "spread", "total"].filter(t => MyPicks.pickOf(u.id, t)).length;
-  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${mine ? `${mine} pick${mine === 1 ? "" : "s"} · ` : ""}My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}</div>`;
+  const props = MyPicks.propsFor(u, PLAYERS), pMine = props.filter(x => MyPicks.propOf(x.key)).length, SL = {pts: "pts", reb: "reb", ast: "ast"};
+  const propRow = x => { const cur = MyPicks.propOf(x.key); const b = side => `<button class="${cur && cur.side === side ? "on" : ""}" data-prop="${esc(x.key)}|${side}"${locked ? " disabled" : ""}>${side === "over" ? "O" : "U"} ${x.line}</button>`;
+    return `<div class="r pr"><span title="${esc(x.name)}">${esc(x.name.split(" ").slice(-1)[0])} ${SL[x.stat]}</span>${b("over")}${b("under")}<i></i></div>`; };
+  const n = MyPicks.used(night);
+  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${n}/${MyPicks.LIMIT} tonight · My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}
+    ${props.length ? `<details class="props"${pMine ? " open" : ""}><summary>Player props${pMine ? ` · ${pMine} picked` : ""} <small>(line = his season average)</small></summary>${props.map(propRow).join("")}</details>` : ""}</div>`;
 }
 document.addEventListener("click", e => {
-  const b = e.target.closest && e.target.closest("[data-mp]"); if(!b || !window.MyPicks) return;
+  if(!window.MyPicks || !e.target.closest) return;
+  const redraw = () => { const y = window.scrollY; renderUpcoming(); paintLive(); window.scrollTo(0, y); };
+  const lk = e.target.closest("[data-lock]");
+  if(lk){ const r = MyPicks.setLock(lk.dataset.lock); if(!r.ok){ alertNote(r.why); return; } redraw(); return; }
+  const pr = e.target.closest("[data-prop]");
+  if(pr){ const [gid, pid, stat, side] = pr.dataset.prop.split(/[:|]/); const u = ((PRED && PRED.upcoming) || []).find(x => x.id === gid); if(!u) return;
+    const x = MyPicks.propsFor(u, PLAYERS).find(q => q.pid === pid && q.stat === stat); if(!x) return; const r = MyPicks.toggleProp(x, side); if(!r.ok){ alertNote(r.why); return; } redraw(); return; }
+  const px = e.target.closest("[data-parlay]");
+  if(px){ const keys = [...document.querySelectorAll("#upParlay input[data-leg]:checked")].map(i => i.dataset.leg); const r = MyPicks.makeParlay(keys); if(!r.ok){ alertNote(r.why); return; } redraw(); return; }
+  const pd = e.target.closest("[data-parlayx]");
+  if(pd){ const r = MyPicks.removeParlay(pd.dataset.parlayx); if(!r.ok){ alertNote(r.why); return; } redraw(); return; }
+  const b = e.target.closest("[data-mp]"); if(!b) return;
   const [gid, type, side] = b.dataset.mp.split("|");
   const u = ((PRED && PRED.upcoming) || []).find(x => x.id === gid), o = MORNING && MORNING.odds && MORNING.odds[gid];
   if(!u || !o) return;
@@ -789,6 +814,14 @@ function renderUpcoming(){
   $("upPrev").disabled = !!gameDays.length && upDay <= gameDays[0];
   $("upNext").disabled = !!gameDays.length && upDay >= gameDays[gameDays.length - 1];
   const day = onDay(upDay);
+  if(window.MyPicks){ const el = $("upParlay"), mine = Object.entries(MyPicks.all()).filter(([k, p]) => MyPicks.nightOf(p.t) === upDay), px = Object.values(MyPicks.parlays()).filter(x => x.night === upDay);
+    const open = mine.filter(([, p]) => !MyPicks.started(p.t)), games = new Set(open.map(([, p]) => p.gid)), n = MyPicks.used(upDay);
+    el.innerHTML = mine.length || px.length ? `<div class="card parlay"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><b>🎟️ ${n} of ${MyPicks.LIMIT} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
+      ${px.map(x => `<div class="pl-t">Parlay ×${MyPicks.PARLAY_MULT[x.legs.length]} (${x.legs.length} legs, pays ${Math.round(25 * MyPicks.PARLAY_MULT[x.legs.length])}): ${x.legs.map(k => { const p = MyPicks.all()[k]; return p ? esc(MyPicks.betText(p)) : "?"; }).join(" + ")} ${MyPicks.started(x.t) ? "" : `<button data-parlayx="${esc(x.id)}">✕</button>`}</div>`).join("")}
+      ${games.size >= 2 ? `<details class="pl-b"><summary>Build a parlay from your picks (2 to 4 games, all must win: 2 legs ×2.5 = 63, 3 legs ×6 = 150, 4 legs ×12 = 300)</summary>
+        <div class="pl-legs">${open.map(([k, p]) => `<label><input type="checkbox" data-leg="${esc(k)}"> ${esc(p.away)} @ ${esc(p.home)}: <b>${esc(MyPicks.betText(p))}</b></label>`).join("")}</div>
+        <button class="btn primary" data-parlay>Make parlay</button> <span class="note">One leg per game. A parlay uses one of your ${MyPicks.LIMIT} picks.</span></details>` : ""}</div>` : "";
+  }
   // how Pulse did on a finished day
   const fins = day.s.filter(g => g[4] === 3), picked = fins.filter(g => PRED && PRED.picks && PRED.picks[g[0]]);
   const hits = picked.filter(g => PRED.picks[g[0]][2]).length, atsG = fins.filter(g => PRED && PRED.ats && PRED.ats[g[0]]);

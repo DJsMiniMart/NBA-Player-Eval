@@ -475,7 +475,31 @@ async function earnings(){
     g.n++; const r = x.res.you;
     if(r === "W"){ g.w++; g.line += x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25; } else if(r === "P") g.line += 5; });
   const BONUS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { g.bonus = BONUS[Math.min(3, g.w)]; g.p = g.line + g.bonus; pts += g.p; return g; });
-  EARN = {pts, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
+  const X = {lock: 0, pulse: 0, props: 0, parlay: 0, guys: 0, slate: 0}, since = x => !G.since || MyPicks.nightOf(x.t) >= G.since;
+  const linePay = x => x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25;
+  // Lock of the Day: a locked winner pays its line again; a locked loser costs 25
+  let locksWon = 0, p4 = 0; const locks = MyPicks.locks(); Object.entries(locks).forEach(([night, k]) => { const x = list.find(y => MyPicks.key(y.gid, y.type) === k); if(!x) return; if(x.res.you === "W"){ X.lock += linePay(x); locksWon++; } else if(x.res.you === "L") X.lock -= 25; });
+  // Beat Pulse: +10 when you took the other side from Pulse and won
+  list.forEach(x => { if(x.res.you === "W" && x.pulse && x.pulse.side !== x.side) X.pulse += 10; });
+  // player props: +15 each, +15 more for 3+ correct on a night
+  let PR = []; try{ PR = (await MyPicks.gradeProps(getBox)).filter(since); }catch(_){}
+  const propNights = {}; PR.forEach(p => { if(p.res === "W"){ X.props += 15; const n = MyPicks.nightOf(p.t); propNights[n] = (propNights[n] || 0) + 1; } });
+  Object.values(propNights).forEach(n => { if(n >= 3) X.props += 15; });
+  // parlays: every leg must win (a push voids the ticket)
+  Object.values(MyPicks.parlays()).filter(since).forEach(t => { const L = t.legs.map(k => list.find(y => MyPicks.key(y.gid, y.type) === k)); if(L.some(x => !x)) return;
+    if(L.every(x => x.res.you === "W")){ X.parlay += Math.round(25 * (MyPicks.PARLAY_MULT[L.length] || 0)); if(L.length === 4) p4++; } });
+  // your guys: a winning pick in a game where one of your lineup players scores 20 / 30 / 40 / 50+
+  const GUY = [[50, 60], [40, 35], [30, 20], [20, 10]]; let guyMax = 0;
+  const wonGames = [...new Set(list.filter(x => x.res.you === "W").map(x => x.gid))];
+  for(const gid of wonGames){ const x = list.find(y => y.gid === gid), L = lineupFor(ymd(new Date(x.t))); if(!L) continue; const b = await getBox(gid); if(!b) continue;
+    const mine = new Set(L.start.concat(L.bench).map(id => fold((statOf(id) || {}).name || "")));
+    Object.values(b.teams || {}).forEach(T => (T.players || []).forEach(r => { if(!mine.has(fold(r[1]))) return; const pts = +r[4] || 0, tier = GUY.find(([n]) => pts >= n); if(tier){ X.guys += tier[1]; guyMax = Math.max(guyMax, tier[0]); } })); }
+  // perfect slate: a spread pick on every game of a 5+ game night, all right: free Ruby pack (once a night)
+  const slates = []; const nights = {}; (SCHED.games || []).filter(g => g[4] === 3).forEach(g => { const n = ymd(new Date(g[1])); (nights[n] = nights[n] || []).push(g[0]); });
+  Object.entries(nights).forEach(([n, gids]) => { if(gids.length < 5 || (G.since && n < G.since)) return; const sp = gids.map(gid => list.find(y => y.gid === gid && y.type === "spread"));
+    if(sp.every(x => x && x.res.you === "W")){ slates.push(n); if(!G.claimed["slate:" + n]){ G.claimed["slate:" + n] = 1; G.free.push("ruby"); gSave(); toast2("🧹 Perfect slate! Every spread right: free Ruby pack"); } } });
+  const extra = Object.values(X).reduce((a, b) => a + b, 0);
+  EARN = {pts: pts + extra, base: pts, X, guyMax, slates, locksWon, p4, props: PR, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
 }
 function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => fpg(b) - fpg(a)) : []; }
 const statOf = id => STATS && STATS.players.find(p => p.id === id);
@@ -719,6 +743,10 @@ const MS = [
   ["bird1", "Earn Full Bird rights on a player (60 games with you)", "Full Bird", () => G.cards.some(c => birdOf(c) === "full") ? 1 : 0, [1]],
   ["bird3", "Have 3 players with Bird rights in your lineup at once", "Bird trio", () => G.cards.filter(c => (G.start.includes(c.cid) || G.bench.includes(c.cid)) && birdOf(c)).length, [3]],
   ["jackpot", "Hit the jackpot on the prize wheel", "Jackpot", () => G.st.jackpot || 0, [1]],
+  ["guys", "Your guy: one of your lineup players scores big in a game you picked right", "pt game", () => EARN.guyMax || 0, [20, 30, 40, 50]],
+  ["slate", "Perfect slate: every spread right on a 5+ game night", "Perfect slate", () => (EARN.slates || []).length, [1]],
+  ["lock10", "Win 10 Locks of the Day", "10 locks", () => EARN.locksWon || 0, [10]],
+  ["parlay4", "Hit a 4-leg parlay", "4-leg parlay", () => EARN.p4 || 0, [1]],
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
@@ -956,7 +984,7 @@ function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
   { const ops = Math.round(opsTotal()), nOps = G.cards.filter(c => c.fund && c.fund.left > 0).length;
-    $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent${G.spin === ymd() && G.spins[0] ? `<br>🎡 Today's prize: ${esc(G.spins[0].t)}` : ""}<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
+    $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}${EARN.X ? Object.entries({lock: "locks", pulse: "beat Pulse", props: "props", parlay: "parlays", guys: "your guys"}).filter(([k]) => EARN.X[k]).map(([k, l]) => `, ${EARN.X[k] > 0 ? "+" : ""}${EARN.X[k]} ${l}`).join("") : ""}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent${G.spin === ymd() && G.spins[0] ? `<br>🎡 Today's prize: ${esc(G.spins[0].t)}` : ""}<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
   const today = ymd(), canSpin = G.spin !== today || (G.spinX || 0) > 0; $("gDaily").disabled = false; $("gDaily").textContent = canSpin ? (G.spin === today ? "🎡 Spin again!" : `🎡 Daily +${DAILY} & spin`) : "🎡 Spun today ✓";
   const started = !!G.started;
   $("gPlay").hidden = !started;
@@ -1006,7 +1034,14 @@ function drawRules(){
     <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
-      Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.</li>
+      Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.
+      <ul style="margin:4px 0 0;padding-left:18px"><li><b>10 picks a night</b> (game lines, player props and parlay tickets each count as one), so choose wisely.</li>
+      <li><b>🔒 Lock of the Day:</b> one pick a night pays double if it wins, −25 if it loses.</li>
+      <li><b>Player props:</b> over/under a player's points, rebounds or assists (line = his season average): +15 each, +15 more for 3+ right in a night.</li>
+      <li><b>Parlays:</b> 2–4 of your picks from different games, all must win: 2 legs 63, 3 legs 150, 4 legs 300.</li>
+      <li><b>Beat Pulse:</b> +10 when you take the other side from Pulse and win.</li>
+      <li><b>Your guys:</b> a winning pick in a game where one of your lineup players scores 20+ (+10), 30+ (+20), 40+ (+35) or 50+ (+60), with trophies for each.</li>
+      <li><b>🧹 Perfect slate:</b> every spread right on a 5+ game night: free Ruby pack and a trophy.</li></ul></li>
     <li><b>Earn points from nightly games</b> (scored the morning after, from the real box scores), using the lineup you had before the night's first tip-off:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's production (PTS + 2×AST + 2×REB + 3×STL + BLK − 4×TOV). When a starter sits, the first bench player at his position subs in. Your target is your <b>projection</b>: what the five who played average per game this season, added up. Beat it (after chemistry and bench adjustments): <b>+${WIN_PTS}</b>. A stacked five has a big projection too, so it has to play like it.</li>
       <li><b>vs Pulse:</b> Pulse builds a five from that night's players with about the same total OVR as yours who played (if only 3 of yours played, it picks 3). Outscore it: <b>+${WIN_PTS}</b>.</li>
