@@ -66,6 +66,10 @@
   .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
   .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
   .keepers{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;max-height:320px;overflow-y:auto;} .keepers label{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.25);border-radius:10px;cursor:pointer;} .keepers small{opacity:.7;margin-left:auto;}
+  .wheel-wrap{position:relative;width:280px;height:280px;margin:6px auto 0;} .wheel-ptr{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:26px;z-index:2;color:#ffd43b;text-shadow:0 2px 4px rgba(0,0,0,.5);}
+  .wheel{width:280px;height:280px;border-radius:50%;position:relative;border:6px solid #ffd43b;box-shadow:0 6px 24px rgba(0,0,0,.4);}
+  .wheel span{position:absolute;left:50%;top:50%;margin:-11px 0 0 -11px;width:22px;height:22px;font-size:15px;line-height:22px;text-align:center;}
+  .wheel .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:#0b0b0d;border:4px solid #ffd43b;display:grid;place-items:center;font-size:24px;}
   .deals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;} .deal{display:grid;gap:2px;text-align:left;padding:10px;border-radius:12px;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.25);}
   .deal strong{font:700 22px "Barlow Condensed",sans-serif;} .deal small{opacity:.75;font-size:11.5px;} .deal:disabled{opacity:.4;}
   @media (max-width:520px){ .deals{grid-template-columns:1fr;} }
@@ -192,7 +196,7 @@
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
   </div>
   <div id="gameMode" hidden>
-    <div class="wallet card"><div><span>Slush fund</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">Daily bonus</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
+    <div class="wallet card"><div><span>Slush fund</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">🎡 Spin the wheel</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
     <div id="gTrophies"></div>
     <div id="gStart"></div>
     <div id="gOpen"></div>
@@ -201,6 +205,7 @@
     <div data-gpane="team">
     <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
     <p class="note" id="gLock" style="margin:0 0 6px"></p>
+    <div id="gBoosts"></div>
     <section class="lineup" id="gLineup"></section>
     <h2 data-jump="Reserves">Reserves <small id="gCollNote"></small></h2>
     <p class="note" style="margin:0 0 6px">Reserves are on your team but never play or sub in. Keep them to sell later or move to the bench or starting five.</p>
@@ -432,7 +437,7 @@ const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
 const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
 const FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", boosts: {}, spin: "", spinX: 0, spins: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -503,7 +508,8 @@ async function playNight(d){
   // real teammates: +3% for each extra player from the same NBA team in the five that played (up to +9%)
   const tc = {}; five.forEach(x => { const t = teamOf.get(fold(x.name)); if(t) tc[t] = (tc[t] || 0) + 1; });
   const mates = Object.values(tc).reduce((a, n) => a + Math.max(0, n - 1), 0), mateMult = Math.min(MATE_MAX, mates * MATE);
-  const raw = five.reduce((a, x) => a + x.p, 0), ff = Math.round(raw * (1 + (CH.score == null ? 0 : CH.mult) + mateMult));
+  const bChem = boostOn("chem", d) ? 0.05 : 0;
+  const raw = five.reduce((a, x) => a + x.p, 0), ff = Math.round(raw * (1 + (CH.score == null ? 0 : CH.mult) + mateMult + bChem));
   // Fantasy Five target: the five who played, at their season production per game (beat your own projection)
   const proj = Math.round(five.reduce((a, x) => a + fpg(statOf(x.id)), 0));
   // the matchups use the players who actually played for you that night, so a light night isn't five-on-three
@@ -526,6 +532,9 @@ async function playNight(d){
   res.won = (res.ffWin ? WIN_PTS : 0) + (res.pWin ? WIN_PTS : 0) + (res.oWin ? WIN_PTS : 0) + (res.upset ? WIN_PTS : 0);
   res.ids = five.map(x => x.id); res.mates = mates; res.mt = Math.max(0, ...Object.values(tc)); res.mmult = mateMult; res.ovrs = five.map(x => (ratingOf(statOf(x.id)) || {ovr: 70}).ovr);
   res.payroll = payrollOf(L.start.concat(L.bench)); res.tax = taxOf(res.payroll);
+  res.used = []; if(bChem) res.used.push("chem");
+  if(boostOn("double", d)){ res.used.push("double"); res.won *= 2; }
+  if(boostOn("tax", d) && res.tax){ res.used.push("tax"); res.taxSaved = res.tax; res.tax = 0; } else if(boostOn("tax", d)) res.used.push("tax");
   res.pts = res.won - res.tax;
   return res;
 }
@@ -543,7 +552,7 @@ async function playNights(){
   for(let d = G.started; d <= yest; d = addD(d, 1)){
     if(G.nights[d]) continue;
     const r = await playNight(d);
-    if(r){ G.nights[d] = r; G.game += r.pts; changed = true; useContracts(r.ids || []); }
+    if(r){ G.nights[d] = r; G.game += r.pts; changed = true; useContracts(r.ids || []); (r.used || []).forEach(k => { delete G.boosts[k]; }); }
     else if(!((SCHED && SCHED.games) || []).some(g => ymd(new Date(g[1])) === d)) G.nights[d] = {d, none: true, pts: 0};
   }
   if(changed) gSave();
@@ -617,7 +626,7 @@ function capHtml(){
   const ids = lineupIds(), pay = payrollOf(ids), tax = taxOf(pay), pc = v => Math.min(100, v / (APRON * 1.15) * 100), saved = ids.reduce((a, id) => a + salaryOf(id), 0) - pay;
   const color = pay > APRON ? "var(--bad)" : pay > CAP ? "#f59f00" : "var(--good)";
   return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Payroll ${$M(pay)}</b><span class="note"> / cap ${$M(CAP)}${saved > 0 ? ` · 🐦 Bird rights save ${$M(saved)}` : ""}</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${tax ? `−${tax} a night` : "Under the cap"}</div></div>
-    <div class="ladder" style="margin:8px 0 4px"><i style="width:${pc(pay)}%;background:${color}"></i><s style="left:${pc(CAP)}%">cap</s><s style="left:${pc(APRON)}%">apron</s></div>
+    <div class="ladder" style="margin:8px 0 24px"><i style="width:${pc(pay)}%;background:${color}"></i><s style="left:${pc(CAP)}%">cap</s><s style="left:${pc(APRON)}%">apron</s></div>
     <p class="note" style="margin:4px 0 0">Each card's salary is the player's real NBA contract this season, so players who outplay their contracts are gold. Your 10-man lineup's payroll counts (reserves don't). You can go over the ${$M(CAP)} cap, but it costs a luxury tax of 1 point per $1M over, off each night's points. Past the ${$M(APRON)} apron it's 2 points per $1M, and you can't add players that push you further over.</p></div>`;
 }
 /* ---------- team sets: 5 different players from the same NBA team anywhere on your roster ---------- */
@@ -696,6 +705,7 @@ const MS = [
   ["holds", "Hold a card 7+ days and sell it for more than you got it", "hold & sell", () => G.st.holds || 0, [1, 5, 15]],
   ["bird1", "Earn Full Bird rights on a player (60 games with you)", "Full Bird", () => G.cards.some(c => birdOf(c) === "full") ? 1 : 0, [1]],
   ["bird3", "Have 3 players with Bird rights in your lineup at once", "Bird trio", () => G.cards.filter(c => (G.start.includes(c.cid) || G.bench.includes(c.cid)) && birdOf(c)).length, [3]],
+  ["jackpot", "Hit the jackpot on the prize wheel", "Jackpot", () => G.st.jackpot || 0, [1]],
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
@@ -738,7 +748,8 @@ const contractLen = id => CLEN[(ratingOf(statOf(id)) || {cls: "gold"}).cls] || 2
 const DEALS = [[15, 0.6, "Short"], [30, 1.0, "Standard"], [60, 1.5, "Long"]], BIRD_EARLY = 30, BIRD_FULL = 60, GRACE = 7;
 const birdOf = c => !c ? null : (c.ten || 0) >= BIRD_FULL ? "full" : (c.ten || 0) >= BIRD_EARLY ? "early" : null;
 const BIRD = {full: {disc: 0.5, cap: 0.5, icon: "🐦", name: "Full Bird"}, early: {disc: 0.75, cap: 0.75, icon: "🐣", name: "Early Bird"}};
-const dealCost = (c, len) => { const d = DEALS.find(x => x[0] === len) || DEALS[1], b = BIRD[birdOf(c)]; return Math.max(5, Math.round(valueOf(ratingOf(statOf(c.id))) * d[1] * (b ? b.disc : 1))); };
+const dealCostRaw = (c, len) => { const d = DEALS.find(x => x[0] === len) || DEALS[1], b = BIRD[birdOf(c)]; return Math.max(5, Math.round(valueOf(ratingOf(statOf(c.id))) * d[1] * (b ? b.disc : 1))); };
+const dealCost = (c, len) => dealCostRaw(c, len);
 const resignCost = id => { const c = G.cards.find(x => x.id === id); return c ? dealCost(c, 15) : 10; };
 const cardFor = id => G.cards.filter(c => c.id === id).sort((a, b) => (b.ten || 0) - (a.ten || 0))[0];
 const capSalary = id => { const b = BIRD[birdOf(cardFor(id))]; return salaryOf(id) * (b ? b.cap : 1); };
@@ -902,8 +913,8 @@ function drawGame(){
   const bal = balance();
   $("gPts").textContent = bal.toLocaleString();
   { const ops = Math.round(opsTotal()), nOps = G.cards.filter(c => c.fund && c.fund.left > 0).length;
-    $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
-  const today = ymd(); $("gDaily").disabled = G.daily === today; $("gDaily").textContent = G.daily === today ? "Daily bonus claimed ✓" : `Claim daily bonus (+${DAILY})`;
+    $("gPtsNote").innerHTML = `${EARN.pts} from picks (${EARN.games} game${EARN.games === 1 ? "" : "s"}) · ${G.game} from nightly games · ${G.bonus} daily bonus · ${G.sold + (G.refund || 0)} from sales and buyouts · ${G.spent} spent${G.spin === ymd() && G.spins[0] ? `<br>🎡 Today's prize: ${esc(G.spins[0].t)}` : ""}<br><b>Operational funds: ${ops.toLocaleString()}</b>${nOps ? ` (set aside for ${nOps} player contract${nOps === 1 ? "" : "s"})` : " (none: re-sign a player to set some aside)"}`; }
+  const today = ymd(), canSpin = G.spin !== today || (G.spinX || 0) > 0; $("gDaily").disabled = false; $("gDaily").textContent = canSpin ? (G.spin === today ? "🎡 Spin again!" : "🎡 Spin the wheel") : "🎡 Spun today ✓";
   const started = !!G.started;
   $("gPlay").hidden = !started;
   $("gTrophies").innerHTML = started ? "" : "";
@@ -911,7 +922,7 @@ function drawGame(){
   if(!started){ drawRules(); return; }
   const free = G.free.length, OVER = overflow().length;
   $("gPacks").innerHTML = (free ? `<div class="pack t-${G.free[0]}"><b>Free pack${free > 1 ? "s" : ""}</b><div class="cost">${free}<small>waiting</small></div><p>Earned from challenges and team sets.</p><button data-freepack>Open free ${(PACKS.find(x => x.id === G.free[0]) || PACKS[0]).name}</button></div>` : "")
-    + PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p><button data-pack="${k.id}"${bal < k.cost || OVER ? " disabled" : ""}>${OVER ? "Roster full: make room" : bal < k.cost ? `Need ${k.cost - bal} more` : "Open pack"}</button></div>`).join("");
+    + PACKS.map(k => `<div class="pack t-${k.cls}"><b>${k.name}</b><div class="cost">${k.cost}<small>pts</small></div><p>${k.desc}</p>${G.boosts.pack ? `<p><b>🏷️ 25% off today: ${(k.cost - Math.round(k.cost * 0.25)).toLocaleString()}</b></p>` : ""}<button data-pack="${k.id}"${bal < k.cost - (G.boosts.pack ? Math.round(k.cost * 0.25) : 0) || OVER ? " disabled" : ""}>${OVER ? "Roster full: make room" : bal < k.cost - (G.boosts.pack ? Math.round(k.cost * 0.25) : 0) ? `Need ${k.cost - (G.boosts.pack ? Math.round(k.cost * 0.25) : 0) - bal} more` : "Open pack"}</button></div>`).join("");
   const byId = Object.fromEntries(G.cards.map(c => [c.cid, c]));
   G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
   G.res = G.res.filter(x => byId[x] && !G.start.includes(x) && !G.bench.includes(x));
@@ -931,6 +942,7 @@ function drawGame(){
   const empty = (n, w) => Array.from({length: n}, () => `<div class="empty-slot" style="cursor:default;min-height:110px">${w}</div>`).join("");
   const startIds = G.start.map(x => byId[x].id);
   const mt = matesNow(startIds);
+  if($("gBoosts")) $("gBoosts").innerHTML = boostChips();
   $("gLineup").innerHTML = capHtml() + chemHtml(startIds) + (mt ? `<p class="note" style="margin:6px 0 0">🤝 Real teammates: ${mt} pair${mt === 1 ? "" : "s"} in your five, +${Math.round(Math.min(MATE_MAX, mt * MATE) * 100)}% when they play together.</p>` : "") + `<h3>Starting five</h3><div class="cards">${G.start.map(x => gCard(byId[x])).join("")}${empty(5 - G.start.length, "Starter slot<br><small>tap Start on a card</small>")}</div>
     <h3>Bench</h3>${benchHtml(G.bench.map(x => byId[x].id))}<div class="cards">${G.bench.map(x => gCard(byId[x])).join("")}${empty(5 - G.bench.length, "Bench slot<br><small>tap Bench on a card</small>")}</div>`;
   const over = overflow(), rest = G.res.map(x => byId[x]);
@@ -947,7 +959,7 @@ function drawGame(){
 function drawRules(){
   $("gRules").innerHTML = `<p style="margin:0 0 8px"><a href="card-rules.html" style="font-weight:700">📖 Read the full rules: every number, examples and strategy →</a></p><ul style="margin:0;padding-left:18px;display:grid;gap:5px;font-size:13.5px">
     <li><b>Start your team</b> with 5 free packs (15 cards). Your roster holds 20: 5 starters, 5 on the bench and 10 reserves. Reserves never play or sub in; keep them to sell or move up. New cards land in your reserves, and you can't open packs while you're over 20.</li>
-    <li><b>Daily bonus:</b> <b>+${DAILY}</b> for checking in each day.</li>
+    <li><b>Daily prize wheel:</b> one spin a day (🎡 at the top). Prizes: points (+10 up to a 500 jackpot), free Gold/Ruby/Galaxy packs, a Gold card, a wish-list player, a Scout's pick, boosts for your next night (double points, tax holiday, +5% Fantasy Five), +5 contract games, a 50% re-sign coupon, 25% off a pack, spin again, a mystery box, or a bust. Spin 7 days in a row for a free Gold pack, 30 for a free Ruby pack.</li>
     <li><b>Earn points from picks</b> on The Morning Press (Coming up → Your pick). Two parts, added together for each game:
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
@@ -1012,6 +1024,7 @@ function scoutRow(x, mine){
     ${w ? `<br>Watching since ${new Date(w.d + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"})} at ${w.p}: ${dp ? `<span class="${dp > 0 ? "sc-up" : "sc-dn"}">${dp > 0 ? "▲" : "▼"}${Math.abs(dp)}</span> price` : "price unchanged"}` : ""}
     <br>${nextGames(st.team).map(g => `${g.today ? "<b>Tonight</b>" : g.d.toLocaleDateString("en-US", {weekday: "short"})} ${g.home ? "vs" : "@"} ${esc(g.opp)} ${g.rec}`).join(" · ")}</span></div>`;
 }
+function buyLowList(){ return (STATS ? STATS.players : []).filter(p => p.g >= 5 && p.mp / p.g >= 12).map(p => scoutInfo(p.id)).filter(x => x && x.car != null && x.gap <= -0.1).sort((a, b) => b.profit - a.profit); }
 function scoutHtml(){
   const tabs = `<div class="sc-tabs"><button class="${SCTAB === "auto" ? "on" : ""}" data-sctab="auto">Buy-low list</button><button class="${SCTAB === "mine" ? "on" : ""}" data-sctab="mine">My scouting (${G.scout.length})</button></div>`;
   if(SCTAB === "mine"){
@@ -1029,6 +1042,64 @@ function scoutHtml(){
     <p class="note" style="margin:0 0 4px">Veterans (82+ career games) playing 10%+ below their career production. ${L.length} match.</p>
     ${L.slice(0, 15).map(x => scoutRow(x, false)).join("") || `<p class="note">No one matches right now.</p>`}
     <p class="note" style="margin:8px 0 0">Price is 4.5× his card value today. "Sells for" assumes he returns to his career production and you hold him 7+ days for the hold bonus. A slump can also be an injury, age or a smaller role, so check his page.</p>`;
+}
+/* ---------- daily prize wheel: one spin a day (plus "spin again"); streaks of 7 and 30 days add free packs ---------- */
+const WHEEL = [
+  ["p10", "+10 points", "🪙", 180], ["p20", "+20 points", "💵", 170], ["p40", "+40 points", "💰", 110], ["p75", "+75 points", "💎", 50], ["p150", "+150 points", "🤑", 15], ["p500", "Jackpot! +500 points", "🎰", 3],
+  ["gold", "Free Gold pack", "🟨", 25], ["ruby", "Free Ruby pack", "🟥", 6], ["opal", "Free Galaxy pack", "🌌", 2],
+  ["card", "A random Gold-tier card", "🃏", 60], ["wish", "Wish list draw: one of your wish-list players!", "🌠", 4], ["scout", "Scout's pick: a buy-low player", "🔎", 25],
+  ["double", "Double points on your next night", "✖️2", 35], ["tax", "Tax holiday on your next night", "🏖️", 30], ["chem", "+5% Fantasy Five on your next night", "⚗️", 35],
+  ["ext", "Contract extension: +5 games", "📝", 35], ["resign", "Re-sign coupon: 50% off your next re-signing", "🎟️", 30], ["pack", "Pack discount: 25% off your next pack", "🏷️", 35],
+  ["again", "Spin again!", "🔁", 50], ["mystery", "Mystery box", "🎁", 30], ["bust", "Bust: nothing today", "💨", 70]];
+const BOOSTNAME = {double: "✖️2 Double points next night", tax: "🏖️ Tax holiday next night", chem: "⚗️ +5% Fantasy Five next night", resign: "🎟️ 50% off next re-sign", pack: "🏷️ 25% off next pack"};
+const boostOn = (k, d) => { const b = G.boosts && G.boosts[k]; return !!(b && (!b.from || d >= b.from)); };
+function boostChips(){ const k = Object.keys(G.boosts || {}).filter(x => BOOSTNAME[x]); return k.length ? `<div class="chips" style="margin:6px 0 0">${k.map(x => `<span class="chip" style="border-radius:999px;font-weight:600">${BOOSTNAME[x]}</span>`).join("")}</div>` : ""; }
+function pickPrize(list){ const tot = list.reduce((a, x) => a + x[3], 0); let r = Math.random() * tot; for(const x of list){ if((r -= x[3]) < 0) return x; } return list[0]; }
+function wheelSvg(){
+  const n = WHEEL.length, a = 360 / n, col = ["#C8102E", "#1D428A", "#f59f00", "#2f9e44", "#7048e8", "#0c8599"];
+  return `<div class="wheel-wrap"><div class="wheel-ptr">▼</div><div class="wheel" id="wheel" style="background:conic-gradient(${WHEEL.map((x, i) => `${col[i % col.length]} ${i * a}deg ${(i + 1) * a}deg`).join(",")})">
+    ${WHEEL.map((x, i) => `<span style="transform:rotate(${i * a + a / 2}deg) translateY(-112px) rotate(${-(i * a + a / 2)}deg)">${x[2]}</span>`).join("")}<b class="hub">🏀</b></div></div>`;
+}
+function showWheel(){
+  const today = ymd(), can = G.spin !== today || (G.spinX || 0) > 0, streak = G.st.dlast === today || G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) : 0;
+  $("gOpen").innerHTML = `<div class="opening" style="text-align:center"><h3>🎡 Daily prize wheel</h3>${wheelSvg()}
+    <p id="wheelMsg" style="margin:10px 0 6px;min-height:24px;font-weight:700">${can ? "" : `Today's prize: ${esc((G.spins[0] || {}).t || "—")}. Come back tomorrow!`}</p>
+    <p class="note" id="wheelStreak" style="margin:0 0 8px;opacity:.85">Spin streak: <b>${streak} day${streak === 1 ? "" : "s"}</b> · 7 days in a row = free Gold pack · 30 = free Ruby pack</p>
+    <div class="row" style="justify-content:center"><button class="gbtn" data-spin${can ? "" : " disabled"}>${can ? (G.spin === today ? "Spin again" : "Spin") : "Spun today ✓"}</button><button class="gbtn alt" data-closeopen>Close</button></div>
+    ${G.spins.length ? `<p class="note" style="margin:10px 0 0;opacity:.8">Recent: ${G.spins.slice(0, 5).map(x => esc(x.t)).join(" · ")}</p>` : ""}</div>`;
+  setTimeout(() => $("gOpen").scrollIntoView({behavior: "smooth", block: "start"}), 100);
+}
+function spin(){
+  const today = ymd(); if(G.spin === today && !(G.spinX > 0)) return;
+  const again = G.spin === today; if(again) G.spinX--;
+  if(!again){ G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : G.st.dlast === today ? (G.st.dstreak || 1) : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; }
+  G.spin = today;
+  let P = pickPrize(WHEEL); const i = WHEEL.indexOf(P);
+  let text = applyPrize(P);
+  if(!again && G.st.dstreak === 7){ G.free.push("gold"); text += " · 🔥 7-day streak: free Gold pack!"; }
+  if(!again && G.st.dstreak === 30){ G.free.push("ruby"); text += " · 🔥 30-day streak: free Ruby pack!"; }
+  G.spins.unshift({d: today, t: text}); G.spins = G.spins.slice(0, 10); gSave();
+  const n = WHEEL.length, a = 360 / n, w = $("wheel"), turn = 360 * 5 + (360 - (i * a + a / 2));
+  $("gOpen").querySelector("[data-spin]").disabled = true;
+  if(w){ w.style.transition = "transform 3.2s cubic-bezier(.17,.67,.21,1)"; w.style.transform = `rotate(${turn}deg)`; }
+  setTimeout(() => { const m = $("wheelMsg"); if(m) m.textContent = `${P[2]} ${text}`; const sk = $("wheelStreak"); if(sk) sk.innerHTML = `Spin streak: <b>${G.st.dstreak} day${G.st.dstreak === 1 ? "" : "s"}</b> · 7 days in a row = free Gold pack · 30 = free Ruby pack`; drawGame(); const b = $("gOpen").querySelector("[data-spin]"); if(b && G.spinX > 0){ b.disabled = false; b.textContent = "Spin again"; } }, w ? 3300 : 0);
+}
+function applyPrize(P, depth){
+  const k = P[0], tomorrow = ymd(), give = n => { G.bonus += n; return P[1]; };
+  const addCard = (p, label) => { const r = ratingOf(p); G.n++; const c = {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, ten: 0};
+    G.cards.push(c); if(G.res.length < RES_MAX) G.res.push(c.cid); checkWish([c]); trackPulls([c], 0); return `${label}: ${p.name} (${r.ovr} OVR) joins your reserves`; };
+  if(/^p\d+$/.test(k)){ if(k === "p500") G.st.jackpot = 1; return give(+k.slice(1)); }
+  if(["gold", "ruby", "opal"].includes(k)){ G.free.push(k); return P[1] + " (open it under Market → Card packs)"; }
+  if(k === "card"){ const L = pool().filter(p => (ratingOf(p) || {}).cls === "gold"); return L.length ? addCard(L[Math.floor(Math.random() * L.length)], "Gold card") : give(20); }
+  if(k === "wish"){ const L = (G.wish || []).map(statOf).filter(p => p && p.g); return L.length ? addCard(L[Math.floor(Math.random() * L.length)], "🌠 Wish granted") : give(40) + " (wish list empty, so +40 instead)"; }
+  if(k === "scout"){ const L = buyLowList(); return L.length ? addCard(L[Math.floor(Math.random() * Math.min(15, L.length))].st, "Scout's pick") : give(20); }
+  if(["double", "tax", "chem"].includes(k)){ G.boosts[k] = {from: tomorrow}; return P[1]; }
+  if(k === "resign" || k === "pack"){ G.boosts[k] = {from: tomorrow}; return P[1]; }
+  if(k === "ext"){ const L = G.cards.filter(c => (G.start.includes(c.cid) || G.bench.includes(c.cid)) && c.gl != null).sort((a, b) => a.gl - b.gl); if(!L.length) return give(20);
+    const c = L[0]; c.gl += 5; c.len = (c.len || 0) + 5; c.exp = null; return `Contract extension: +5 games for ${c.name} (${c.gl} left)`; }
+  if(k === "again"){ G.spinX = (G.spinX || 0) + 1; return P[1]; }
+  if(k === "mystery"){ if(depth) return give(20); const inner = pickPrize(WHEEL.filter(x => !["again", "mystery", "bust", "p500", "opal", "wish"].includes(x[0])).map(x => [x[0], x[1], x[2], 1])); return "🎁 Mystery box: " + applyPrize(inner, 1); }
+  return P[1];
 }
 function showResign(c){
   const st = statOf(c.id), b = birdOf(c), bal = balance();
@@ -1065,10 +1136,11 @@ function trackPulls(cards, packs){
   cards.forEach(c => { if(c.tier === "opal") G.st.opals = (G.st.opals || 0) + 1; const r = P.findIndex(p => p.id === c.id) + 1; if(r && r <= 3) G.st.top3 = (G.st.top3 || 0) + 1; });
 }
 function openPack(k, free){
-  if(!k || (!free && balance() < k.cost)) return;
+  const disc = !free && G.boosts.pack ? Math.round(k.cost * 0.25) : 0;
+  if(!k || (!free && balance() < k.cost - disc)) return;
   if(overflow().length){ if(window.fcToast) fcToast("Your roster is over 20 cards: sell or place the extras first"); return; }
   const owned = new Set(G.cards.map(c => c.id)), cards = pull(k); if(!cards.length) return;
-  if(!free) G.spent += k.cost;
+  if(!free){ G.spent += k.cost - disc; if(disc){ delete G.boosts.pack; toast2(`🏷️ Pack discount used: saved ${disc}`); } }
   trackPulls(cards, 1);
   G.cards.push(...cards); cards.forEach(c => { if(G.res.length < RES_MAX) G.res.push(c.cid); }); const wished = checkWish(cards); gSave(); drawGame(); showOpen(k.name, cards, cards.map(c => owned.has(c.id)), wished);
 }
@@ -1098,7 +1170,7 @@ function setupGame(){
   let m0 = "follow"; try{ m0 = localStorage.getItem("fcgp.rotmode") || "follow"; }catch(_){}
   if(/#(game|buy)/.test(location.hash)) m0 = "game";
   mode(m0);
-  $("gDaily").onclick = () => { const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
+  $("gDaily").onclick = () => { showWheel(); return; const today = ymd(); if(G.daily === today) return; G.st.dstreak = G.st.dlast === addD(today, -1) ? (G.st.dstreak || 0) + 1 : 1; G.st.dlast = today; G.st.dbest = Math.max(G.st.dbest || 0, G.st.dstreak); G.daily = today; G.bonus += DAILY; gSave(); drawGame(); if(window.fcToast) fcToast(`+${DAILY} points`); };
   document.addEventListener("cloud", () => { if(G && G.started && $("gScore")) drawScore(); });
   $("gameMode").addEventListener("keydown", e => { if(e.key === "Enter" && e.target.id === "wishQ"){ e.preventDefault(); $("wishAdd").click(); } if(e.key === "Enter" && e.target.id === "scoutQ"){ e.preventDefault(); $("scoutAddQ").click(); } });
   $("gameMode").addEventListener("click", e => {
@@ -1138,6 +1210,7 @@ function setupGame(){
       if(G.res.length < RES_MAX && !G.res.includes(cid)) G.res.push(cid); else if(!G.res.includes(cid)) toast("Reserves are full, so he's over the roster limit: sell someone or move him back");
       if(d.gout) snap(); gSave(); drawGame(); return; }
     if(d.buyok){ buyCard(d.buyok); return; }
+    if("spin" in d){ spin(); return; }
     if("newseason" in d){ newSeason(); return; }
     if(d.gtab){ setTab(d.gtab); window.scrollTo({top: $("gPlay").offsetTop - 70, behavior: "smooth"}); return; }
     if(d.buy){ showBuy(d.buy); return; }
@@ -1152,7 +1225,8 @@ function setupGame(){
     if(d.gresign){ const c = cardOf(d.gresign); if(c) showResign(c); return; }
     if(d.dealpick){ const [cid, len] = d.dealpick.split("|"), c = cardOf(cid); if(!c) return; const L = +len, cost = dealCost(c, L);
       if(balance() < cost) return toast(`That deal costs ${cost}: you have ${balance()}`);
-      const was = birdOf(c); G.spent += cost; c.fund = {left: ((c.fund && c.fund.left) || 0) + cost, total: cost}; c.gl = (c.gl || 0) + L; c.len = c.gl; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
+      const coup = G.boosts.resign ? Math.round(cost / 2) : 0; if(coup){ delete G.boosts.resign; }
+      const was = birdOf(c); G.spent += cost - coup; c.fund = {left: ((c.fund && c.fund.left) || 0) + cost, total: cost}; c.gl = (c.gl || 0) + L; c.len = c.gl; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
       gSave(); $("gOpen").innerHTML = ""; drawGame(); return toast(`📝 Re-signed ${c.name}: ${cost} moved to his operational fund, ${(cost / L).toFixed(1)} a game for ${L} games${was ? ` (${BIRD[was].name} discount)` : ""}`); }
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
       const back = buyoutBack(c);
