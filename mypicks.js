@@ -147,6 +147,15 @@ function makeParlay(keys){
   DB.parlays[id] = {id, night, legs, t: P.map(p => p.t).sort()[0], at: new Date().toISOString()};
   return done();
 }
+function updateParlay(id, keys){
+  const old = DB.parlays[id]; if(!old) return {ok:false, why:"That parlay is gone."};
+  if(started(old.t)) return {ok:false, why:"That parlay's first game has started."};
+  delete DB.parlays[id];
+  const r = makeParlay(keys);
+  if(!r.ok){ DB.parlays[id] = old; save(DB); return r; }
+  const nid = Object.keys(DB.parlays).find(k => !(k in {}) && DB.parlays[k].at && k !== id && JSON.stringify(DB.parlays[k].legs) === JSON.stringify([...new Set(keys)].filter(k2 => DB.picks[k2])));
+  return {ok:true, id: nid};
+}
 function removeParlay(id){ const x = DB.parlays[id]; if(x && started(x.t)) return {ok:false, why:"That parlay's first game has started."}; delete DB.parlays[id]; return done(); }
 
 /* grade one side of a bet from the final score */
@@ -209,5 +218,5 @@ function remove(k){ const p = DB.picks[k]; delete DB.picks[k]; if(p && DB.locks[
 window.MyPicks = {options, toggle, pickOf, started, finals, graded, record, betText, profit, exportData, importData, remove,
   all: () => DB.picks, count: () => Object.keys(DB.picks).length, onChange: f => listeners.push(f), SPREAD_ODDS,
   LIMIT, nightOf, used, setLock, lockOf, locks: () => DB.locks, propsFor, toggleProp, propOf, props: () => DB.props, gradeProps,
-  PARLAY_MULT, makeParlay, removeParlay, parlays: () => DB.parlays, key: pid};
+  PARLAY_MULT, makeParlay, updateParlay, removeParlay, parlays: () => DB.parlays, key: pid};
 })();
