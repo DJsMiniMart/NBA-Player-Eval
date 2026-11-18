@@ -224,7 +224,10 @@
   .up .mp .r{grid-template-columns:62px 1fr 1fr 30px;} .up .mp .r i{display:block;} .up .mp .lk{padding:4px 0;font-size:12px;} .up .mp .lk:not(.on){opacity:.5;} .up .mp .lk.on{background:#f59f00;border-color:#f59f00;}
   .up .mp .props{margin-top:6px;border-top:1px dashed var(--line);padding-top:4px;} .up .mp .props summary{cursor:pointer;font-size:11.5px;font-weight:700;color:var(--dim);}
   .up .mp .props summary small{font-weight:500;} .up .mp .pr > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .parlay{padding:10px 14px;margin:0 0 12px;font-size:13.5px;} .pl-t{margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--row,#f6f8fb);} .pl-t button{margin-left:6px;border:none;background:none;cursor:pointer;color:var(--dim);}
+  .parlay{padding:10px 14px;margin:0 0 12px;font-size:13.5px;}
+  .ptsmax{display:grid;grid-template-columns:auto 1fr;gap:0 10px;align-items:baseline;} .ptsmax span{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);grid-column:1/-1;}
+  .ptsmax b{font:700 32px/1 "Barlow Condensed",sans-serif;color:var(--good,#2f9e44);} .ptsmax small{color:var(--dim);font-size:12px;line-height:1.35;}
+  .up .mp .h .mx{color:var(--good,#2f9e44);text-transform:none;letter-spacing:0;} .pl-t{margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--row,#f6f8fb);} .pl-t button{margin-left:6px;border:none;background:none;cursor:pointer;color:var(--dim);}
   .pl-b{margin-top:8px;} .pl-b summary{cursor:pointer;font-weight:600;} .pl-legs{display:grid;gap:4px;margin:8px 0;} .pl-legs label{display:flex;gap:6px;align-items:center;}
   .up .mp button:disabled{cursor:default;opacity:.55;} .up .mp button.on:disabled{opacity:1;}
   .up .mlink{display:block;padding:9px 14px;border-top:1px solid var(--line);font-size:12.5px;font-weight:700;text-decoration:none;color:var(--court);background:var(--panel);}
@@ -728,6 +731,22 @@ function linesHtml(u){
       <div><span>Moneyline</span><b>${esc(u.away)} ${sgnNum(o.mlAway)}</b><small>${esc(u.home)} ${sgnNum(o.mlHome)}</small></div></div>${vegas}${ats}`;
 }
 
+/* ---------- points counter: what your picks for a night pay if everything hits (same scoring as The Game) ---------- */
+function maxPoints(night){
+  const P = Object.entries(MyPicks.all()).filter(([, p]) => MyPicks.nightOf(p.t) === night), lk = MyPicks.lockOf(night);
+  const line = p => p.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(p.odds, "W"))) : 25;
+  const r = {lines: 0, bonus: 0, lock: 0, pulse: 0, props: 0, parlay: 0, perGame: {}, slate: false, risk: 0};
+  const byG = {}; P.forEach(([k, p]) => { const v = line(p); r.lines += v; byG[p.gid] = (byG[p.gid] || 0) + 1; r.perGame[p.gid] = (r.perGame[p.gid] || 0) + v;
+    if(k === lk){ r.lock += v; r.risk = 25; r.perGame[p.gid] += v; } if(p.pulse && p.pulse.side !== p.side){ r.pulse += 10; r.perGame[p.gid] += 10; } });
+  const B = [0, 10, 25, 50]; Object.entries(byG).forEach(([gid, n]) => { r.bonus += B[Math.min(3, n)]; r.perGame[gid] += B[Math.min(3, n)]; });
+  const pr = Object.values(MyPicks.props()).filter(p => MyPicks.nightOf(p.t) === night); r.props = pr.length * 15 + (pr.length >= 3 ? 15 : 0);
+  pr.forEach(p => { r.perGame[p.gid] = (r.perGame[p.gid] || 0) + 15; });
+  Object.values(MyPicks.parlays()).filter(x => x.night === night).forEach(x => { r.parlay += Math.round(25 * (MyPicks.PARLAY_MULT[x.legs.length] || 0)); });
+  const games = ((SCHED && SCHED.games) || []).filter(g => localDay(g[1]) === night).map(g => g[0]);
+  r.slate = games.length >= 5 && games.every(gid => MyPicks.pickOf(gid, "spread"));
+  r.total = r.lines + r.bonus + r.lock + r.pulse + r.props + r.parlay;
+  return r;
+}
 /* ---------- My Picks: tap a bet to make your own pick (mypicks.js keeps them in this browser) ---------- */
 function myPicksHtml(u){
   const o = MORNING && MORNING.odds && MORNING.odds[u.id];
@@ -745,7 +764,8 @@ function myPicksHtml(u){
   const propRow = x => { const cur = MyPicks.propOf(x.key); const b = side => `<button class="${cur && cur.side === side ? "on" : ""}" data-prop="${esc(x.key)}|${side}"${locked ? " disabled" : ""}>${side === "over" ? "O" : "U"} ${x.line}</button>`;
     return `<div class="r pr"><span title="${esc(x.name)}">${esc(x.name.split(" ").slice(-1)[0])} ${SL[x.stat]}</span>${b("over")}${b("under")}<i></i></div>`; };
   const n = MyPicks.used(night);
-  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}</span><a href="picks.html">${n}/${MyPicks.LIMIT} tonight · My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}
+  const gm = (maxPoints(night).perGame || {})[u.id] || 0;
+  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}${gm ? ` · <b class="mx">up to +${gm}</b>` : ""}</span><a href="picks.html">${n}/${MyPicks.LIMIT} tonight · My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}
     ${props.length ? `<details class="props"${pMine ? " open" : ""}><summary>Player props${pMine ? ` · ${pMine} picked` : ""} <small>(line = his season average)</small></summary>${props.map(propRow).join("")}</details>` : ""}</div>`;
 }
 document.addEventListener("click", e => {
@@ -816,7 +836,10 @@ function renderUpcoming(){
   const day = onDay(upDay);
   if(window.MyPicks){ const el = $("upParlay"), mine = Object.entries(MyPicks.all()).filter(([k, p]) => MyPicks.nightOf(p.t) === upDay), px = Object.values(MyPicks.parlays()).filter(x => x.night === upDay);
     const open = mine.filter(([, p]) => !MyPicks.started(p.t)), games = new Set(open.map(([, p]) => p.gid)), n = MyPicks.used(upDay);
-    el.innerHTML = mine.length || px.length ? `<div class="card parlay"><div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><b>🎟️ ${n} of ${MyPicks.LIMIT} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
+    const M = maxPoints(upDay), hasProps = Object.values(MyPicks.props()).some(p => MyPicks.nightOf(p.t) === upDay);
+    const parts = [["picks", M.lines], ["game bonuses", M.bonus], ["🔒 lock", M.lock], ["beat Pulse", M.pulse], ["props", M.props], ["parlays", M.parlay]].filter(x => x[1]);
+    el.innerHTML = mine.length || px.length || hasProps ? `<div class="card parlay"><div class="ptsmax"><span>If everything hits</span><b>+${M.total.toLocaleString()}</b><small>${parts.map(([l, v]) => `${v.toLocaleString()} ${l}`).join(" + ")}${M.slate ? " · plus a 🧹 perfect-slate Ruby pack" : ""}${M.risk ? ` · your lock costs ${M.risk} if it loses` : ""} · "your guys" bonuses come on top</small></div>
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px"><b>🎟️ ${n} of ${MyPicks.LIMIT} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
       ${px.map(x => `<div class="pl-t">Parlay ×${MyPicks.PARLAY_MULT[x.legs.length]} (${x.legs.length} legs, pays ${Math.round(25 * MyPicks.PARLAY_MULT[x.legs.length])}): ${x.legs.map(k => { const p = MyPicks.all()[k]; return p ? esc(MyPicks.betText(p)) : "?"; }).join(" + ")} ${MyPicks.started(x.t) ? "" : `<button data-parlayx="${esc(x.id)}">✕</button>`}</div>`).join("")}
       ${games.size >= 2 ? `<details class="pl-b"><summary>Build a parlay from your picks (2 to 4 games, all must win: 2 legs ×2.5 = 63, 3 legs ×6 = 150, 4 legs ×12 = 300)</summary>
         <div class="pl-legs">${open.map(([k, p]) => `<label><input type="checkbox" data-leg="${esc(k)}"> ${esc(p.away)} @ ${esc(p.home)}: <b>${esc(MyPicks.betText(p))}</b></label>`).join("")}</div>
