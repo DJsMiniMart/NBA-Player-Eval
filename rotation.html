@@ -75,6 +75,7 @@
   .mk-row{display:grid;grid-template-columns:minmax(0,1fr) 62px 54px 40px auto;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;}
   .mk-row .nm img{width:18px;height:18px;vertical-align:middle;margin-right:4px;object-fit:contain;} .mk-row small{color:var(--dim);font-size:11.5px;}
   .mk-row .num{text-align:right;line-height:1.2;} .mk-row .num small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+  .nm img.mini-face,img.mini-face{width:30px;height:30px;border-radius:50%;object-fit:cover;object-position:50% 15%;background:rgba(127,127,127,.18);vertical-align:middle;margin-right:6px;}
   .mk-row .gbtn{padding:6px 10px;font-size:13px;min-width:62px;}
   @media (max-width:520px){ .mk-row{grid-template-columns:minmax(0,1fr) 52px 42px auto;gap:6px;} .mk-row .num small{font-size:9px;letter-spacing:0;} .mk-row span.num:nth-of-type(4){display:none;} .mk-row .gbtn{min-width:0;padding:6px 8px;} }
   .pc-art{position:relative;height:132px;margin:-12px -12px 2px;border-radius:13px 13px 0 0;overflow:hidden;background:radial-gradient(120% 90% at 50% 10%,rgba(255,255,255,.28),rgba(0,0,0,.25) 70%);}
@@ -371,9 +372,9 @@ function card(id, i){
   const v = playsLike(st);
   const lastLine = last ? `<b>Last game</b> ${md(last[1])} ${last[3] ? "vs" : "@"} ${esc(last[2])} (${esc(last[19])}): ${last[5]} pts, ${(+last[7]) + (+last[8])} reb, ${last[6]} ast · ${last[4]} min` : `<b>Last game</b> none this season`;
   return `<div class="pc t-${r.cls}" data-id="${esc(id)}"><div class="pc-in">
-    <div class="pc-top"><div class="pc-ovr">${r.ovr}<small>OVR${r.early && st && st.g ? " · EARLY" : ""}</small></div><div class="pc-tier">${esc(r.tier)}${logo(team)}</div></div>
-    <div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(id)}">${esc(name)}</a></div>
-    <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}${st && st.age ? ` · age ${st.age}` : ""}</div>
+    <div class="pc-art">${face(ESPN[id])}<div class="pc-ovr">${r.ovr}<small>OVR${r.early && st && st.g ? " · EARLY" : ""}</small></div><div class="pc-tier">${esc(r.tier)}${logo(team)}</div>
+      <div class="pc-plate"><div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(id)}">${esc(name)}</a></div>
+      <div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}${st && st.age ? ` · age ${st.age}` : ""}</div></div></div>
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.value != null && g ? (+st.value).toFixed(2) : "—"}</b><span>PULSE</span></div></div>
     <div class="pc-line">${lastLine}</div>
     ${v && v.ok ? `<div class="pc-line"><b>Playing like</b> ${money(v.like)}${v.sal ? ` · paid ${money(v.sal)}` : ""}</div>` : ""}
@@ -789,7 +790,7 @@ function checkWish(cards){
 }
 function wishHtml(){
   const P = pool(), rows = G.wish.map(id => { const st = statOf(id), r = ratingOf(st), got = G.trophies.some(x => x.k === "wish:" + id), own = G.cards.some(c => c.id === id);
-    return `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:7px 0;gap:8px"><span style="flex:1;min-width:160px">${logo(st ? st.team : "")} <b>${esc(st ? st.name : id)}</b> <span class="note">${r ? r.ovr + " OVR · " + esc(r.tier) : ""}</span>${got ? ` <span class="gtag">🌠 Pulled</span>` : own ? ` <span class="note">(you own him from before)</span>` : ""}</span><button class="gbtn alt" data-wishout="${esc(id)}">Remove</button></div>`; }).join("");
+    return `<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding:7px 0;gap:8px"><span style="flex:1;min-width:160px">${face(ESPN[id], "mini-face")}${logo(st ? st.team : "")} <b>${esc(st ? st.name : id)}</b> <span class="note">${r ? r.ovr + " OVR · " + esc(r.tier) : ""}</span>${got ? ` <span class="gtag">🌠 Pulled</span>` : own ? ` <span class="note">(you own him from before)</span>` : ""}</span><button class="gbtn alt" data-wishout="${esc(id)}">Remove</button></div>`; }).join("");
   return `${rows}${G.wish.length < WISH_MAX ? `<div class="row" style="gap:8px;margin-top:8px"><input list="wishOpts" id="wishQ" placeholder="Add a player (${WISH_MAX - G.wish.length} spot${WISH_MAX - G.wish.length === 1 ? "" : "s"} left)…" style="flex:1;min-width:180px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:inherit;font:inherit"><button class="gbtn" id="wishAdd">Add</button>
     <datalist id="wishOpts">${P.filter(p => !G.wish.includes(p.id)).map(p => `<option value="${esc(p.name)}">`).join("")}</datalist></div>` : ""}
     <p class="note" style="margin:8px 0 0">Pick up to ${WISH_MAX} players you're hoping for. Pull one from any pack and you get a 🌠 trophy (once per player). Swap players in and out any time; it doesn't change pack odds.</p>`;
@@ -1275,7 +1276,7 @@ function scoutInfo(id){
 }
 function scoutRow(x, mine){
   const st = x.st, w = mine ? G.scout.find(s => s.id === x.id) : null, dp = w && w.p ? x.price - w.p : 0, owned = G.cards.some(c => c.id === x.id);
-  return `<div class="sc-row"><span class="nm">${logo(st.team)}<a href="pe.html#/player/${encodeURIComponent(x.id)}">${esc(st.name)}</a> <span class="note" style="font-weight:500">${esc(st.pos || "")} · ${x.r ? x.r.ovr + " OVR" : ""}${ROOKIES.has(x.id) ? " · 🆕" : ""}${owned ? " · <b>yours</b>" : ""}</span></span>
+  return `<div class="sc-row"><span class="nm">${face(ESPN[x.id], "mini-face")}${logo(st.team)}<a href="pe.html#/player/${encodeURIComponent(x.id)}">${esc(st.name)}</a> <span class="note" style="font-weight:500">${esc(st.pos || "")} · ${x.r ? x.r.ovr + " OVR" : ""}${ROOKIES.has(x.id) ? " · 🆕" : ""}${owned ? " · <b>yours</b>" : ""}</span></span>
     <span class="acts">${mine ? `<button data-scoutout="${esc(x.id)}">Remove</button>` : `<button data-scoutadd="${esc(x.id)}"${G.scout.some(s => s.id === x.id) ? " disabled" : ""}>${G.scout.some(s => s.id === x.id) ? "Watching" : "Watch"}</button>`}<button class="gbtn" data-buy="${esc(x.id)}">Buy ${x.price.toLocaleString()}</button></span>
     <span class="meta"><b>${$M(x.sal)}</b> salary · <b>${x.now.toFixed(1)}</b> production a game${x.car != null ? ` vs <b>${x.car.toFixed(1)}</b> career (<span class="${x.gap < 0 ? "sc-dn" : "sc-up"}">${x.gap > 0 ? "+" : "−"}${Math.abs(Math.round(x.gap * 100))}%</span>)` : x.r && ROOKIES.has(x.id) ? " · rookie, no career yet" : ""} · ${x.mpg.toFixed(0)} min
     ${x.car != null && x.gap < 0 ? `<br>If he gets back to his career level: value ${x.val} → <b>${x.bounceVal}</b>, sells for about <b>${x.sellAt}</b> after 7 days (${x.profit >= 0 ? `<span class="sc-up">+${x.profit}</span>` : `<span class="sc-dn">−${-x.profit}</span>`} vs the price)` : ""}
@@ -1299,7 +1300,7 @@ function marketHtml(){
     <div class="chips" style="margin-bottom:8px">${chip("sort", "price", "Priciest")}${chip("sort", "cheap", "Cheapest")}${chip("sort", "ovr", "OVR")}${chip("sort", "prod", "Production")}${chip("sort", "bargain", "Best per $")}${chip("sort", "salary", "Lowest salary")}</div>
     <p class="note" style="margin:0 0 4px">${L.length} players · you have <b>${bal.toLocaleString()}</b> · "Tax/night" is what adding him to your lineup would cost you each night in luxury tax. Your daily +${DAILY} and a wheel spin average about ${daily} a day, enough to cover the tax on about $${daily}M over the cap.</p>
     <div class="mk">${L.slice(0, MK.n).map(x => { const pl = playsLike(x.p), bdg = pl && pl.ok && pl.sal ? (pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` <span class="sc-up">💰</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` <span class="sc-dn">💸</span>` : "") : "";
-      return `<div class="mk-row"><span class="nm">${logo(x.p.team)}<a href="pe.html#/player/${encodeURIComponent(x.p.id)}">${esc(x.p.name)}</a>${bdg}${owned.has(x.p.id) ? ` <span class="note">· yours</span>` : ""}<br><small>${esc(x.p.pos || "")} · ${x.r.ovr} ${esc(x.r.tier)} · ${x.prod.toFixed(1)} prod</small></span>
+      return `<div class="mk-row"><span class="nm">${face(ESPN[x.p.id], "mini-face")}${logo(x.p.team)}<a href="pe.html#/player/${encodeURIComponent(x.p.id)}">${esc(x.p.name)}</a>${bdg}${owned.has(x.p.id) ? ` <span class="note">· yours</span>` : ""}<br><small>${esc(x.p.pos || "")} · ${x.r.ovr} ${esc(x.r.tier)} · ${x.prod.toFixed(1)} prod</small></span>
         <span class="num"><b>${$M(x.sal)}</b><small>salary</small></span><span class="num"><b>${x.tax ? `<span class="sc-dn">−${x.tax}</span>` : "0"}</b><small>tax/nt</small></span><span class="num"><b>${x.val}</b><small>sell</small></span>
         <button class="gbtn" data-buy="${esc(x.p.id)}"${bal < x.price ? ' style="opacity:.55"' : ""}>${x.price.toLocaleString()}</button></div>`; }).join("")}</div>
     ${L.length > MK.n ? `<div style="text-align:center;margin-top:8px"><button class="chip" data-mkmore style="border-radius:999px;font-weight:600">Show 25 more</button></div>` : ""}`;
@@ -1544,7 +1545,7 @@ function setupGame(){
 async function init(){
   setupShare();
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
-  getJSON("data/idmap.json").then(m => { Object.entries(m || {}).forEach(([e, b]) => { ESPN[b] = e; }); if(G.started && !$("gameMode").hidden) drawGame(); });
+  getJSON("data/idmap.json").then(m => { Object.entries(m || {}).forEach(([e, b]) => { ESPN[b] = e; }); if(!$("followMode").hidden) drawLineup(); if(G.started && !$("gameMode").hidden) drawGame(); });
   getJSON("data/legends.json").then(d => { LEG = d; if(G.started && !$("gameMode").hidden && $("gAlbum")) $("gAlbum").innerHTML = albumHtml(); wikiPhotos(); });
   Promise.all([getJSON("data/career.json"), getJSON("data/rookies.json")]).then(([ca, rk]) => { CAREER = (ca && ca.players) || {}; ROOKIES = new Set((rk && rk.ids) || []); if(G.started && !$("gameMode").hidden) drawGame(); });
   IDX = idx || []; STATS = st || {players: []}; CT = (ct && ct.players) || {}; SCHED = sc; MORNING = mo; TRADED = tr; SEASON = (STATS && STATS.season) || (sc && sc.season) || "";
