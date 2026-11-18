@@ -89,6 +89,18 @@
   .t-legend .ac-wiki{filter:sepia(.35) saturate(1.15) contrast(1.05);} .ac-photo:has(.ac-wiki:not([hidden]))::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 55%,rgba(11,11,13,.85));}
   .ac-crown{position:absolute;inset:0;display:grid;place-items:center;font-size:64px;filter:drop-shadow(0 0 14px rgba(255,200,40,.8));}
   .ac-top{margin-top:-30px;position:relative;z-index:2;}
+  .vr-ribbon{position:absolute;left:8px;right:8px;top:60px;z-index:3;display:flex;align-items:center;gap:6px;font:800 10.5px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;}
+  .vr-ribbon b{display:grid;place-items:center;min-width:30px;height:24px;padding:0 5px;border-radius:6px;font:900 13px "Barlow Condensed",sans-serif;letter-spacing:.5px;}
+  .vr-ribbon span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.55);}
+  .vr-ribbon.rc b{background:var(--c1);color:#fff;border:2px solid var(--c2);box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .v-rc{background:linear-gradient(135deg,#fbf5e2,#e6d4a3)!important;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.25),inset 0 0 0 1px rgba(0,0,0,.15);} .v-rc .pc-in{box-shadow:0 0 0 3px var(--c1),0 0 0 5px var(--c2);} .v-rc .pc-art{filter:saturate(.85) sepia(.15);}
+  .vr-ribbon.aw b{background:linear-gradient(135deg,#fff3bf,#f59f00);color:#1a1200;} .vr-ribbon.aw span{background:linear-gradient(90deg,#b8860b,#f59f00);color:#1a1200;}
+  .v-award{background:linear-gradient(135deg,#fff3bf,#f59f00,#fff3bf,#e67700)!important;box-shadow:0 0 16px rgba(245,159,0,.5);} .v-award .pc-art::before{content:"🏆";position:absolute;right:-6px;bottom:-14px;font-size:90px;opacity:.18;z-index:1;}
+  .t-black{--tier:conic-gradient(from var(--la),#0b0b0d,#ffd700,#0b0b0d,#b8860b,#0b0b0d);--tierbg:linear-gradient(160deg,#0b0b0d,#1c1c1f);animation:legspin 5s linear infinite;box-shadow:0 0 20px rgba(255,215,0,.35);}
+  .t-black .pc-in{color:#ffe9a8;} .t-black .pc-name a{color:#ffd700;} .t-black .pc-stats{background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.3);} .t-black .pc-line{background:rgba(255,215,0,.08);}
+  .t-black .foil{position:absolute;inset:0;pointer-events:none;z-index:4;background:linear-gradient(115deg,transparent 30%,rgba(255,230,150,.22) 45%,transparent 60%);background-size:250% 100%;animation:foil 3.6s ease-in-out infinite;border-radius:13px;}
+  .t-black .pc-in{position:relative;} .vr-ribbon.bk b{background:#0b0b0d;color:#ffd700;border:1px solid #ffd700;} .vr-ribbon.bk span{background:rgba(0,0,0,.75);color:#ffd700;}
+  .vchip small{opacity:.6;} .vchip.v-black{background:#0b0b0d;color:#ffd700;border-color:#b8860b;} .vchip.v-award{background:#fff3bf;color:#7a4b00;} .vchip.v-rc{background:#f8f1dc;color:#5c3d00;}
   .bdg.potw{background:#0ca678;} .bdg.aw{background:#e67700;}
   @media (max-width:640px){ .pc-art{height:112px;} .ac-photo{height:100px;} }
   .album .ac .pc-in{gap:5px;min-height:250px;position:relative;overflow:hidden;} .ac-top{display:flex;justify-content:space-between;align-items:center;gap:6px;} .ac-top img{width:30px;height:30px;border-radius:50%;background:#fff;}
@@ -488,7 +500,7 @@ const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
 const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
 const FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
 const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
-const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", boosts: {}, spin: "", spinX: 0, spins: [], album: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
+const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", boosts: {}, spin: "", spinX: 0, spins: [], album: [], variants: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(_){}   // ask the browser not to clear site data on its own
@@ -541,12 +553,36 @@ async function earnings(){
 }
 function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => fpg(b) - fpg(a)) : []; }
 const statOf = id => STATS && STATS.players.find(p => p.id === id);
+/* ---------- variants of playable cards: Rookie Card, Award edition, 1/1 Black. They play like his normal card, look special and sell for more ---------- */
+const VAR = {rc: {name: "Rookie Card", odds: 0.05, mult: 1.5}, award: {name: "Award edition", odds: 0.01, mult: 2.5}, black: {name: "1/1 Black", odds: 0.001, mult: 5}};
+const AWNAME = {mvp: "MVP", fmvp: "Finals MVP", dpoy: "DPOY", roy: "Rookie of the Year"};
+function withVariant(c){
+  const rank = pool().findIndex(p => p.id === c.id) + 1, aws = ((LEG && LEG.awards) || []).filter(a => a.id === c.id && AWNAME[a.award]);
+  const x = Math.random();
+  if(rank && rank <= 25 && x < VAR.black.odds) c.var = "black";
+  else if(aws.length && x < VAR.black.odds + VAR.award.odds){ const a = aws.slice().sort((p, q) => Math.max(...q.years) - Math.max(...p.years))[0]; c.var = "award"; c.vaw = {award: a.award, year: Math.max(...a.years)}; }
+  else if(x < VAR.black.odds + VAR.award.odds + VAR.rc.odds){ c.var = "rc"; const ix = IDX.find(r => r[0] === c.id); c.rcs = ix ? ix[2] : SEASON; rcLoad(c); }
+  if(c.var){ G.variants.push({id: c.id, name: c.name, var: c.var, vaw: c.vaw || null, rcs: c.rcs || "", at: ymd()}); toast2(`✨ ${VAR[c.var].name}: ${c.name}${c.var === "black" ? " · the rarest card in the game!" : ""}`); }
+  return c;
+}
+async function rcLoad(c){   // his rookie season and team, for the Rookie Card design
+  try{ const f = await getJSON(`data/players/${encodeURIComponent(c.id)}.json`); const s0 = f && f.seasons && f.seasons.find(x => x.season === c.rcs) || (f && f.seasons && f.seasons[0]);
+    if(s0){ const card = G.cards.find(x => x.cid === c.cid) || c; card.rct = String(s0.team).split(" ")[0]; card.rcl = [s0.g, s0.g ? (s0.pts / s0.g).toFixed(1) : "—", s0.g ? (s0.trb / s0.g).toFixed(1) : "—", s0.g ? (s0.ast / s0.g).toFixed(1) : "—"]; gSave(); if(G.started && !$("gameMode").hidden) drawGame(); } }catch(_){}
+}
+const varMult = c => c && c.var && VAR[c.var] ? VAR[c.var].mult : 1;
+const sellValue = c => Math.round(valueOf(ratingOf(statOf(c.id))) * varMult(c));
+function variantArt(c){
+  if(!c.var) return "";
+  if(c.var === "rc"){ const T = TEAMS[NBA[c.rct] || c.rct] || {}; return `<div class="vr-ribbon rc" style="--c1:${T.c1 || "#1d428a"};--c2:${T.c2 || "#c8102e"}"><b>RC</b><span>${esc(c.rcs || "")} Rookie${c.rct ? ` · ${esc(nick(c.rct))}` : ""}</span></div>`; }
+  if(c.var === "award") return `<div class="vr-ribbon aw"><b>${AWICON[c.vaw.award] || "🏆"}</b><span>${c.vaw.year - 1}-${String(c.vaw.year).slice(2)} ${esc(AWNAME[c.vaw.award])} Edition</span></div>`;
+  return `<div class="vr-ribbon bk"><b>1/1</b><span>Black · one of one</span></div>`;
+}
 function pull(k){
   const P = pool(); if(!P.length) return [];
   const pick = odds => { let x = Math.random(), lo = 0;
     for(const [top, ch] of odds){ const hi = Math.min(top || P.length, P.length); if(x < ch || top === odds[odds.length - 1][0]) return P[lo + Math.floor(Math.random() * Math.max(1, hi - lo))]; x -= ch; lo = hi; }
     return P[P.length - 1]; };
-  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, ten: 0}; }).sort(() => Math.random() - .5);
+  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return withVariant({cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, ten: 0}); }).sort(() => Math.random() - .5);
 }
 /* ---------- lineup snapshots: a night is played with the lineup you had before its first tip-off ---------- */
 function firstTip(d){ const t = ((SCHED && SCHED.games) || []).filter(g => ymd(new Date(g[1])) === d).map(g => g[1]).sort()[0]; return t ? new Date(t) : null; }
@@ -787,6 +823,9 @@ const MS = [
   ["parlay4", "Hit a 4-leg parlay", "4-leg parlay", () => EARN.p4 || 0, [1]],
   ["legends", "Pull legends for your album", "legends", () => new Set((G.album || []).filter(a => a.kind === "legend").map(a => a.name)).size, [1, 5, 10]],
   ["album", "Collect different album cards", "collectibles", () => new Set((G.album || []).map(a => a.key || a.name)).size, [10, 25]],
+  ["rc", "Pull a Rookie Card", "Rookie Card", () => (G.variants || []).filter(v => v.var === "rc").length, [1]],
+  ["awed", "Pull an Award edition", "Award edition", () => (G.variants || []).filter(v => v.var === "award").length, [1]],
+  ["black", "Pull a 1/1 Black", "1/1 Black", () => (G.variants || []).filter(v => v.var === "black").length, [1]],
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
@@ -902,6 +941,7 @@ function cardBack(c){
   const md3 = d => { const x = new Date(d + "T12:00:00"); return (x.getMonth() + 1) + "/" + x.getDate(); };
   const row = (lab, a) => `<tr><th>${lab}</th>${a.map(x => `<td>${x}</td>`).join("")}</tr>`;
   return `<div class="pc t-${r.cls} pc-flipped" data-cid="${c.cid}"><div class="pc-in pc-back">
+    ${c.var ? `<p class="bk-n" style="margin:0 0 4px"><b>✨ ${esc(VAR[c.var].name)}</b>${c.var === "rc" && c.rcl ? `: rookie year ${esc(c.rcs)} with the ${esc(nick(c.rct))}, ${c.rcl[1]} pts / ${c.rcl[2]} reb / ${c.rcl[3]} ast in ${c.rcl[0]} games` : c.var === "award" ? `: ${c.vaw.year - 1}-${String(c.vaw.year).slice(2)} ${esc(AWNAME[c.vaw.award])}` : ": the rarest card in the game"} · sells for ${VAR[c.var].mult}× his value</p>` : ""}
     <div class="bk-head"><b>${esc(c.name)}</b><span>${esc(st.pos || "")} · ${esc(nick(st.team || ""))}${st.age ? ` · age ${st.age}` : ""} · ${r.ovr} OVR</span></div>
     ${(() => { const cur = [g, per("mp"), per("pts"), per("trb"), per("ast"), per("stl"), per("blk"), pct(st.fg, st.fga), pct(st.fg3, st.fg3a), avg ? avg.toFixed(1) : "—"];
       const car = ca && ca.length > 3 ? [ca[0], ca[8], ca[3], ca[4], ca[5], ca[6], ca[7], ca[9] != null ? (ca[9] * 100).toFixed(1) : "—", ca[10] != null ? (ca[10] * 100).toFixed(1) : "—", ca[1].toFixed(1)] : null;
@@ -923,10 +963,10 @@ function cardBack(c){
 function gCard(c, opts){
   opts = opts || {};
   const st = statOf(c.id), r = ratingOf(st) || {ovr: c.ovr, cls: c.tier, tier: c.tier, pc: 0}, team = st ? st.team : "", g = st && st.g, per = k => g ? (st[k] / g).toFixed(1) : "—";
-  const v = valueOf(r), dv = v - (c.val || v), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid), inRes = G.res.includes(c.cid);
+  const v = Math.round(valueOf(r) * varMult(c)), dv = v - Math.round((c.val || valueOf(r)) * varMult(c)), inStart = G.start.includes(c.cid), inBench = G.bench.includes(c.cid), inRes = G.res.includes(c.cid);
   if(opts.acts !== false && FLIP.has(c.cid)) return cardBack(c);
-  return `<div class="pc t-${r.cls}"${opts.acts !== false ? ` data-cid="${c.cid}" title="Tap the card to flip it"` : ""}><div class="pc-in">
-    <div class="pc-art">${face(ESPN[c.id])}<div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div>
+  return `<div class="pc t-${c.var === "black" ? "black" : r.cls}${c.var ? " v-" + c.var : ""}"${c.var === "rc" ? ` style="--c1:${(TEAMS[NBA[c.rct] || c.rct] || {}).c1 || "#1d428a"};--c2:${(TEAMS[NBA[c.rct] || c.rct] || {}).c2 || "#c8102e"}"` : ""}${opts.acts !== false ? ` data-cid="${c.cid}" title="Tap the card to flip it"` : ""}><div class="pc-in">${c.var === "black" ? '<i class="foil"></i>' : ""}
+    <div class="pc-art">${face(ESPN[c.id])}${variantArt(c)}<div class="pc-ovr">${r.ovr}<small>OVR</small></div><div class="pc-tier">${esc(r.tier || "")}${logo(team)}</div>
       <div class="pc-plate"><div class="pc-name"><a href="pe.html#/player/${encodeURIComponent(c.id)}">${esc(c.name)}</a></div><div class="pc-sub">${esc((st && st.pos) || "")}${st && st.pos ? " · " : ""}${esc(nick(team))}</div></div></div>
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
@@ -1030,7 +1070,7 @@ function newSeason(){
   const H = (G.hist || []).concat([{season: G.season, n: N.length, w, l: g - w, ffw: N.filter(n => n.ffWin).length, best, pts: N.reduce((a, n) => a + (n.pts || 0), 0), aw: aw.map(a => a[2])}]);
   const st = Object.assign({}, G.st, {pastEarned: (G.st.pastEarned || 0) + Math.max(0, balance() + G.spent - (G.refund || 0))});
   const keep = G.cards.filter(c => keepIds.includes(c.cid)).map(c => { const r = ratingOf(statOf(c.id)) || {ovr: c.ovr, cls: c.tier}; return Object.assign({}, c, {ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, exp: null, lapsed: false}); });
-  G = Object.assign(blank(), {trophies: G.trophies, wish: G.wish, scout: G.scout, album: G.album || [], st, hist: H, keep, backup: G.backup, season: SEASON, since: ymd()});
+  G = Object.assign(blank(), {trophies: G.trophies, wish: G.wish, scout: G.scout, album: G.album || [], variants: G.variants || [], st, hist: H, keep, backup: G.backup, season: SEASON, since: ymd()});
   gSave(); EARN = {pts: 0, games: 0, list: []}; $("gOpen").innerHTML = ""; drawGame(); window.scrollTo(0, 0);
   toast2(`Welcome to ${SEASON}${keep.length ? `: ${keep.length} keeper${keep.length === 1 ? "" : "s"} waiting` : ""}. Open your 5 starter packs.`);
 }
@@ -1117,6 +1157,7 @@ function drawRules(){
     <li><b>Scout:</b> the Buy-low list finds veterans playing 10%+ below their career production, with their salary, buy price and what they'd sell for if they bounce back. Filter by salary, sort by upside, and add anyone to My scouting to track his price.</li>
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
     <li><b>Collector's album:</b> 👑 <b>Legends</b> (NBA 75th Anniversary Team players who aren't playing anymore) can come out of any pack: about 1 in 250 Gold, 1 in 100 Ruby and 1 in 40 Galaxy packs, plus a rare wheel slice. A legend replaces one card in the pack, you keep the other two, and <b>the pack's points are refunded</b>. Award cards (MVP, Finals MVP, DPOY, Rookie of the Year and more, for today's players) and event cards (Player of the Week, Christmas Day, All-Star) come as bonus cards in packs and on the wheel. Album cards are kept forever and never take a roster spot.</li>
+    <li><b>Special versions:</b> any player card from a pack can come out as a <b>Rookie Card</b> (5%, sells for 1.5×), an <b>Award edition</b> (1%, MVP, Finals MVP, DPOY or Rookie of the Year winners, 2.5×) or a <b>1/1 Black</b> (0.1%, top-25 players only, 5×). They play exactly like his normal card. Every one you pull is logged in your album.</li>
     <li><b>✨ Best lineup:</b> one tap sets your starting five and bench for the best production and chemistry, a balanced bench, under the apron and light on tax, skipping injured players and expired contracts.</li>
     <li><b>Wish list:</b> pick up to 3 players you're hoping for. Pull one from any pack for a 🌠 trophy (once per player). It doesn't change the odds.</li>
     <li><b>Badges:</b> 🔥 Hot = his last 5 games are 20%+ above his season average; ❄️ Cold = 20%+ below; 🚑 = on the injury report.</li>
@@ -1178,11 +1219,16 @@ async function wikiPhotos(){
   }catch(_){}
   wikiBusy = false; apply();
 }
+function variantsHtml(){
+  const V = G.variants || []; if(!V.length) return "";
+  const own = new Set(G.cards.filter(c => c.var).map(c => c.id + ":" + c.var));
+  return `<div class="card vlog" style="grid-column:1/-1;padding:10px 14px"><b>✨ Variants you've pulled (${V.length})</b><div class="chips" style="margin-top:6px">${V.slice().reverse().map(v => `<span class="chip vchip v-${v.var}" title="${esc(v.at)}">${v.var === "black" ? "⬛ 1/1" : v.var === "award" ? "🏆 " + esc(AWNAME[v.vaw && v.vaw.award] || "Award") : "RC"} ${esc(v.name)}${own.has(v.id + ":" + v.var) ? "" : " <small>(sold)</small>"}</span>`).join("")}</div></div>`;
+}
 function albumHtml(){
   const by = new Map(); G.album.forEach(a => { const k = a.key || a.name; if(!by.has(k)) by.set(k, {a, n: 0}); by.get(k).n++; });
   const L = [...by.values()].sort((x, y) => (x.a.kind === "legend" ? 0 : 1) - (y.a.kind === "legend" ? 0 : 1) || String(y.a.at).localeCompare(String(x.a.at)));
   $("gAlbumNote").textContent = G.album.length ? `${by.size} different · ${L.filter(x => x.a.kind === "legend").length} legend${L.filter(x => x.a.kind === "legend").length === 1 ? "" : "s"}` : "";
-  return L.length ? L.map(x => albumCard(x.a, x.n)).join("") + (L.some(x => x.a.kind === "legend" && !x.a.espn) ? `<p class="note" style="grid-column:1/-1;margin:4px 0 0">Legend photos without an ESPN headshot come from Wikipedia / Wikimedia Commons (free-licensed images).</p>` : "") : `<div class="note" style="grid-column:1/-1">Empty for now. Legends (about 1 in 40 Galaxy packs), award cards and event cards can come out of any pack or the prize wheel.</div>`;
+  return variantsHtml() + (L.length ? L.map(x => albumCard(x.a, x.n)).join("") + (L.some(x => x.a.kind === "legend" && !x.a.espn) ? `<p class="note" style="grid-column:1/-1;margin:4px 0 0">Legend photos without an ESPN headshot come from Wikipedia / Wikimedia Commons (free-licensed images).</p>` : "") : `<div class="note" style="grid-column:1/-1">Empty for now. Legends (about 1 in 40 Galaxy packs), award cards and event cards can come out of any pack or the prize wheel.</div>`);
 }
 /* ---------- best lineup: strongest five (production with chemistry and teammates), a balanced bench, under the apron and light on tax ---------- */
 function bestLineup(){
@@ -1423,7 +1469,7 @@ function setupGame(){
     if("startteam" in d) return startTeam();
     if("greset" in d){ const first = !G.resets;
       if(!confirm(`Start over? Your cards, record and nightly results are wiped. You keep every point you've earned (picks, nightly games, daily bonuses, sales)${first ? ", and this first time you also get back everything you spent on packs" : ". What you spent on packs isn't refunded after your first start over"}. This can't be undone.`)) return;
-      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, refund: G.refund || 0, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], album: G.album || [], hist: G.hist || [], season: G.season || SEASON, since: G.since || "", st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
+      const keep = {backup: G.backup, game: G.game, bonus: G.bonus, sold: G.sold, refund: G.refund || 0, daily: G.daily, claimed: G.claimed, spent: first ? 0 : G.spent, resets: (G.resets || 0) + 1, trophies: G.trophies || [], wish: G.wish || [], scout: G.scout || [], album: G.album || [], variants: G.variants || [], hist: G.hist || [], season: G.season || SEASON, since: G.since || "", st: G.st || {}}; G = Object.assign(blank(), keep); gSave(); drawGame(); window.scrollTo(0, 0); toast(first ? "Fresh start, with your pack spending refunded" : "Fresh start: open your 5 starter packs"); return; }
     if(t.id === "gSignIn"){ (async () => { if(!window.FCCloud){ const sc = document.createElement("script"); sc.src = "cloud.js"; document.head.appendChild(sc); await new Promise(r => sc.onload = r); } FCCloud.signIn(); })(); return; }
     if(t.id === "gBackup"){ G.backup = ymd(); gSave(); drawScore(); if(window.FCSync) FCSync.open(); return; }
     if(d.pack) return openPack(PACKS.find(x => x.id === d.pack));
@@ -1479,19 +1525,19 @@ function setupGame(){
       const coup = G.boosts.resign ? Math.round(cost / 2) : 0; if(coup){ delete G.boosts.resign; }
       const was = birdOf(c); G.spent += cost - coup; c.fund = {left: ((c.fund && c.fund.left) || 0) + cost, total: cost}; c.gl = (c.gl || 0) + L; c.len = c.gl; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
       gSave(); $("gOpen").innerHTML = ""; drawGame(); return toast(`📝 Re-signed ${c.name}: ${cost} moved to his operational fund, ${(cost / L).toFixed(1)} a game for ${L} games${was ? ` (${BIRD[was].name} discount)` : ""}`); }
-    if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
+    if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = sellValue(c);
       const back = buyoutBack(c);
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = back ? `Sure? +${v} +${back} back` : `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
       if(back){ G.refund = (G.refund || 0) + back; G.st.buyouts = (G.st.buyouts || 0) + 1; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
       if(c.val != null && v - c.val >= 100) G.st.sellHigh = 1;
-      const hb = holdBonus(c, v);
+      const hb = holdBonus(c, valueOf(ratingOf(statOf(c.id))));
       G.sold += v + hb; gSave(); drawGame(); return toast(`${hb ? `📈 Held and sold ${c.name} for ${v} + ${hb} hold bonus` : `Sold ${c.name} for ${v} points`}${back ? ` · buyout: ${back} of his operational fund back` : ""}`); }
     if("gsellall" in d){ const keep = new Set(G.start.concat(G.bench).map(x => cardOf(x).id)), seen = new Set(), drop = new Set(); let v = 0;
-      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ drop.add(c.cid); const cv = valueOf(ratingOf(statOf(c.id))); v += cv; } else seen.add(c.id); });
+      G.cards.slice().sort((a, b) => (ratingOf(statOf(b.id)) || b).ovr - (ratingOf(statOf(a.id)) || a).ovr).forEach(c => { if(G.start.includes(c.cid) || G.bench.includes(c.cid)) return; if(keep.has(c.id) || seen.has(c.id)){ if(c.var) return; drop.add(c.cid); const cv = sellValue(c); v += cv; } else seen.add(c.id); });
       if(!drop.size) return toast("No duplicates to sell");
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sell ${drop.size} for ${v}?`; return; }
-      let hbs = 0; G.cards.filter(c => drop.has(c.cid)).forEach(c => { const cv = valueOf(ratingOf(statOf(c.id))); if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; hbs += holdBonus(c, cv); const bk = buyoutBack(c); if(bk) G.refund = (G.refund || 0) + bk; }); v += hbs;
+      let hbs = 0; G.cards.filter(c => drop.has(c.cid)).forEach(c => { const cv = sellValue(c); if(c.val != null && cv - c.val >= 100) G.st.sellHigh = 1; hbs += holdBonus(c, cv); const bk = buyoutBack(c); if(bk) G.refund = (G.refund || 0) + bk; }); v += hbs;
       G.cards = G.cards.filter(c => !drop.has(c.cid)); G.res = G.res.filter(x => !drop.has(x)); G.sold += v; gSave(); drawGame(); return toast(`Sold ${drop.size} duplicate${drop.size === 1 ? "" : "s"} for ${v} points`); }
   });
 }
