@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Picks · Full Court Geek Press</title>
-<meta name="description" content="Make your own NBA picks (moneyline, spread, over/under) and see how you do against Pulse and the Vegas favorites.">
+<meta name="description" content="Your NBA picks night by night: game lines, player props, parlays and Locks, the points each earned, and how you stack up against Pulse and the Vegas favorites.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -44,33 +44,53 @@
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .empty{color:var(--dim);padding:6px 0;}
   @media (max-width:640px){ h1{font-size:38px;} .vs{grid-template-columns:1fr;} .vs .rec{font-size:34px;} }
+  .sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+  .sum .card{margin:0;padding:12px 14px;} .sum .card > span{display:block;font:700 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);}
+  .sum b{display:block;font:700 34px/1.1 "Barlow Condensed",sans-serif;} .sum small{color:var(--dim);font-size:12px;}
+  .pos{color:var(--good);} .neg{color:var(--bad);}
+  .cmp{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin-top:10px;} .cmp div{flex:1;min-width:150px;padding:8px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line);} .cmp b{font-size:14px;}
+  .night{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden;}
+  .night > summary,.night .nh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;font-weight:700;}
+  .night > summary::-webkit-details-marker{display:none;} .night .nh small,.night > summary small{font-weight:500;color:var(--dim);}
+  .night .pts{font:700 20px "Barlow Condensed",sans-serif;}
+  .bets{border-top:1px solid var(--line);}
+  .bet{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 14px;border-top:1px solid var(--line);font-size:13.5px;}
+  .bet:first-child{border-top:0;} .bet .what small{display:block;color:var(--dim);font-size:12px;}
+  .bet .end{text-align:right;} .bet .end b{display:block;font-size:14px;} .bet .end small{color:var(--dim);font-size:11.5px;display:block;max-width:150px;}
+  .tag{display:inline-block;font:700 10.5px Inter,sans-serif;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:1px;}
+  .tag.lock{background:#f59f00;color:#fff;} .tag.pr{background:var(--court);color:#fff;} .tag.pa{background:#7048e8;color:#fff;} .tag.bp{background:var(--good);color:#fff;}
+  .r{display:inline-grid;place-items:center;width:24px;height:24px;font-weight:700;font-size:12px;border-radius:7px;background:var(--row);color:var(--dim);}
+  .r.W{background:rgba(47,158,68,.15);color:var(--good);} .r.L{background:rgba(214,51,108,.13);color:var(--bad);} .r.P{background:rgba(224,181,74,.18);color:var(--push);}
+  details.bk summary{cursor:pointer;font-weight:600;}
+  @media (max-width:640px){ .sum{grid-template-columns:repeat(2,minmax(0,1fr));} .bet .end small{max-width:110px;} }
 </style>
 </head>
 <body>
 <div class="nba-band"><div class="band-in">
   <div class="eyebrow">Your bets</div>
   <h1>My Picks</h1>
-  <p class="lede">Pick the winner, the spread or the over/under on any upcoming game from the game cards on <a href="index.html" style="color:#fff">The Morning Press</a>, then see how you stack up against Pulse and the Vegas favorites.</p>
+  <p class="lede">Every pick you've made (game lines, player props, parlays and Locks), night by night, with the points each one earned in The Game. Make picks under Coming up on <a href="index.html#upSec" style="color:#fff">The Morning Press</a>.</p>
 </div></div>
 <main>
-  <div class="tabs" id="tabs"></div>
-  <div class="vs" id="vs"></div>
-  <p class="note" id="vsNote"></p>
+  <div class="sum" id="sum"></div>
+  <div class="cmp" id="cmp"></div>
+  <p class="note" id="cmpNote" style="margin:6px 0 0"></p>
 
-  <h2 data-jump="Waiting on the game">Waiting on the game</h2>
-  <div class="card"><div class="tw" id="pending"></div></div>
+  <div class="tabs" id="tabs" style="margin-top:18px"></div>
 
-  <h2 data-jump="Settled">Settled</h2>
-  <div class="card"><div class="tw" id="settled"></div></div>
+  <h2 data-jump="Upcoming">Upcoming <small class="note" id="openNote" style="text-transform:none;letter-spacing:0;font:500 13px Inter"></small></h2>
+  <div id="open"></div>
 
-  <h2 data-jump="Backup">Your picks are saved in this browser</h2>
-  <div class="card">
-    <p style="margin:0 0 10px">Picks stay on this device and browser only (no account needed). To move them to another phone or computer, or keep a copy, download a backup and restore it there.</p>
+  <h2 data-jump="History">History</h2>
+  <div id="hist"></div>
+
+  <h2 data-jump="Backup">Backup</h2>
+  <div class="card"><details class="bk"><summary>Move or back up your picks</summary>
+    <p style="margin:8px 0 10px">Picks are saved in this browser (and in your account if you're signed in). To keep a copy or move them without signing in, download a backup and restore it on the other device.</p>
     <button class="btn primary" id="dl">Download backup</button>
     <label class="btn" style="display:inline-block">Restore from backup<input type="file" id="ul" accept="application/json,.json" hidden></label>
-    <span class="note" id="bkNote"></span>
-  </div>
-  <p class="note">For fun and information only. You must be 21+ and in a state where sports betting is legal to bet for real. Gambling problem? Call 1-800-GAMBLER.</p>
+    <span class="note" id="bkNote"></span></details></div>
+  <p class="note">For fun and information only: points have no cash value. You must be 21+ and in a state where sports betting is legal to bet for real. Gambling problem? Call 1-800-GAMBLER.</p>
 </main>
 <script src="nav.js"></script>
 <script src="jumps.js"></script>
@@ -80,50 +100,85 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const TYPES = [["all","All bets"],["ml","Winner (moneyline)"],["spread","Spread"],["total","Over/under"]];
-let TAB = "all", FINALS = {}, SCHED = null;
-const units = u => `<span class="u ${u > 0.004 ? "pos" : u < -0.004 ? "neg" : ""}">${u > 0 ? "+" : u < 0 ? "−" : ""}${Math.abs(u).toFixed(2)}u</span>`;
-const recTxt = r => `${r.w}-${r.l}${r.p ? "-" + r.p : ""}`;
+const TYPES = [["all", "All"], ["ml", "Winner"], ["spread", "Spread"], ["total", "Over/under"], ["prop", "Props"], ["parlay", "Parlays"], ["lock", "Locks"]];
+let TAB = "all", FINALS = {}, SCHED = null, PROPS = [];
+const BOX = {}; const box = gid => BOX[gid] || (BOX[gid] = fetch(`data/games/${gid}.json?t=${Math.floor(Date.now() / 3e5)}`).then(r => r.ok ? r.json() : null).catch(() => null));
+const units = u => `<span class="${u > 0.004 ? "pos" : u < -0.004 ? "neg" : ""}">${u > 0 ? "+" : u < 0 ? "−" : ""}${Math.abs(u).toFixed(2)}u</span>`;
+const recTxt = r => `${r.w}–${r.l}${r.p ? "–" + r.p : ""}`;
 const pctTxt = r => r.w + r.l ? Math.round(1000 * r.w / (r.w + r.l)) / 10 + "%" : "—";
-const day = t => new Date(t).toLocaleDateString("en-US", {month:"short", day:"numeric"});
-const time = t => new Date(t).toLocaleTimeString("en-US", {hour:"numeric", minute:"2-digit"});
-const res = r => r ? `<span class="r ${r}">${r}</span>` : `<span class="r none">—</span>`;
+const nightLabel = n => new Date(n + "T12:00:00").toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
+const time = t => new Date(t).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
+const res = r => `<span class="r ${r || "V"}">${r === "V" ? "–" : r || "…"}</span>`;
+const SL = {pts: "points", reb: "rebounds", ast: "assists"};
+const linePay = p => p.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(p.odds, "W"))) : 25;
 
+/* everything for one night, scored the way The Game scores it */
+function nights(){
+  const G = MyPicks.graded(FINALS), locks = MyPicks.locks(), PX = Object.values(MyPicks.parlays()), N = {};
+  const get = n => N[n] = N[n] || {n, lines: [], props: [], parlays: [], pts: 0, w: 0, l: 0, p: 0, open: 0};
+  G.forEach(p => { const n = MyPicks.nightOf(p.t), x = get(n), k = MyPicks.key(p.gid, p.type), r = p.res && p.res.you;
+    const it = {kind: "line", p, k, r, lock: locks[n] === k, pts: 0, notes: []};
+    if(r === "W"){ it.pts = linePay(p); if(it.lock){ it.pts *= 2; it.notes.push("lock ×2"); } if(p.pulse && p.pulse.side !== p.side){ it.pts += 10; it.notes.push("+10 beat Pulse"); } }
+    else if(r === "P") it.pts = 5; else if(r === "L" && it.lock){ it.pts = -25; it.notes.push("lock −25"); }
+    x.lines.push(it); });
+  Object.values(N).forEach(x => { const byG = {}; x.lines.forEach(it => { if(it.r === "W") byG[it.p.gid] = (byG[it.p.gid] || 0) + 1; });
+    Object.entries(byG).forEach(([gid, w]) => { const b = [0, 10, 25, 50][Math.min(3, w)], it = x.lines.find(y => y.p.gid === gid && y.r === "W"); it.pts += b; it.notes.push(`+${b} game bonus (${w} of ${x.lines.filter(y => y.p.gid === gid).length} hit)`); }); });
+  PROPS.forEach(p => { const x = get(MyPicks.nightOf(p.t)); x.props.push({kind: "prop", p, r: p.res, pts: p.res === "W" ? 15 : 0}); });
+  Object.values(N).forEach(x => { const w = x.props.filter(y => y.r === "W"); if(w.length >= 3){ w[0].pts += 15; w[0].bonus = true; } });
+  PX.forEach(t => { const x = get(t.night), legs = t.legs.map(k => x.lines.find(y => y.k === k));
+    const r = legs.some(l => !l) ? "V" : legs.some(l => l.r === "L") ? "L" : legs.some(l => l.r === "P") ? "V" : legs.every(l => l.r === "W") ? "W" : null;
+    x.parlays.push({kind: "parlay", t, legs, r, mult: MyPicks.PARLAY_MULT[t.legs.length], pts: r === "W" ? Math.round(25 * MyPicks.PARLAY_MULT[t.legs.length]) : 0}); });
+  Object.values(N).forEach(x => { const all = x.lines.concat(x.props, x.parlays); x.pts = all.reduce((a, it) => a + it.pts, 0);
+    all.forEach(it => { if(it.r === "W") x.w++; else if(it.r === "L") x.l++; else if(it.r === "P") x.p++; else if(!it.r) x.open++; }); });
+  return Object.values(N).sort((a, b) => b.n.localeCompare(a.n));
+}
+const show = it => TAB === "all" || (TAB === "prop" && it.kind === "prop") || (TAB === "parlay" && it.kind === "parlay") || (TAB === "lock" && it.lock) || (it.kind === "line" && it.p.type === TAB);
+function row(it, open){
+  if(it.kind === "line"){ const p = it.p, sc = p.score ? ` · final ${esc(p.away)} ${p.score[1]}, ${esc(p.home)} ${p.score[0]}` : ` · ${time(p.t)}`;
+    return `<div class="bet">${res(it.r)}<div class="what"><b>${esc(MyPicks.betText(p))}</b>${it.lock ? `<span class="tag lock">🔒 LOCK</span>` : ""}${p.pulse && p.pulse.side !== p.side ? `<span class="tag bp">vs Pulse</span>` : ""}<small>${esc(p.away)} @ ${esc(p.home)}${sc}${p.pulse ? ` · Pulse: ${esc(MyPicks.betText(p, p.pulse))}` : ""}</small></div>
+      <div class="end">${open ? (MyPicks.started(p.t) ? `<small>in progress</small>` : `<button class="x" title="Take back this pick" data-rm="${esc(it.k)}">✕</button>`) : `<b class="${it.pts > 0 ? "pos" : it.pts < 0 ? "neg" : ""}">${it.pts > 0 ? "+" : ""}${it.pts}</b><small>${it.notes.join(" · ") || (it.r === "L" ? "missed" : it.r === "P" ? "push" : "")}</small>`}</div></div>`; }
+  if(it.kind === "prop"){ const p = it.p;
+    return `<div class="bet">${res(it.r)}<div class="what"><b>${esc(p.name)} ${p.side} ${p.line} ${SL[p.stat]}</b><span class="tag pr">PROP</span><small>${it.r && it.r !== "V" ? `He had ${p.val}` : it.r === "V" ? "Didn't play: void" : time(p.t)}${it.bonus ? " · +15 for 3+ props right" : ""}</small></div>
+      <div class="end">${open ? "" : `<b class="${it.pts ? "pos" : ""}">${it.pts ? "+" + it.pts : "0"}</b>`}</div></div>`; }
+  const t = it.t;
+  return `<div class="bet">${res(it.r)}<div class="what"><b>${t.legs.length}-leg parlay ×${it.mult}</b><span class="tag pa">PARLAY</span><small>${it.legs.map(l => l ? `${esc(MyPicks.betText(l.p))} ${l.r ? `(${l.r})` : ""}` : "removed pick").join(" + ")} · pays ${Math.round(25 * it.mult)}</small></div>
+    <div class="end">${open ? (MyPicks.started(t.t) ? "" : `<button class="x" title="Cancel this parlay" data-px="${esc(t.id)}">✕</button>`) : `<b class="${it.pts ? "pos" : ""}">${it.pts ? "+" + it.pts : "0"}</b>`}</div></div>`;
+}
 function draw(){
-  const all = MyPicks.graded(FINALS), list = all.filter(p => TAB === "all" || p.type === TAB);
-  $("tabs").innerHTML = TYPES.map(([k, t]) => `<button data-t="${k}" class="${k === TAB ? "on" : ""}">${t} (${all.filter(p => k === "all" || p.type === k).length})</button>`).join("");
+  const NN = nights(), G = MyPicks.graded(FINALS), done = G.filter(p => p.res);
+  const all = NN.flatMap(x => x.lines.concat(x.props, x.parlays));
+  $("tabs").innerHTML = TYPES.map(([k, t]) => `<button data-t="${k}" class="${k === TAB ? "on" : ""}">${t} (${all.filter(it => k === "all" || (k === "prop" && it.kind === "prop") || (k === "parlay" && it.kind === "parlay") || (k === "lock" && it.lock) || (it.kind === "line" && it.p.type === k)).length})</button>`).join("");
   $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => { TAB = b.dataset.t; draw(); });
-  const done = list.filter(p => p.res);
-  const me = MyPicks.record(done, "you"), pu = MyPicks.record(done, "pulse"), ve = MyPicks.record(done, "vegas");
-  const box = (title, r, sub, cls) => `<div class="card ${cls || ""}"><h3>${title}</h3><div class="rec">${r.n ? recTxt(r) : "—"}</div><div>${r.n ? units(r.units) + " · " + pctTxt(r) : ""}</div><small>${sub}</small></div>`;
-  $("vs").innerHTML = box("You", me, `${done.length} settled pick${done.length === 1 ? "" : "s"}`, "me")
-    + box("Pulse", pu, pu.n ? "same games, same bet type" : TAB === "total" ? "Pulse doesn't pick totals yet" : "same games, same bet type")
-    + box("Vegas favorites", ve, ve.n ? "always taking the favorite" : TAB === "total" ? "no favorite on an over/under" : "always taking the favorite");
-  $("vsNote").innerHTML = `Each bet risks 1 unit (u). Moneyline bets pay at the odds when you picked; spread and over/under bets at the usual −110, where you need to win 52.4% to break even. Pulse and the favorite are graded on the same games and bet types you picked, at the same lines.`;
-
-  const pend = list.filter(p => !p.res);
-  $("pending").innerHTML = pend.length ? `<table><thead><tr><th>Game</th><th>When</th><th>Your bet</th><th>Pulse</th><th></th></tr></thead><tbody>${pend.map(p => `<tr>
-      <td><b>${esc(p.away)} @ ${esc(p.home)}</b></td><td>${day(p.t)} · ${time(p.t)}</td><td><b>${esc(MyPicks.betText(p))}</b></td>
-      <td>${p.pulse ? esc(MyPicks.betText(p, p.pulse)) : "—"}</td>
-      <td>${MyPicks.started(p.t) ? `<span class="note">in progress</span>` : `<button class="x" title="Take back this pick" data-rm="${esc(p.gid + ":" + p.type)}">✕</button>`}</td></tr>`).join("")}</tbody></table>`
-    : `<div class="empty">No open picks. Head to <a href="index.html#upSec">Coming up</a> on The Morning Press and tap a bet on any game card.</div>`;
-  $("pending").querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { MyPicks.remove(b.dataset.rm); draw(); });
-
-  $("settled").innerHTML = done.length ? `<table><thead><tr><th>Date</th><th>Game</th><th>Final</th><th>Your bet</th><th>You</th><th>Pulse</th><th>Favorite</th></tr></thead><tbody>${done.map(p => `<tr>
-      <td>${day(p.t)}</td><td>${esc(p.away)} @ ${esc(p.home)}</td><td>${p.score[1]}-${p.score[0]}</td>
-      <td>${esc(MyPicks.betText(p))}</td><td>${res(p.res.you)} ${units(MyPicks.profit(p.odds, p.res.you))}</td>
-      <td>${p.pulse ? res(p.res.pulse) + ` <span class="note">${esc(MyPicks.betText(p, p.pulse))}</span>` : "—"}</td>
-      <td>${p.vegas ? res(p.res.vegas) + ` <span class="note">${esc(MyPicks.betText(p, p.vegas))}</span>` : "—"}</td></tr>`).join("")}</tbody></table>`
-    : `<div class="empty">Nothing settled yet. Picks are graded as soon as the game ends.</div>`;
+  const settled = all.filter(it => it.r && it.r !== "V"), w = settled.filter(it => it.r === "W").length, l = settled.filter(it => it.r === "L").length;
+  const pts = NN.reduce((a, x) => a + x.pts, 0), me = MyPicks.record(done, "you");
+  let streak = 0, kind = ""; done.slice().sort((a, b) => String(b.t).localeCompare(String(a.t))).some(p => { const r = p.res.you; if(r === "P") return false; if(!kind) kind = r; if(r !== kind) return true; streak++; return false; });
+  $("sum").innerHTML = `<div class="card"><span>Record</span><b>${w}–${l}</b><small>${w + l ? Math.round(1000 * w / (w + l)) / 10 + "% · " : ""}all bets</small></div>
+    <div class="card"><span>Points earned</span><b class="${pts >= 0 ? "pos" : "neg"}">${pts.toLocaleString()}</b><small>in The Game, from picks</small></div>
+    <div class="card"><span>Units</span><b>${units(me.units)}</b><small>game lines, 1 unit each</small></div>
+    <div class="card"><span>Streak</span><b>${streak ? (kind === "W" ? "W" : "L") + streak : "—"}</b><small>game lines in a row</small></div>`;
+  const pu = MyPicks.record(done, "pulse"), ve = MyPicks.record(done, "vegas");
+  $("cmp").innerHTML = `<div><b>You</b> ${recTxt(me)} · ${pctTxt(me)} · ${units(me.units)}</div><div><b>Pulse</b> ${pu.n ? `${recTxt(pu)} · ${pctTxt(pu)} · ${units(pu.units)}` : "—"}</div><div><b>Vegas favorite</b> ${ve.n ? `${recTxt(ve)} · ${pctTxt(ve)} · ${units(ve.units)}` : "—"}</div>`;
+  $("cmpNote").textContent = "Game lines only: Pulse and the favorite are graded on the same games and bet types you picked. Spread and over/under bets need 52.4% to break even at −110.";
+  const openN = NN.filter(x => x.open), histN = NN.filter(x => !x.open || x.lines.concat(x.props, x.parlays).some(it => it.r));
+  $("openNote").textContent = openN.length ? "" : "";
+  $("open").innerHTML = openN.length ? openN.slice().reverse().map(x => { const items = x.lines.concat(x.props, x.parlays).filter(it => !it.r).filter(show); if(!items.length) return "";
+      return `<div class="night"><div class="nh"><span>${nightLabel(x.n)} <small>· ${MyPicks.used(x.n)} of ${MyPicks.LIMIT} picks</small></span><a href="index.html#upSec" style="font-size:13px;font-weight:600">Edit picks →</a></div><div class="bets">${items.map(it => row(it, true)).join("")}</div></div>`; }).join("") || `<div class="card empty">No open picks in this view.</div>`
+    : `<div class="card empty">No open picks. Head to <a href="index.html#upSec">Coming up</a> and tap a bet on any game.</div>`;
+  $("hist").innerHTML = histN.map((x, i) => { const items = x.lines.concat(x.props, x.parlays).filter(it => it.r).filter(show); if(!items.length) return "";
+      const np = items.reduce((a, it) => a + it.pts, 0), nw = items.filter(it => it.r === "W").length, nl = items.filter(it => it.r === "L").length;
+      return `<details class="night"${i < 2 ? " open" : ""}><summary><span>${nightLabel(x.n)} <small>· ${nw}–${nl}</small></span><span class="pts ${np > 0 ? "pos" : np < 0 ? "neg" : ""}">${np > 0 ? "+" : ""}${np}</span></summary><div class="bets">${items.map(it => row(it, false)).join("")}</div></details>`; }).join("") || `<div class="card empty">Nothing settled yet. Picks are graded as soon as each game ends.</div>`;
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { MyPicks.remove(b.dataset.rm); draw(); });
+  document.querySelectorAll("[data-px]").forEach(b => b.onclick = () => { MyPicks.removeParlay(b.dataset.px); draw(); });
 }
 
 async function refresh(){
   try{ SCHED = await fetch("data/schedule.json?t=" + Date.now()).then(r => r.ok ? r.json() : null); }catch(_){ SCHED = null; }
   FINALS = await MyPicks.finals(SCHED);
+  try{ PROPS = await MyPicks.gradeProps(box); }catch(_){ PROPS = Object.values(MyPicks.props()); }
   draw();
 }
 $("dl").onclick = () => {
-  const blob = new Blob([MyPicks.exportData()], {type:"application/json"}), a = document.createElement("a");
+  const blob = new Blob([MyPicks.exportData()], {type: "application/json"}), a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = `my-picks-${new Date().toISOString().slice(0, 10)}.json`; a.click(); URL.revokeObjectURL(a.href);
 };
 $("ul").onchange = async e => {
@@ -132,8 +187,8 @@ $("ul").onchange = async e => {
   catch(err){ $("bkNote").textContent = err.message || "Couldn't read that file."; }
   e.target.value = "";
 };
-MyPicks.onChange(draw);
-draw(); refresh();
+MyPicks.onChange(() => refresh());
+PROPS = Object.values(MyPicks.props()).map(p => Object.assign({}, p, {res: null})); draw(); refresh();
 setInterval(() => { if(MyPicks.graded(FINALS).some(p => !p.res && MyPicks.started(p.t))) refresh(); }, 5 * 6e4);
 })();
 </script>
