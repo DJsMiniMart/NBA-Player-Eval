@@ -85,6 +85,8 @@
   .ac-photo{position:relative;height:120px;margin:-12px -12px 0;border-radius:13px 13px 0 0;overflow:hidden;background:radial-gradient(110% 90% at 50% 15%,rgba(255,255,255,.22),transparent 70%);}
   .ac-face{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:115%;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5));}
   .t-legend .ac-face{filter:sepia(.55) saturate(1.3) contrast(1.05) drop-shadow(0 0 10px rgba(255,200,40,.5));}
+  .ac-wiki{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 22%;z-index:1;}
+  .t-legend .ac-wiki{filter:sepia(.35) saturate(1.15) contrast(1.05);} .ac-photo:has(.ac-wiki:not([hidden]))::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 55%,rgba(11,11,13,.85));}
   .ac-crown{position:absolute;inset:0;display:grid;place-items:center;font-size:64px;filter:drop-shadow(0 0 14px rgba(255,200,40,.8));}
   .ac-top{margin-top:-30px;position:relative;z-index:2;}
   .bdg.potw{background:#0ca678;} .bdg.aw{background:#e67700;}
@@ -1077,7 +1079,7 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gAlbum").innerHTML = albumHtml(); $("gScout").innerHTML = scoutHtml(); $("gMarket").innerHTML = marketHtml();
+  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gAlbum").innerHTML = albumHtml(); wikiPhotos(); $("gScout").innerHTML = scoutHtml(); $("gMarket").innerHTML = marketHtml();
   drawScore(); drawNights(); drawRules(); $("gHist").innerHTML = histHtml(); setTab();
 }
 function drawRules(){
@@ -1147,7 +1149,7 @@ function albumCard(a, n){
   const chips = lg ? [a.titles ? `💍 ${a.titles}× champion` : "", a.mvp ? `🏆 ${a.mvp}× MVP` : "", a.fmvp ? `${a.fmvp}× Finals MVP` : "", a.allstar ? `⭐ ${a.allstar}× All-Star` : ""].filter(Boolean)
     : a.kind === "award" ? [a.years.map(y => `${y - 1}-${String(y).slice(2)}`).join(" · ")] : [a.sub || ""];
   return `<div class="pc ac ${cls}"><div class="pc-in">${lg ? '<i class="foil"></i><i class="spark"></i>' : ""}
-    <div class="ac-photo">${face(lg ? a.espn : ESPN[a.id], "ac-face")}${lg && !a.espn ? '<span class="ac-crown">👑</span>' : ""}</div>
+    <div class="ac-photo">${face(lg ? a.espn : ESPN[a.id], "ac-face")}${lg && !a.espn ? `<span class="ac-crown">👑</span>${WIKI[a.name] ? `<img class="ac-wiki" src="${esc(WIKI[a.name])}" alt="${esc(a.name)}" loading="lazy" onerror="this.remove()">` : `<img class="ac-wiki" data-wiki="${esc(a.name)}" alt="" hidden>`}` : ""}</div>
     <div class="ac-top"><span class="ac-kind">${lg ? "👑 Legend" : a.kind === "award" ? `${AWICON[a.award] || "🏅"} ${esc(a.label)}` : esc(a.label)}</span>${team}</div>
     <div class="pc-name">${a.id && !lg ? `<a href="pe.html#/player/${encodeURIComponent(a.id)}">${esc(a.name)}</a>` : a.id ? `<a href="pe.html#/player/${encodeURIComponent(a.id)}">${esc(a.name)}</a>` : esc(a.name)}</div>
     <div class="pc-sub">${[lg ? a.pos : (statOf(a.id) || {}).pos, lg && a.from ? `${a.from}–${a.to}` : "", !lg && a.team ? nick(a.team) : ""].filter(Boolean).map(esc).join(" · ")}</div>
@@ -1157,11 +1159,30 @@ function albumCard(a, n){
     <div class="ac-chips">${chips.map(c => `<span>${esc(c)}</span>`).join("")}</div>
     ${n > 1 ? `<div class="ac-n">×${n}</div>` : ""}</div></div>`;
 }
+/* legends without an ESPN headshot: their main photo from Wikipedia (free-licensed images only), looked up once and remembered */
+const WIKI_TITLE = {"Sam Jones": "Sam Jones (basketball, born 1933)", "Bill Russell": "Bill Russell", "Magic Johnson": "Magic Johnson"};
+let WIKI = (() => { try{ return JSON.parse(localStorage.getItem("wiki.legends") || "{}"); }catch(_){ return {}; } })(), wikiBusy = false;
+async function wikiPhotos(){
+  const need = [...new Set([...document.querySelectorAll("img[data-wiki]")].map(i => i.dataset.wiki))].filter(n => !(n in WIKI));
+  const apply = () => document.querySelectorAll("img[data-wiki]").forEach(i => { const u = WIKI[i.dataset.wiki]; if(u){ i.src = u; i.hidden = false; i.removeAttribute("data-wiki"); i.onerror = () => i.remove(); } });
+  if(!need.length || wikiBusy){ apply(); return; }
+  wikiBusy = true;
+  try{
+    const titles = need.map(n => WIKI_TITLE[n] || n);
+    const r = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail&pithumbsize=480&pilicense=free&redirects=1&titles=${encodeURIComponent(titles.join("|"))}`).then(x => x.json());
+    const q = r.query || {}, back = {};
+    (q.normalized || []).forEach(x => back[x.to] = x.from); (q.redirects || []).forEach(x => back[x.to] = back[x.from] || x.from);
+    Object.values(q.pages || {}).forEach(pg => { const t = back[pg.title] || pg.title, name = need.find(n => (WIKI_TITLE[n] || n) === t); if(name) WIKI[name] = pg.thumbnail ? pg.thumbnail.source : ""; });
+    need.forEach(n => { if(!(n in WIKI)) WIKI[n] = ""; });
+    try{ localStorage.setItem("wiki.legends", JSON.stringify(WIKI)); }catch(_){}
+  }catch(_){}
+  wikiBusy = false; apply();
+}
 function albumHtml(){
   const by = new Map(); G.album.forEach(a => { const k = a.key || a.name; if(!by.has(k)) by.set(k, {a, n: 0}); by.get(k).n++; });
   const L = [...by.values()].sort((x, y) => (x.a.kind === "legend" ? 0 : 1) - (y.a.kind === "legend" ? 0 : 1) || String(y.a.at).localeCompare(String(x.a.at)));
   $("gAlbumNote").textContent = G.album.length ? `${by.size} different · ${L.filter(x => x.a.kind === "legend").length} legend${L.filter(x => x.a.kind === "legend").length === 1 ? "" : "s"}` : "";
-  return L.length ? L.map(x => albumCard(x.a, x.n)).join("") : `<div class="note" style="grid-column:1/-1">Empty for now. Legends (about 1 in 40 Galaxy packs), award cards and event cards can come out of any pack or the prize wheel.</div>`;
+  return L.length ? L.map(x => albumCard(x.a, x.n)).join("") + (L.some(x => x.a.kind === "legend" && !x.a.espn) ? `<p class="note" style="grid-column:1/-1;margin:4px 0 0">Legend photos without an ESPN headshot come from Wikipedia / Wikimedia Commons (free-licensed images).</p>` : "") : `<div class="note" style="grid-column:1/-1">Empty for now. Legends (about 1 in 40 Galaxy packs), award cards and event cards can come out of any pack or the prize wheel.</div>`;
 }
 /* ---------- best lineup: strongest five (production with chemistry and teammates), a balanced bench, under the apron and light on tax ---------- */
 function bestLineup(){
@@ -1478,7 +1499,7 @@ async function init(){
   setupShare();
   const [idx, st, ct, sc, mo, tr] = await Promise.all([getJSON("data/players/index.json"), getJSON("data/stats.json"), getJSON("data/contracts.json"), getJSON("data/schedule.json"), getJSON("data/morning.json"), getJSON("data/traded.json")]);
   getJSON("data/idmap.json").then(m => { Object.entries(m || {}).forEach(([e, b]) => { ESPN[b] = e; }); if(G.started && !$("gameMode").hidden) drawGame(); });
-  getJSON("data/legends.json").then(d => { LEG = d; if(G.started && !$("gameMode").hidden && $("gAlbum")) $("gAlbum").innerHTML = albumHtml(); });
+  getJSON("data/legends.json").then(d => { LEG = d; if(G.started && !$("gameMode").hidden && $("gAlbum")) $("gAlbum").innerHTML = albumHtml(); wikiPhotos(); });
   Promise.all([getJSON("data/career.json"), getJSON("data/rookies.json")]).then(([ca, rk]) => { CAREER = (ca && ca.players) || {}; ROOKIES = new Set((rk && rk.ids) || []); if(G.started && !$("gameMode").hidden) drawGame(); });
   IDX = idx || []; STATS = st || {players: []}; CT = (ct && ct.players) || {}; SCHED = sc; MORNING = mo; TRADED = tr; SEASON = (STATS && STATS.season) || (sc && sc.season) || "";
   const most = Math.max(1, ...STATS.players.map(p => p.g || 0)); MING = Math.max(1, Math.ceil(most / 2));
