@@ -66,6 +66,9 @@
   .sc-row .meta b{color:var(--ink,inherit);} .sc-row .acts{display:flex;gap:6px;} .sc-row .acts button{padding:5px 10px;font-size:12.5px;border-radius:999px;font-weight:600;}
   .sc-up{color:var(--good);font-weight:700;} .sc-dn{color:var(--bad);font-weight:700;}
   .keepers{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;max-height:320px;overflow-y:auto;} .keepers label{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,.25);border-radius:10px;cursor:pointer;} .keepers small{opacity:.7;margin-left:auto;}
+  .deals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;} .deal{display:grid;gap:2px;text-align:left;padding:10px;border-radius:12px;background:rgba(255,255,255,.08);color:inherit;border:1px solid rgba(255,255,255,.25);}
+  .deal strong{font:700 22px "Barlow Condensed",sans-serif;} .deal small{opacity:.75;font-size:11.5px;} .deal:disabled{opacity:.4;}
+  @media (max-width:520px){ .deals{grid-template-columns:1fr;} }
   .gtabs{display:flex;gap:6px;margin:16px 0 4px;padding:4px 0;}
   .gtabs button{flex:1;font-weight:700;border-radius:999px;padding:9px 10px;font-size:14px;}
   .gtabs button.on{background:var(--accent,#C8102E);border-color:var(--accent,#C8102E);color:#fff;}
@@ -80,7 +83,7 @@
   .pc-next b{font-weight:700;min-width:62px;} .pc-next i{font-style:normal;opacity:.75;font-size:10.5px;} .pc-next .tn b{color:#ffd43b;}
   .pc-bdgs{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 2px;min-height:0;} .bdg{font:700 10.5px Inter,sans-serif;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;white-space:nowrap;}
   .pc-line.ctr{font-size:12px;} .pc-line.ctr.low{background:rgba(245,159,0,.35);} .pc-line.ctr.exp{background:rgba(201,42,42,.55);}
-  .bdg.hot{background:#e8590c;} .bdg.rook{background:#2f9e44;} .bdg.below{background:#5f3dc4;} .bdg.cold{background:#1c7ed6;} .bdg.inj{background:#c92a2a;}
+  .bdg.hot{background:#e8590c;} .bdg.rook{background:#2f9e44;} .bdg.bird{background:#0c8599;} .bdg.below{background:#5f3dc4;} .bdg.cold{background:#1c7ed6;} .bdg.inj{background:#c92a2a;}
   .tierdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;} .tierdot.t-gold{background:#d4a017;} .tierdot.t-ruby{background:#c0263d;} .tierdot.t-opal{background:linear-gradient(90deg,#ff6ec7,#7873f5,#4ade80);}
   .overcard{border:2px solid #f59f00;padding:12px 14px;margin:0 0 12px;}
   .empty-slot{border:2px dashed var(--line);border-radius:16px;display:grid;place-items:center;min-height:200px;color:var(--dim);font-weight:600;text-align:center;padding:12px;cursor:pointer;background:none;}
@@ -457,7 +460,7 @@ function pull(k){
   const pick = odds => { let x = Math.random(), lo = 0;
     for(const [top, ch] of odds){ const hi = Math.min(top || P.length, P.length); if(x < ch || top === odds[odds.length - 1][0]) return P[lo + Math.floor(Math.random() * Math.max(1, hi - lo))]; x -= ch; lo = hi; }
     return P[P.length - 1]; };
-  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25}; }).sort(() => Math.random() - .5);
+  return [pick(k.hit), pick(k.rest), pick(k.rest)].map(p => { const r = ratingOf(p); G.n++; return {cid: "c" + Date.now().toString(36) + G.n, id: p.id, name: p.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, ten: 0}; }).sort(() => Math.random() - .5);
 }
 /* ---------- lineup snapshots: a night is played with the lineup you had before its first tip-off ---------- */
 function firstTip(d){ const t = ((SCHED && SCHED.games) || []).filter(g => ymd(new Date(g[1])) === d).map(g => g[1]).sort()[0]; return t ? new Date(t) : null; }
@@ -523,8 +526,8 @@ async function playNight(d){
 function weekOf(d){ const x = new Date(d + "T12:00:00"); const dow = (x.getDay() + 6) % 7; return addD(d, -dow); }
 function useContracts(ids){
   ids.forEach(id => { const inLine = G.cards.filter(c => c.id === id && (G.start.includes(c.cid) || G.bench.includes(c.cid))), c = inLine[0] || G.cards.find(x => x.id === id);
-    if(!c || c.gl == null) return; c.gl = Math.max(0, c.gl - 1);
-    if(c.gl === 0) (G.expired = G.expired || []).push(c.name); });
+    if(!c || c.gl == null) return; c.ten = (c.ten || 0) + 1; c.gl = Math.max(0, c.gl - 1);
+    if(c.gl === 0){ c.exp = ymd(); (G.expired = G.expired || []).push(c.name); } });
 }
 async function playNights(){
   if(!G.started) return;
@@ -599,13 +602,13 @@ function chemHtml(ids){
 }
 /* ---------- salary cap ---------- */
 const salaryOf = id => { const c = CT[id], y = c && (c.years || []).find(r => r[0] === SEASON); const n = y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0; return n || MIN_SAL; };   // no contract listed: league minimum
-const payrollOf = ids => ids.reduce((a, id) => a + salaryOf(id), 0);
+const payrollOf = ids => ids.reduce((a, id) => a + capSalary(id), 0);
 const taxOf = pay => pay <= CAP ? 0 : Math.ceil((Math.min(pay, APRON) - CAP) / 1e6) + (pay > APRON ? 2 * Math.ceil((pay - APRON) / 1e6) : 0);
 const lineupIds = () => { const by = Object.fromEntries(G.cards.map(c => [c.cid, c.id])); return G.start.concat(G.bench).map(x => by[x]).filter(Boolean); };
 function capHtml(){
-  const pay = payrollOf(lineupIds()), tax = taxOf(pay), pc = v => Math.min(100, v / (APRON * 1.15) * 100);
+  const ids = lineupIds(), pay = payrollOf(ids), tax = taxOf(pay), pc = v => Math.min(100, v / (APRON * 1.15) * 100), saved = ids.reduce((a, id) => a + salaryOf(id), 0) - pay;
   const color = pay > APRON ? "var(--bad)" : pay > CAP ? "#f59f00" : "var(--good)";
-  return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Payroll ${$M(pay)}</b><span class="note"> / cap ${$M(CAP)}</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${tax ? `−${tax} a night` : "Under the cap"}</div></div>
+  return `<div class="chem card"><div class="row" style="justify-content:space-between"><div><b>Payroll ${$M(pay)}</b><span class="note"> / cap ${$M(CAP)}${saved > 0 ? ` · 🐦 Bird rights save ${$M(saved)}` : ""}</span></div><div style="font:700 20px 'Barlow Condensed',sans-serif;color:${color}">${tax ? `−${tax} a night` : "Under the cap"}</div></div>
     <div class="ladder" style="margin:8px 0 4px"><i style="width:${pc(pay)}%;background:${color}"></i><s style="left:${pc(CAP)}%">cap</s><s style="left:${pc(APRON)}%">apron</s></div>
     <p class="note" style="margin:4px 0 0">Each card's salary is the player's real NBA contract this season, so players who outplay their contracts are gold. Your 10-man lineup's payroll counts (reserves don't). You can go over the ${$M(CAP)} cap, but it costs a luxury tax of 1 point per $1M over, off each night's points. Past the ${$M(APRON)} apron it's 2 points per $1M, and you can't add players that push you further over.</p></div>`;
 }
@@ -683,6 +686,8 @@ const MS = [
   ["pulseweek", "A full week with no losses vs Pulse (3+ nights)", "Pulse sweep", () => { const by = {}, cur = weekOf(ymd()); playedNights().forEach(n => { const w = weekOf(n.d); if(w < cur) (by[w] = by[w] || []).push(n); }); return Object.values(by).some(l => l.length >= 3 && l.every(n => n.pWin)) ? 1 : 0; }, [1]],
   ["sellhigh", "Sell a card for 100+ more than it was worth when you got it", "Sell high", () => G.st.sellHigh || 0, [1]],
   ["holds", "Hold a card 7+ days and sell it for more than you got it", "hold & sell", () => G.st.holds || 0, [1, 5, 15]],
+  ["bird1", "Earn Full Bird rights on a player (60 games with you)", "Full Bird", () => G.cards.some(c => birdOf(c) === "full") ? 1 : 0, [1]],
+  ["bird3", "Have 3 players with Bird rights in your lineup at once", "Bird trio", () => G.cards.filter(c => (G.start.includes(c.cid) || G.bench.includes(c.cid)) && birdOf(c)).length, [3]],
   ["capmonth", "A whole month under the salary cap (10+ nights)", "Cap month", () => { const by = {}, cur = ymd().slice(0, 7); playedNights().forEach(n => { const m = n.d.slice(0, 7); if(m < cur) (by[m] = by[m] || []).push(n); }); return Object.values(by).some(l => l.length >= 10 && l.every(n => n.payroll > 1e5 && n.payroll <= CAP)) ? 1 : 0; }, [1]],
   ["trio", "Win a night with three real teammates in your five", "Trio win", () => playedNights().some(n => n.mt >= 3 && (n.ffWin || n.pWin || n.oWin)) ? 1 : 0, [1]],
   ["sets", "Complete team sets", "sets", () => G.trophies.filter(x => x.k.startsWith("set:")).length, [5, 15, 30]],
@@ -720,7 +725,16 @@ const HOLD_DAYS = 7, HOLD_BONUS = 0.5;
 const CLEN = {opal: 12, diamond: 15, amethyst: 18, ruby: 20, gold: 25}, RESIGN = 0.5, RESIGN_AT = 3;
 const BUY_MULT = 4.5, BUY_MIN = 50;   // buying a card outright: 4.5x its value (the best card ~1,800), at least 50
 const contractLen = id => CLEN[(ratingOf(statOf(id)) || {cls: "gold"}).cls] || 25;
-const resignCost = id => Math.max(10, Math.round(valueOf(ratingOf(statOf(id))) * RESIGN));
+/* re-signing: pick a deal; longer = cheaper per game. Bird rights from games played for you (all deals): 30 = Early Bird, 60 = Full Bird.
+   Bird: cheaper re-signing and part of his salary doesn't count toward your cap/tax. Expired and not re-signed within 7 days: Bird rights lapse. */
+const DEALS = [[15, 0.6, "Short"], [30, 1.0, "Standard"], [60, 1.5, "Long"]], BIRD_EARLY = 30, BIRD_FULL = 60, GRACE = 7;
+const birdOf = c => !c ? null : (c.ten || 0) >= BIRD_FULL ? "full" : (c.ten || 0) >= BIRD_EARLY ? "early" : null;
+const BIRD = {full: {disc: 0.5, cap: 0.5, icon: "🐦", name: "Full Bird"}, early: {disc: 0.75, cap: 0.75, icon: "🐣", name: "Early Bird"}};
+const dealCost = (c, len) => { const d = DEALS.find(x => x[0] === len) || DEALS[1], b = BIRD[birdOf(c)]; return Math.max(5, Math.round(valueOf(ratingOf(statOf(c.id))) * d[1] * (b ? b.disc : 1))); };
+const resignCost = id => { const c = G.cards.find(x => x.id === id); return c ? dealCost(c, 15) : 10; };
+const cardFor = id => G.cards.filter(c => c.id === id).sort((a, b) => (b.ten || 0) - (a.ten || 0))[0];
+const capSalary = id => { const b = BIRD[birdOf(cardFor(id))]; return salaryOf(id) * (b ? b.cap : 1); };
+const daysSince = d => Math.floor((new Date(ymd() + "T12:00:00") - new Date(d + "T12:00:00")) / 864e5);
 const buyPrice = id => Math.max(BUY_MIN, Math.round(valueOf(ratingOf(statOf(id))) * BUY_MULT));   // sell a card you've held 7+ days for more than it was worth when you got it: +50% of the gain
 async function loadForm(){
   const ids = [...new Set(G.cards.map(c => c.id))]; if(!ids.length || !SCHED) return;
@@ -734,6 +748,7 @@ async function loadForm(){
 function badges(id, name, team){
   const out = [], f = FORM[id];
   if(ROOKIES.has(id)) out.push(`<span class="bdg rook" title="First NBA season">🆕 Rookie</span>`);
+  { const bc = cardFor(id), b = birdOf(bc); if(b) out.push(`<span class="bdg bird" title="${BIRD[b].name}: ${bc.ten} games with you. Re-signing costs ${Math.round((1 - BIRD[b].disc) * 100)}% less, and ${Math.round((1 - BIRD[b].cap) * 100)}% of his salary doesn't count toward your cap or tax.">${BIRD[b].icon} ${BIRD[b].name}</span>`); }
   const ca = CAREER[id], st = statOf(id);
   if(ca && ca[0] >= 82 && st && st.g >= 5){ const now = fpg(st), d = (now - ca[1]) / ca[1];
     if(d <= -0.15) out.push(`<span class="bdg below" title="${now.toFixed(1)} production a game this season vs ${ca[1].toFixed(1)} for his career (${ca[0]} games). If he gets back to his usual level, his card value goes up: a hold (or buy-low) candidate.">📉 Below career −${Math.round(-d * 100)}%</span>`); }
@@ -772,11 +787,11 @@ function gCard(c, opts){
     ${opts.acts === false ? "" : `<div class="pc-bdgs">${badges(c.id, c.name, team)}</div>${nextHtml(team)}`}
     <div class="pc-stats"><div><b>${per("pts")}</b><span>PTS</span></div><div><b>${per("trb")}</b><span>REB</span></div><div><b>${per("ast")}</b><span>AST</span></div><div><b>${st && st.g ? fpg(st).toFixed(1) : "—"}</b><span>PROD</span></div></div>
     <div class="pc-line val"><b>${$M(salaryOf(c.id))}</b> salary${(() => { const pl = st ? playsLike(st) : null; if(!pl || !pl.ok || !pl.sal) return ""; return pl.like >= 2 * pl.sal && pl.like - pl.sal >= 5e6 ? ` · <span class="up">💰 plays like ${$M(pl.like)}</span>` : pl.sal >= 2 * pl.like && pl.sal - pl.like >= 10e6 ? ` · <span class="dn">💸 plays like ${$M(pl.like)}</span>` : ""; })()}</div>
-    ${c.gl != null && opts.acts !== false ? `<div class="pc-line ctr ${c.gl === 0 ? "exp" : c.gl <= RESIGN_AT ? "low" : ""}">📝 ${c.gl === 0 ? "<b>Contract expired</b>: he sits until you re-sign him" : `<b>${c.gl}</b> game${c.gl === 1 ? "" : "s"} left on his contract`}</div>` : ""}
+    ${c.gl != null && opts.acts !== false ? `<div class="pc-line ctr ${c.gl === 0 ? "exp" : c.gl <= RESIGN_AT ? "low" : ""}">📝 ${c.gl === 0 ? `<b>Contract expired</b>: he sits until you re-sign him${c.ten && c.exp && !c.lapsed ? ` · re-sign within ${Math.max(0, GRACE - daysSince(c.exp))}d to keep his ${(c.ten || 0) >= BIRD_EARLY ? "Bird rights" : "games toward Bird rights"}` : ""}` : `<b>${c.gl}</b> game${c.gl === 1 ? "" : "s"} left${c.len ? ` of ${c.len}` : ""}`}<br><small>${birdOf(c) ? `${BIRD[birdOf(c)].icon} <b>${BIRD[birdOf(c)].name}</b> · ` : ""}${c.ten || 0} games with you${!birdOf(c) ? ` · Early Bird at ${BIRD_EARLY}` : birdOf(c) === "early" ? ` · Full Bird at ${BIRD_FULL}` : ""}</small></div>` : ""}
     <div class="pc-line val"><b>Value ${v}</b>${dv ? ` <span class="${dv > 0 ? "up" : "dn"}">${dv > 0 ? "▲" : "▼"}${Math.abs(dv)}</span> since you got him${(() => { if(dv <= 0 || !c.at) return ""; const days = Math.floor((new Date(ymd() + "T12:00:00") - new Date(c.at + "T12:00:00")) / 864e5); return days >= HOLD_DAYS ? ` · <b class="up">sell now: +${Math.round(dv * HOLD_BONUS)} hold bonus</b>` : ` · hold bonus in ${HOLD_DAYS - days}d`; })()}` : " · same as when you got him"}</div>
     ${opts.tags ? `<div class="pc-tags">${opts.tags}</div>` : ""}
     ${opts.acts === false ? "" : `<div class="pc-acts">${inStart || inBench ? `<button data-gout="${c.cid}" title="Take him out of the lineup">Out</button>${inBench ? `<button data-gstart="${c.cid}">Start</button>` : `<button data-gbench="${c.cid}">Bench</button>`}`
-      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}${c.gl != null && c.gl <= RESIGN_AT ? `<button data-gresign="${c.cid}" title="Re-sign for ${contractLen(c.id)} more games">Re-sign ${resignCost(c.id)}</button>` : ""}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
+      : `<button data-gstart="${c.cid}" title="Put him in the starting five">Start</button><button data-gbench="${c.cid}" title="Put him on the bench">Bench</button>${inRes ? "" : `<button data-gres="${c.cid}" title="Move him to your reserves">Reserve</button>`}`}${c.gl != null && c.gl <= RESIGN_AT ? `<button data-gresign="${c.cid}" title="Choose a 15, 30 or 60-game deal">Re-sign</button>` : ""}<button data-gsell="${c.cid}" title="Sell for ${v} points">Sell ${v}</button></div>`}
   </div></div>`;
 }
 function drawNights(){
@@ -870,7 +885,7 @@ function newSeason(){
   const best = N.reduce((a, n) => Math.max(a, n.ff || 0), 0);
   const H = (G.hist || []).concat([{season: G.season, n: N.length, w, l: g - w, ffw: N.filter(n => n.ffWin).length, best, pts: N.reduce((a, n) => a + (n.pts || 0), 0), aw: aw.map(a => a[2])}]);
   const st = Object.assign({}, G.st, {pastEarned: (G.st.pastEarned || 0) + Math.max(0, balance() + G.spent)});
-  const keep = G.cards.filter(c => keepIds.includes(c.cid)).map(c => { const r = ratingOf(statOf(c.id)) || {ovr: c.ovr, cls: c.tier}; return Object.assign({}, c, {ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25}); });
+  const keep = G.cards.filter(c => keepIds.includes(c.cid)).map(c => { const r = ratingOf(statOf(c.id)) || {ovr: c.ovr, cls: c.tier}; return Object.assign({}, c, {ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, exp: null, lapsed: false}); });
   G = Object.assign(blank(), {trophies: G.trophies, wish: G.wish, scout: G.scout, st, hist: H, keep, backup: G.backup, season: SEASON, since: ymd()});
   gSave(); EARN = {pts: 0, games: 0, list: []}; $("gOpen").innerHTML = ""; drawGame(); window.scrollTo(0, 0);
   toast2(`Welcome to ${SEASON}${keep.length ? `: ${keep.length} keeper${keep.length === 1 ? "" : "s"} waiting` : ""}. Open your 5 starter packs.`);
@@ -892,7 +907,13 @@ function drawGame(){
   G.start = G.start.filter(x => byId[x]); G.bench = G.bench.filter(x => byId[x]);
   G.res = G.res.filter(x => byId[x] && !G.start.includes(x) && !G.bench.includes(x));
   if(G.resNew){ delete G.resNew; fillRes(); gSave(); }
-  { let fix = false; G.cards.forEach(c => { if(c.gl == null){ c.gl = contractLen(c.id); fix = true; } }); if(fix) gSave(); }
+  { let fix = false, lapsed = [];
+    G.cards.forEach(c => { if(c.gl == null){ c.gl = contractLen(c.id); fix = true; }
+      if(c.len == null){ c.len = CLEN[c.tier] || c.gl; c.ten = c.ten != null ? c.ten : Math.max(0, c.len - c.gl); fix = true; }
+      if(c.gl === 0 && !c.exp){ c.exp = ymd(); fix = true; }
+      if(c.gl === 0 && c.exp && !c.lapsed && daysSince(c.exp) > GRACE){ c.lapsed = true; if(c.ten){ lapsed.push(c.name); c.ten = 0; } fix = true; } });
+    if(lapsed.length) toast2(`Bird rights lapsed: ${lapsed.join(", ")} (not re-signed within ${GRACE} days)`);
+    if(fix) gSave(); }
   if(G.expired && G.expired.length){ toast2(`📝 Contract${G.expired.length === 1 ? "" : "s"} up: ${G.expired.slice(0, 3).join(", ")}${G.expired.length > 3 ? "…" : ""} expired: they sit until you re-sign them (button on the card).`); G.expired = []; gSave(); }   // older saves: best 10 cards outside the lineup become reserves
   const ovrs = G.start.map(x => ratingOf(statOf(byId[x].id))).filter(Boolean);
   $("gLineupNote").textContent = ovrs.length ? `starting five OVR ${Math.round(ovrs.reduce((a, b) => a + b.ovr, 0) / ovrs.length)} · roster value ${G.start.concat(G.bench).reduce((a, x) => a + valueOf(ratingOf(statOf(byId[x].id))), 0)}` : "";
@@ -934,7 +955,8 @@ function drawRules(){
     <li><b>Team sets:</b> own 5 different players from one NBA team (anywhere on your roster) for a free Gold pack and a 🏅 trophy. Each team counts once.</li>
     <li><b>Weekly challenges:</b> three a week, rewarding a free Gold, Ruby or Galaxy pack and a 🏆 trophy. Claim before Sunday ends.</li>
     <li><b>Milestone trophies:</b> 31 trophies for things like your first 3–0 night, win streaks, 100 nightly wins, a 300-point night, selling high, a month under the cap and earning 25,000 points. See them all (with your progress) in the trophy case at the top.</li>
-    <li><b>Contracts:</b> every card has a contract for a set number of games he actually plays for you: Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 (by his tier when you got him). With ${RESIGN_AT} or fewer left you can re-sign him for half his current value (another full contract). At 0 he sits (a bench player subs in) until you re-sign him, and he still counts on your payroll.</li>
+    <li><b>Contracts:</b> every card has a contract for games he actually plays for you. New cards start on a rookie deal by tier (Galaxy Opal 12, Diamond 15, Amethyst 18, Ruby 20, Gold 25 games). With 3 or fewer left, re-sign him on a <b>Short (15 games, 0.6× his card value)</b>, <b>Standard (30, 1.0×)</b> or <b>Long (60, 1.5×)</b> deal: longer costs less per game. At 0 he sits until you re-sign him; wait more than ${GRACE} days and his Bird rights lapse.</li>
+    <li><b>Bird rights:</b> games he plays for you add up across every deal. 🐣 <b>Early Bird</b> at ${BIRD_EARLY} games: re-signing costs 25% less and 25% of his salary doesn't count toward your cap or tax. 🐦 <b>Full Bird</b> at ${BIRD_FULL}: 50% less and half his salary doesn't count. Selling the card resets it; keepers keep it.</li>
     <li><b>Buy a card:</b> on any player's page, tap "Buy his card". Price is ${BUY_MULT}× his card value (the best cards cost about 1,800; at least ${BUY_MIN}). He goes to your reserves with a fresh contract. Great for grabbing an underpaid player before everyone else notices.</li>
     <li><b>Scout:</b> the Buy-low list finds veterans playing 10%+ below their career production, with their salary, buy price and what they'd sell for if they bounce back. Filter by salary, sort by upside, and add anyone to My scouting to track his price.</li>
     <li><b>Hold &amp; sell:</b> hold a card ${HOLD_DAYS}+ days and sell it for more than it was worth when you got it, and you get a bonus of half the gain (a card that went from 30 to 130 sells for 130 + 50), plus 📈 trophies at 1, 5 and 15 hold-and-sells. 📉 <b>Below career</b> on a card means he's 15%+ under his career production: if he bounces back, his value climbs. 🆕 marks rookies.</li>
@@ -998,6 +1020,16 @@ function scoutHtml(){
     ${L.slice(0, 15).map(x => scoutRow(x, false)).join("") || `<p class="note">No one matches right now.</p>`}
     <p class="note" style="margin:8px 0 0">Price is 4.5× his card value today. "Sells for" assumes he returns to his career production and you hold him 7+ days for the hold bonus. A slump can also be an injury, age or a smaller role, so check his page.</p>`;
 }
+function showResign(c){
+  const st = statOf(c.id), b = birdOf(c), bal = balance();
+  $("gOpen").innerHTML = `<div class="opening"><h3>Re-sign ${esc(c.name)}</h3>
+    <p style="margin:0 0 8px">${c.gl ? `${c.gl} game${c.gl === 1 ? "" : "s"} left on his deal; the new one is added on.` : "His contract is up."} ${c.ten || 0} games with you${b ? ` · <b>${BIRD[b].icon} ${BIRD[b].name}</b>: ${Math.round((1 - BIRD[b].disc) * 100)}% off` : ` · Early Bird at ${BIRD_EARLY}, Full Bird at ${BIRD_FULL}`}. You have ${bal.toLocaleString()} points.</p>
+    <div class="deals">${DEALS.map(([len, f, name]) => { const cost = dealCost(c, len), after = (c.ten || 0) + len, gets = after >= BIRD_FULL ? "Full Bird by the end" : after >= BIRD_EARLY ? "Early Bird by the end" : "";
+      return `<button class="deal" data-dealpick="${c.cid}|${len}"${bal < cost ? " disabled" : ""}><b>${name}</b><span>${len} games</span><strong>${cost.toLocaleString()} pts</strong><small>${(cost / len).toFixed(1)} a game${gets ? ` · ${gets}` : ""}</small></button>`; }).join("")}</div>
+    <p class="note" style="margin:8px 0;opacity:.85">Longer deals cost less per game, but if he slumps you've paid for games you may not want. Card value for selling still follows his play.</p>
+    <button class="gbtn alt" data-closeopen>Not now</button></div>`;
+  setTimeout(() => $("gOpen").scrollIntoView({behavior: "smooth", block: "start"}), 100);
+}
 function showBuy(id){
   const st = statOf(id), r = ratingOf(st);
   history.replaceState(null, "", location.pathname + "#game");
@@ -1015,7 +1047,7 @@ function showBuy(id){
 function buyCard(id){
   const st = statOf(id), r = ratingOf(st), price = buyPrice(id);
   if(!st || !r || !G.started || balance() < price || overflow().length || G.res.length >= RES_MAX) return;
-  G.n++; const c = {cid: "c" + Date.now().toString(36) + G.n, id, name: st.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, bought: price};
+  G.n++; const c = {cid: "c" + Date.now().toString(36) + G.n, id, name: st.name, ovr: r.ovr, tier: r.cls, val: valueOf(r), at: ymd(), gl: CLEN[r.cls] || 25, len: CLEN[r.cls] || 25, ten: 0, bought: price};
   G.spent += price; G.cards.push(c); G.res.push(c.cid); G.st.buys = (G.st.buys || 0) + 1; checkWish([c]); gSave(); $("gOpen").innerHTML = ""; drawGame(); toast2(`🃏 Bought ${st.name} for ${price.toLocaleString()}: he's in your reserves`);
 }
 function trackPulls(cards, packs){
@@ -1085,7 +1117,7 @@ function setupGame(){
     const sameP = cid => { const c = cardOf(cid); return G.start.concat(G.bench).find(x => x !== cid && cardOf(x) && cardOf(x).id === c.id); };
     if(d.gstart || d.gbench){ const cid = d.gstart || d.gbench, to = d.gstart ? "start" : "bench";
       if(sameP(cid)) return toast("He's already in your lineup");
-      if(cardOf(cid).gl === 0) return toast(`His contract is up: re-sign him for ${resignCost(cardOf(cid).id)} points first`);
+      if(cardOf(cid).gl === 0) return toast("His contract is up: tap Re-sign on his card first");
       if(G[to].length >= 5) return toast(to === "start" ? "Starting five is full: take someone out first" : "Bench is full: take someone out first");
       { const inLine = G.start.includes(cid) || G.bench.includes(cid), pay = payrollOf(lineupIds()), add = inLine ? 0 : salaryOf(cardOf(cid).id);
         if(add && pay + add > APRON) return toast(`That puts your payroll at ${$M(pay + add)}, past the ${$M(APRON)} apron. Move someone out first.`); }
@@ -1107,10 +1139,11 @@ function setupGame(){
     if(t.id === "scoutAddQ"){ const q = fold($("scoutQ").value); if(!q) return; const P = STATS.players.filter(p => p.g), hit = P.find(p => fold(p.name) === q) || P.find(p => fold(p.name).includes(q));
       if(!hit) return toast("No player with games this season by that name"); if(G.scout.some(s => s.id === hit.id)) return toast("Already on your list"); if(G.scout.length >= SCOUT_MAX) return toast(`Your scouting list holds ${SCOUT_MAX}`);
       G.scout.push({id: hit.id, d: ymd(), p: buyPrice(hit.id)}); gSave(); SCTAB = "mine"; $("gScout").innerHTML = scoutHtml(); return toast(`Watching ${hit.name}`); }
-    if(d.gresign){ const c = cardOf(d.gresign); if(!c) return; const cost = resignCost(c.id);
-      if(balance() < cost) return toast(`Re-signing him costs ${cost}: you have ${balance()}`);
-      if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? −${cost}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Re-sign ${cost}`; } }, 3000); return; }
-      G.spent += cost; c.gl = (c.gl || 0) + contractLen(c.id); G.st.resigns = (G.st.resigns || 0) + 1; gSave(); drawGame(); return toast(`📝 Re-signed ${c.name}: ${c.gl} games left`); }
+    if(d.gresign){ const c = cardOf(d.gresign); if(c) showResign(c); return; }
+    if(d.dealpick){ const [cid, len] = d.dealpick.split("|"), c = cardOf(cid); if(!c) return; const L = +len, cost = dealCost(c, L);
+      if(balance() < cost) return toast(`That deal costs ${cost}: you have ${balance()}`);
+      const was = birdOf(c); G.spent += cost; c.gl = (c.gl || 0) + L; c.len = L; c.exp = null; c.lapsed = false; G.st.resigns = (G.st.resigns || 0) + 1;
+      gSave(); $("gOpen").innerHTML = ""; drawGame(); return toast(`📝 Re-signed ${c.name}: ${L}-game deal for ${cost}${was ? ` (${BIRD[was].name} discount)` : ""}`); }
     if(d.gsell){ const c = cardOf(d.gsell); if(!c) return; const v = valueOf(ratingOf(statOf(c.id)));
       if(t.dataset.sure !== "1"){ t.dataset.sure = "1"; t.textContent = `Sure? +${v}`; setTimeout(() => { if(t.isConnected){ t.dataset.sure = ""; t.textContent = `Sell ${v}`; } }, 3000); return; }
       G.cards = G.cards.filter(x => x.cid !== c.cid); G.res = G.res.filter(x => x !== c.cid); const was = G.start.includes(c.cid) || G.bench.includes(c.cid); G.start = G.start.filter(x => x !== c.cid); G.bench = G.bench.filter(x => x !== c.cid); if(was) snap();
