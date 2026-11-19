@@ -765,7 +765,7 @@ function myPicksHtml(u){
     return `<div class="r pr"><span title="${esc(x.name)}">${esc(x.name.split(" ").slice(-1)[0])} ${SL[x.stat]}</span>${b("over")}${b("under")}<i></i></div>`; };
   const n = MyPicks.used(night);
   const gm = (maxPoints(night).perGame || {})[u.id] || 0;
-  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}${gm ? ` · <b class="mx">up to +${gm}</b>` : ""}</span><a href="picks.html">${n}/${MyPicks.LIMIT} tonight · My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}
+  return `<div class="mp bet"><div class="h"><span>🎯 Your pick${locked ? " · locked" : ""}${gm ? ` · <b class="mx">up to +${gm}</b>` : ""}</span><a href="picks.html">${n}/${MyPicks.limitFor(night)} tonight · My record →</a></div>${row("ml", "Winner")}${row("spread", "Spread")}${row("total", "Total")}
     ${props.length ? `<details class="props"${pMine ? " open" : ""}><summary>Player props${pMine ? ` · ${pMine} picked` : ""} <small>(line = his season average)</small></summary>${props.map(propRow).join("")}</details>` : ""}</div>`;
 }
 document.addEventListener("click", e => {
@@ -839,11 +839,11 @@ function renderUpcoming(){
     const M = maxPoints(upDay), hasProps = Object.values(MyPicks.props()).some(p => MyPicks.nightOf(p.t) === upDay);
     const parts = [["picks", M.lines], ["game bonuses", M.bonus], ["🔒 lock", M.lock], ["beat Pulse", M.pulse], ["props", M.props], ["parlays", M.parlay]].filter(x => x[1]);
     el.innerHTML = mine.length || px.length || hasProps ? `<div class="card parlay"><div class="ptsmax"><span>If everything hits</span><b>+${M.total.toLocaleString()}</b><small>${parts.map(([l, v]) => `${v.toLocaleString()} ${l}`).join(" + ")}${M.slate ? " · plus a 🧹 perfect-slate Ruby pack" : ""}${M.risk ? ` · your lock costs ${M.risk} if it loses` : ""} · "your guys" bonuses come on top</small></div>
-      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px"><b>🎟️ ${n} of ${MyPicks.LIMIT} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
+      <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px"><b>🎟️ ${n} of ${MyPicks.limitFor(upDay)} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
       ${px.map(x => `<div class="pl-t">Parlay ×${MyPicks.PARLAY_MULT[x.legs.length]} (${x.legs.length} legs, pays ${Math.round(25 * MyPicks.PARLAY_MULT[x.legs.length])}): ${x.legs.map(k => { const p = MyPicks.all()[k]; return p ? esc(MyPicks.betText(p)) : "?"; }).join(" + ")} ${MyPicks.started(x.t) ? "" : `<button data-parlayx="${esc(x.id)}">✕</button>`}</div>`).join("")}
       ${games.size >= 2 ? `<details class="pl-b"><summary>Build a parlay from your picks (2 to 4 games, all must win: 2 legs ×2.5 = 63, 3 legs ×6 = 150, 4 legs ×12 = 300)</summary>
         <div class="pl-legs">${open.map(([k, p]) => `<label><input type="checkbox" data-leg="${esc(k)}"> ${esc(p.away)} @ ${esc(p.home)}: <b>${esc(MyPicks.betText(p))}</b></label>`).join("")}</div>
-        <button class="btn primary" data-parlay>Make parlay</button> <span class="note">One leg per game. A parlay uses one of your ${MyPicks.LIMIT} picks.</span></details>` : ""}</div>` : "";
+        <button class="btn primary" data-parlay>Make parlay</button> <span class="note">One leg per game. A parlay uses one of your ${MyPicks.limitFor(upDay)} picks.</span></details>` : ""}</div>` : "";
   }
   // how Pulse did on a finished day
   const fins = day.s.filter(g => g[4] === 3), picked = fins.filter(g => PRED && PRED.picks && PRED.picks[g[0]]);

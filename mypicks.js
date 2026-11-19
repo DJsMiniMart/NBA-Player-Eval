@@ -70,7 +70,7 @@ function make(u, o, type, side){
 function toggle(u, o, type, side){
   if(started(u.t)) return {ok:false, why:"This game has started, so picks are locked."};
   const k = pid(u.id, type), cur = DB.picks[k], night = nightOf(u.t);
-  if(!cur && used(night) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night. Take one back to make another.`};
+  if(!cur && used(night) >= limitFor(night)) return {ok:false, why:`You've used all ${limitFor(night)} picks for that night. Take one back to make another.`};
   if(cur && cur.side === side){ delete DB.picks[k]; if(DB.locks[night] === k) delete DB.locks[night]; Object.keys(DB.parlays).forEach(x => { if(DB.parlays[x].legs.includes(k)) delete DB.parlays[x]; }); }
   else { const p = make(u, o, type, side); if(!p) return {ok:false, why:"That line isn't available."}; DB.picks[k] = p; }
   const ok = save(DB);
@@ -79,8 +79,16 @@ function toggle(u, o, type, side){
 }
 const pickOf = (gid, type) => DB.picks[pid(gid, type)] || null;
 
-/* ---------- nightly limit: 10 picks a night, counting game lines, player props and parlay tickets ---------- */
-const LIMIT = 10;
+/* ---------- nightly limit, counting game lines, player props and parlay tickets. It depends on how many games are on:
+   1-2 games: 6 picks · 3-4: 8 · 5-7: 10 · 8-11: 12 · 12+: 15. Picks already made stay if the count changes. ---------- */
+const LIMIT = 10;   // used until the schedule loads
+const LIMITS = [[2, 6], [4, 8], [7, 10], [11, 12], [Infinity, 15]];
+let SLATE = null;   // night -> number of games
+fetch("data/schedule.json?t=" + Math.floor(Date.now() / 36e5)).then(r => r.ok ? r.json() : null).then(d => {
+  if(!d || !d.games) return; SLATE = {}; d.games.forEach(g => { const n = nightOf(g[1]); SLATE[n] = (SLATE[n] || 0) + 1; }); listeners.forEach(f => f());
+}).catch(() => {});
+const gamesOn = night => (SLATE && SLATE[night]) || 0;
+const limitFor = night => { const n = gamesOn(night); return n ? LIMITS.find(([m]) => n <= m)[1] : LIMIT; };
 const pad = n => String(n).padStart(2, "0");
 const nightOf = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const used = night => Object.values(DB.picks).filter(p => nightOf(p.t) === night).length + Object.values(DB.props).filter(p => nightOf(p.t) === night).length + Object.values(DB.parlays).filter(p => p.night === night).length;
@@ -115,7 +123,7 @@ function toggleProp(pr, side){
   if(started(pr.t)) return {ok:false, why:"This game has started, so props are locked."};
   const cur = DB.props[pr.key];
   if(cur && cur.side === side){ delete DB.props[pr.key]; return done(); }
-  if(!cur && used(nightOf(pr.t)) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night.`};
+  if(!cur && used(nightOf(pr.t)) >= limitFor(nightOf(pr.t))) return {ok:false, why:`You've used all ${limitFor(nightOf(pr.t))} picks for that night.`};
   DB.props[pr.key] = Object.assign({}, pr, {side, at: new Date().toISOString()});
   return done();
 }
@@ -142,7 +150,7 @@ function makeParlay(keys){
   if(P.some(p => nightOf(p.t) !== night)) return {ok:false, why:"Parlay legs must all be on the same night."};
   if(new Set(P.map(p => p.gid)).size !== legs.length) return {ok:false, why:"Each leg has to be from a different game."};
   if(P.some(p => started(p.t))) return {ok:false, why:"One of those games has started."};
-  if(used(night) >= LIMIT) return {ok:false, why:`You've used all ${LIMIT} picks for that night.`};
+  if(used(night) >= limitFor(night)) return {ok:false, why:`You've used all ${limitFor(night)} picks for that night.`};
   const id = "x" + Date.now().toString(36);
   DB.parlays[id] = {id, night, legs, t: P.map(p => p.t).sort()[0], at: new Date().toISOString()};
   return done();
@@ -217,6 +225,6 @@ function remove(k){ const p = DB.picks[k]; delete DB.picks[k]; if(p && DB.locks[
 
 window.MyPicks = {options, toggle, pickOf, started, finals, graded, record, betText, profit, exportData, importData, remove,
   all: () => DB.picks, count: () => Object.keys(DB.picks).length, onChange: f => listeners.push(f), SPREAD_ODDS,
-  LIMIT, nightOf, used, setLock, lockOf, locks: () => DB.locks, propsFor, toggleProp, propOf, props: () => DB.props, gradeProps,
+  LIMIT, LIMITS, limitFor, gamesOn, nightOf, used, setLock, lockOf, locks: () => DB.locks, propsFor, toggleProp, propOf, props: () => DB.props, gradeProps,
   PARLAY_MULT, makeParlay, updateParlay, removeParlay, parlays: () => DB.parlays, key: pid};
 })();

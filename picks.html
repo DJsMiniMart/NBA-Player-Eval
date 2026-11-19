@@ -141,7 +141,7 @@ function builder(x){
   const open = x.lines.filter(it => !it.r && !MyPicks.started(it.p.t));
   if(new Set(open.map(it => it.p.gid)).size < 2) return "";
   const ed = EDIT && MyPicks.parlays()[EDIT] && MyPicks.parlays()[EDIT].night === x.n ? MyPicks.parlays()[EDIT] : null;
-  const chk = new Set(ed ? ed.legs : []), full = !ed && MyPicks.used(x.n) >= MyPicks.LIMIT;
+  const chk = new Set(ed ? ed.legs : []), full = !ed && MyPicks.used(x.n) >= MyPicks.limitFor(x.n);
   return `<details class="pb" ${ed ? "open" : ""} data-night="${x.n}"><summary>${ed ? "✏️ Editing parlay" : "🎟️ Build a parlay"} <small>2 legs pays 63 · 3 legs 150 · 4 legs 300, all must win</small></summary>
     <div class="pb-legs">${open.map(it => `<label><input type="checkbox" data-leg="${esc(it.k)}" data-g="${esc(it.p.gid)}"${chk.has(it.k) ? " checked" : ""}> <b>${esc(MyPicks.betText(it.p))}</b> <small>${esc(it.p.away)} @ ${esc(it.p.home)}</small></label>`).join("")}</div>
     <div class="pb-foot"><span class="pb-n note">${ed ? `${chk.size} legs selected` : "Pick 2 to 4, one per game"}</span>${ed ? `<button class="btn primary" data-psave="${esc(ed.id)}">Save parlay</button><button class="btn" data-pcancel>Cancel</button>` : `<button class="btn primary" data-pmake="${x.n}"${full ? " disabled title=\"You've used all 10 picks for this night\"" : ""}>Make parlay</button>`}</div>
@@ -177,7 +177,7 @@ function draw(){
   const openN = NN.filter(x => x.open), histN = NN.filter(x => !x.open || x.lines.concat(x.props, x.parlays).some(it => it.r));
   $("openNote").textContent = openN.length ? "" : "";
   $("open").innerHTML = openN.length ? openN.slice().reverse().map(x => { const items = x.lines.concat(x.props, x.parlays).filter(it => !it.r).filter(show); if(!items.length) return "";
-      return `<div class="night"><div class="nh"><span>${nightLabel(x.n)} <small>· ${MyPicks.used(x.n)} of ${MyPicks.LIMIT} picks</small></span><a href="index.html#upSec" style="font-size:13px;font-weight:600">Edit picks →</a></div><div class="bets">${items.map(it => row(it, true)).join("")}</div>${builder(x)}</div>`; }).join("") || `<div class="card empty">No open picks in this view.</div>`
+      return `<div class="night"><div class="nh"><span>${nightLabel(x.n)} <small>· ${MyPicks.used(x.n)} of ${MyPicks.limitFor(x.n)} picks</small></span><a href="index.html#upSec" style="font-size:13px;font-weight:600">Edit picks →</a></div><div class="bets">${items.map(it => row(it, true)).join("")}</div>${builder(x)}</div>`; }).join("") || `<div class="card empty">No open picks in this view.</div>`
     : `<div class="card empty">No open picks. Head to <a href="index.html#upSec">Coming up</a> and tap a bet on any game.</div>`;
   $("hist").innerHTML = histN.map((x, i) => { const items = x.lines.concat(x.props, x.parlays).filter(it => it.r).filter(show); if(!items.length) return "";
       const np = items.reduce((a, it) => a + it.pts, 0), nw = items.filter(it => it.r === "W").length, nl = items.filter(it => it.r === "L").length;
