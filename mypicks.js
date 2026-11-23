@@ -80,9 +80,9 @@ function toggle(u, o, type, side){
 const pickOf = (gid, type) => DB.picks[pid(gid, type)] || null;
 
 /* ---------- nightly limit, counting game lines, player props and parlay tickets. It depends on how many games are on:
-   1-2 games: 6 picks · 3-4: 8 · 5-7: 10 · 8-11: 12 · 12+: 15. Picks already made stay if the count changes. ---------- */
+   1-2 games: 8 picks · 3-4: 12 · 5-7: 15 · 8-11: 18 · 12+: 22. Picks already made stay if the count changes. ---------- */
 const LIMIT = 10;   // used until the schedule loads
-const LIMITS = [[2, 6], [4, 8], [7, 10], [11, 12], [Infinity, 15]];
+const LIMITS = [[2, 8], [4, 12], [7, 15], [11, 18], [Infinity, 22]];
 let SLATE = null;   // night -> number of games
 fetch("data/schedule.json?t=" + Math.floor(Date.now() / 36e5)).then(r => r.ok ? r.json() : null).then(d => {
   if(!d || !d.games) return; SLATE = {}; d.games.forEach(g => { const n = nightOf(g[1]); SLATE[n] = (SLATE[n] || 0) + 1; }); listeners.forEach(f => f());
@@ -122,7 +122,7 @@ function propsFor(u, P){
 function toggleProp(pr, side){
   if(started(pr.t)) return {ok:false, why:"This game has started, so props are locked."};
   const cur = DB.props[pr.key];
-  if(cur && cur.side === side){ delete DB.props[pr.key]; return done(); }
+  if(cur && cur.side === side){ delete DB.props[pr.key]; Object.keys(DB.parlays).forEach(x => { if(DB.parlays[x].legs.includes(pr.key)) delete DB.parlays[x]; }); return done(); }
   if(!cur && used(nightOf(pr.t)) >= limitFor(nightOf(pr.t))) return {ok:false, why:`You've used all ${limitFor(nightOf(pr.t))} picks for that night.`};
   DB.props[pr.key] = Object.assign({}, pr, {side, at: new Date().toISOString()});
   return done();
@@ -141,12 +141,13 @@ async function gradeProps(boxOf){
   return out;
 }
 
-/* ---------- parlays: 2-4 of your game-line picks from different games on the same night; all must win ---------- */
+/* ---------- parlays: 2-4 of your picks (game lines or player props) from different games on the same night; all must win ---------- */
 const PARLAY_MULT = {2: 2.5, 3: 6, 4: 12};
+const legOf = k => DB.picks[k] || DB.props[k] || null;
 function makeParlay(keys){
-  const legs = [...new Set(keys)].filter(k => DB.picks[k]);
+  const legs = [...new Set(keys)].filter(k => legOf(k));
   if(legs.length < 2 || legs.length > 4) return {ok:false, why:"A parlay needs 2 to 4 picks."};
-  const P = legs.map(k => DB.picks[k]), night = nightOf(P[0].t);
+  const P = legs.map(legOf), night = nightOf(P[0].t);
   if(P.some(p => nightOf(p.t) !== night)) return {ok:false, why:"Parlay legs must all be on the same night."};
   if(new Set(P.map(p => p.gid)).size !== legs.length) return {ok:false, why:"Each leg has to be from a different game."};
   if(P.some(p => started(p.t))) return {ok:false, why:"One of those games has started."};
@@ -161,7 +162,7 @@ function updateParlay(id, keys){
   delete DB.parlays[id];
   const r = makeParlay(keys);
   if(!r.ok){ DB.parlays[id] = old; save(DB); return r; }
-  const nid = Object.keys(DB.parlays).find(k => !(k in {}) && DB.parlays[k].at && k !== id && JSON.stringify(DB.parlays[k].legs) === JSON.stringify([...new Set(keys)].filter(k2 => DB.picks[k2])));
+  const nid = Object.keys(DB.parlays).find(k => !(k in {}) && DB.parlays[k].at && k !== id && JSON.stringify(DB.parlays[k].legs) === JSON.stringify([...new Set(keys)].filter(k2 => legOf(k2))));
   return {ok:true, id: nid};
 }
 function removeParlay(id){ const x = DB.parlays[id]; if(x && started(x.t)) return {ok:false, why:"That parlay's first game has started."}; delete DB.parlays[id]; return done(); }
@@ -214,6 +215,8 @@ function betText(p, b){
   if(p.type === "spread") return `${b.side} ${b.line === 0 ? "PK" : (b.line > 0 ? "+" : "") + b.line}`;
   return `${b.side} ML ${b.odds > 0 ? "+" : ""}${b.odds}`;
 }
+/* a parlay leg (game line or player prop) as short text */
+function legText(k){ const p = DB.picks[k]; if(p) return betText(p); const r = DB.props[k]; return r ? `${String(r.name).split(" ").slice(-1)[0]} ${r.side} ${r.line} ${r.stat}` : "?"; }
 function exportData(){ return JSON.stringify(DB, null, 1); }
 function importData(text){
   const d = JSON.parse(text);
@@ -226,5 +229,5 @@ function remove(k){ const p = DB.picks[k]; delete DB.picks[k]; if(p && DB.locks[
 window.MyPicks = {options, toggle, pickOf, started, finals, graded, record, betText, profit, exportData, importData, remove,
   all: () => DB.picks, count: () => Object.keys(DB.picks).length, onChange: f => listeners.push(f), SPREAD_ODDS,
   LIMIT, LIMITS, limitFor, gamesOn, nightOf, used, setLock, lockOf, locks: () => DB.locks, propsFor, toggleProp, propOf, props: () => DB.props, gradeProps,
-  PARLAY_MULT, makeParlay, updateParlay, removeParlay, parlays: () => DB.parlays, key: pid};
+  PARLAY_MULT, legOf, legText, isProp: k => !!DB.props[k], makeParlay, updateParlay, removeParlay, parlays: () => DB.parlays, key: pid};
 })();

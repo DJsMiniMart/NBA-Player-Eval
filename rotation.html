@@ -90,6 +90,14 @@
   .t-legend .ac-wiki{filter:sepia(.35) saturate(1.15) contrast(1.05);} .ac-photo:has(.ac-wiki:not([hidden]))::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 55%,rgba(11,11,13,.85));}
   .ac-crown{position:absolute;inset:0;display:grid;place-items:center;font-size:64px;filter:drop-shadow(0 0 14px rgba(255,200,40,.8));}
   .ac-top{margin-top:-30px;position:relative;z-index:2;}
+  .recap{position:relative;margin:12px 0 0;padding:12px 14px;background:linear-gradient(135deg,rgba(255,193,7,.12),rgba(29,66,138,.08));}
+  .rc-x{position:absolute;right:8px;top:8px;border:0;background:none;font-size:15px;cursor:pointer;opacity:.6;color:inherit;}
+  .rc-top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding-right:22px;} .rc-k{display:block;font:700 12px Inter,sans-serif;text-transform:uppercase;letter-spacing:.5px;opacity:.75;}
+  .rc-tot{font:800 30px/1.1 "Barlow Condensed",sans-serif;} .rc-tot.pos{color:var(--good,#2f9e44);} .rc-tot.neg{color:var(--bad,#c92a2a);}
+  .rc-rec{text-align:right;} .rc-rec b{display:block;font:800 24px/1 "Barlow Condensed",sans-serif;} .rc-rec small{font-size:11px;opacity:.75;}
+  .rc-gs{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0;} .rc-g{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;} .rc-g.w{background:rgba(47,158,68,.15);color:#2b8a3e;} .rc-g.l{background:rgba(201,42,42,.12);color:#c92a2a;}
+  .rc-rows{display:grid;gap:4px;font-size:13.5px;} .rc-rows div{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:4px;} .rc-rows span{white-space:nowrap;opacity:.85;} .rc-rows b{text-align:right;} .rc-rows small{font-weight:500;opacity:.8;} .rc-rows .warn b{color:#e67700;}
+  .lockbar{margin:0;padding:9px 12px;border-radius:10px;font-size:13.5px;background:rgba(201,42,42,.09);border:1px solid rgba(201,42,42,.3);} .lockbar.open{background:rgba(47,158,68,.08);border-color:rgba(47,158,68,.3);} .lockbar small{opacity:.85;}
   .vr-ribbon{position:absolute;left:8px;right:8px;top:60px;z-index:3;display:flex;align-items:center;gap:6px;font:800 10.5px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;}
   .vr-ribbon b{display:grid;place-items:center;min-width:30px;height:24px;padding:0 5px;border-radius:6px;font:900 13px "Barlow Condensed",sans-serif;letter-spacing:.5px;}
   .vr-ribbon span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.55);}
@@ -255,6 +263,7 @@
   </div>
   <div id="gameMode" hidden>
     <div class="wallet card"><div><span>Slush fund</span><b id="gPts">—</b><small id="gPtsNote"></small></div><button id="gDaily" class="gbtn">🎡 Spin the wheel</button><a href="index.html#upSec" class="gbtn alt">Make picks to earn →</a></div>
+    <div id="gRecap"></div>
     <div id="gTrophies"></div>
     <div id="gStart"></div>
     <div id="gOpen"></div>
@@ -262,7 +271,7 @@
     <div class="gtabs" role="tablist"><button data-gtab="team" role="tab">🏀 My Team</button><button data-gtab="market" role="tab">🛒 Market</button><button data-gtab="progress" role="tab">🏆 Progress</button></div>
     <div data-gpane="team">
     <h2 data-jump="Lineup">Your lineup <small id="gLineupNote"></small></h2>
-    <p class="note" id="gLock" style="margin:0 0 6px"></p>
+    <div id="gLock" style="margin:0 0 8px"></div>
     <button class="gbtn" id="gBest" style="margin:0 0 8px">✨ Best lineup</button> <span class="note">Fills your five and bench for the best chemistry and production, skips injured players and expired contracts, and stays under the apron.</span>
     <div id="gBoosts"></div>
     <section class="lineup" id="gLineup"></section>
@@ -499,8 +508,8 @@ const PACKS = [{id: "gold", cost: 300, name: "Gold pack", cls: "gold", desc: "3 
    Over the $165M cap (the real NBA cap): luxury tax off that night's points, 1 point per $1M over (2 per $1M past the $209M apron, the real 1st apron). The apron is a hard limit on moves. */
 const CAP = 165e6, APRON = 209e6, MIN_SAL = 1.3e6, MATE = 0.03, MATE_MAX = 0.09;
 const $M = n => "$" + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M";
-const FF_TARGET = 120, WIN_PTS = 10;   // FF_TARGET: only for nights scored before projections
-const DAILY = 20, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
+const FF_TARGET = 120, WIN_PTS = 20;   // FF_TARGET: only for nights scored before projections
+const DAILY = 30, RES_MAX = 10;   // roster: 5 starters + 5 bench + 10 reserves = 20 cards
 const blank = () => ({v: 2, started: "", spent: 0, sold: 0, game: 0, bonus: 0, daily: "", cards: [], start: [], bench: [], res: [], trophies: [], wish: [], scout: [], st: {}, hist: [], keep: [], season: "", since: "", boosts: {}, spin: "", spinX: 0, spins: [], album: [], variants: [], n: 0, snaps: {}, nights: {}, free: [], claimed: {}});
 const gLoad = () => { try{ const g = JSON.parse(localStorage.getItem(GKEY) || "null"); return g && g.v === 2 ? Object.assign(blank(), g, Array.isArray(g.res) ? {} : {resNew: 1}) : blank(); }catch(_){ return blank(); } };
 let G = gLoad(), EARN = {pts: 0, games: 0, list: []}, OPEN = null, GSORT = "ovr", NSEL = null;
@@ -525,32 +534,35 @@ async function earnings(){
   const by = {}; list.forEach(x => { const g = by[x.gid] = by[x.gid] || {gid: x.gid, home: x.home, away: x.away, t: x.t, w: 0, n: 0, line: 0};
     g.n++; const r = x.res.you;
     if(r === "W"){ g.w++; g.line += x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25; } else if(r === "P") g.line += 5; });
-  const BONUS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { g.bonus = BONUS[Math.min(3, g.w)]; g.p = g.line + g.bonus; pts += g.p; return g; });
+  const BN = {}, bn = (t, v, w, l) => { const n = /^\d{4}-\d\d-\d\d$/.test(t) ? t : MyPicks.nightOf(t), o = BN[n] = BN[n] || {pts: 0, w: 0, l: 0}; o.pts += v; o.w += w || 0; o.l += l || 0; };
+  list.forEach(x => bn(x.t, 0, x.res.you === "W" ? 1 : 0, x.res.you === "L" ? 1 : 0));
+  const BONUS = [0, 10, 25, 50]; let pts = 0; const out = Object.values(by).map(g => { g.bonus = BONUS[Math.min(3, g.w)]; g.p = g.line + g.bonus; pts += g.p; bn(g.t, g.p); return g; });
   const X = {lock: 0, pulse: 0, props: 0, parlay: 0, guys: 0, slate: 0}, since = x => !G.since || MyPicks.nightOf(x.t) >= G.since;
   const linePay = x => x.type === "ml" ? Math.max(10, Math.round(25 * MyPicks.profit(x.odds, "W"))) : 25;
   // Lock of the Day: a locked winner pays its line again; a locked loser costs 25
-  let locksWon = 0, p4 = 0; const locks = MyPicks.locks(); Object.entries(locks).forEach(([night, k]) => { const x = list.find(y => MyPicks.key(y.gid, y.type) === k); if(!x) return; if(x.res.you === "W"){ X.lock += linePay(x); locksWon++; } else if(x.res.you === "L") X.lock -= 25; });
+  let locksWon = 0, p4 = 0; const locks = MyPicks.locks(); Object.entries(locks).forEach(([night, k]) => { const x = list.find(y => MyPicks.key(y.gid, y.type) === k); if(!x) return; if(x.res.you === "W"){ X.lock += linePay(x); bn(x.t, linePay(x)); locksWon++; } else if(x.res.you === "L"){ X.lock -= 25; bn(x.t, -25); } });
   // Beat Pulse: +10 when you took the other side from Pulse and won
-  list.forEach(x => { if(x.res.you === "W" && x.pulse && x.pulse.side !== x.side) X.pulse += 10; });
+  list.forEach(x => { if(x.res.you === "W" && x.pulse && x.pulse.side !== x.side){ X.pulse += 10; bn(x.t, 10); } });
   // player props: +15 each, +15 more for 3+ correct on a night
   let PR = []; try{ PR = (await MyPicks.gradeProps(getBox)).filter(since); }catch(_){}
-  const propNights = {}; PR.forEach(p => { if(p.res === "W"){ X.props += 15; const n = MyPicks.nightOf(p.t); propNights[n] = (propNights[n] || 0) + 1; } });
-  Object.values(propNights).forEach(n => { if(n >= 3) X.props += 15; });
-  // parlays: every leg must win (a push voids the ticket)
-  Object.values(MyPicks.parlays()).filter(since).forEach(t => { const L = t.legs.map(k => list.find(y => MyPicks.key(y.gid, y.type) === k)); if(L.some(x => !x)) return;
-    if(L.every(x => x.res.you === "W")){ X.parlay += Math.round(25 * (MyPicks.PARLAY_MULT[L.length] || 0)); if(L.length === 4) p4++; } });
+  const propNights = {}; PR.forEach(p => { if(p.res === "W"){ X.props += 15; const n = MyPicks.nightOf(p.t); propNights[n] = (propNights[n] || 0) + 1; bn(p.t, 15, 1); } else if(p.res === "L") bn(p.t, 0, 0, 1); });
+  Object.entries(propNights).forEach(([d, n]) => { if(n >= 3){ X.props += 15; bn(d, 15); } });
+  // parlays: every leg must win (a push or a void prop voids the ticket). Legs can be game lines or player props
+  const legRes = x => typeof x.res === "string" ? x.res : x.res && x.res.you;
+  Object.values(MyPicks.parlays()).filter(since).forEach(t => { const L = t.legs.map(k => list.find(y => MyPicks.key(y.gid, y.type) === k) || PR.find(p => p.key === k)); if(L.some(x => !x)) return;
+    if(L.every(x => legRes(x) === "W")){ const v = Math.round(25 * (MyPicks.PARLAY_MULT[L.length] || 0)); X.parlay += v; bn(t.night, v); if(L.length === 4) p4++; } });
   // your guys: a winning pick in a game where one of your lineup players scores 20 / 30 / 40 / 50+
   const GUY = [[50, 60], [40, 35], [30, 20], [20, 10]]; let guyMax = 0;
   const wonGames = [...new Set(list.filter(x => x.res.you === "W").map(x => x.gid))];
   for(const gid of wonGames){ const x = list.find(y => y.gid === gid), L = lineupFor(ymd(new Date(x.t))); if(!L) continue; const b = await getBox(gid); if(!b) continue;
     const mine = new Set(L.start.concat(L.bench).map(id => fold((statOf(id) || {}).name || "")));
-    Object.values(b.teams || {}).forEach(T => (T.players || []).forEach(r => { if(!mine.has(fold(r[1]))) return; const pts = +r[4] || 0, tier = GUY.find(([n]) => pts >= n); if(tier){ X.guys += tier[1]; guyMax = Math.max(guyMax, tier[0]); } })); }
+    Object.values(b.teams || {}).forEach(T => (T.players || []).forEach(r => { if(!mine.has(fold(r[1]))) return; const pts = +r[4] || 0, tier = GUY.find(([n]) => pts >= n); if(tier){ X.guys += tier[1]; bn(x.t, tier[1]); guyMax = Math.max(guyMax, tier[0]); } })); }
   // perfect slate: a spread pick on every game of a 5+ game night, all right: free Ruby pack (once a night)
   const slates = []; const nights = {}; (SCHED.games || []).filter(g => g[4] === 3).forEach(g => { const n = ymd(new Date(g[1])); (nights[n] = nights[n] || []).push(g[0]); });
   Object.entries(nights).forEach(([n, gids]) => { if(gids.length < 5 || (G.since && n < G.since)) return; const sp = gids.map(gid => list.find(y => y.gid === gid && y.type === "spread"));
     if(sp.every(x => x && x.res.you === "W")){ slates.push(n); if(!G.claimed["slate:" + n]){ G.claimed["slate:" + n] = 1; G.free.push("ruby"); gSave(); toast2("🧹 Perfect slate! Every spread right: free Ruby pack"); } } });
   const extra = Object.values(X).reduce((a, b) => a + b, 0);
-  EARN = {pts: pts + extra, base: pts, X, guyMax, slates, locksWon, p4, props: PR, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
+  EARN = {pts: pts + extra, base: pts, X, byNight: BN, guyMax, slates, locksWon, p4, props: PR, games: out.length, list: out.sort((a, b) => String(b.t).localeCompare(String(a.t)))};
 }
 function pool(){ return STATS ? STATS.players.filter(p => p.g >= MING && p.mp / p.g >= 15).sort((a, b) => fpg(b) - fpg(a)) : []; }
 const statOf = id => STATS && STATS.players.find(p => p.id === id);
@@ -591,7 +603,41 @@ function snap(){
   const today = ymd(), tip = firstTip(today), key = tip && Date.now() >= tip.getTime() ? addD(today, 1) : today;
   const ids = l => l.map(x => (G.cards.find(c => c.cid === x) || {}).id).filter(Boolean);
   G.snaps[key] = {start: ids(G.start), bench: ids(G.bench)};
+  if(key !== today && tip && G.st.lockNote !== today){ G.st.lockNote = today; setTimeout(() => toast2("🔒 Tonight's lineup locked at tip-off. This change counts from the next game night."), 50); }
   return key;
+}
+/* ---------- morning recap: the last night that's been scored, in one card ---------- */
+function recapHtml(){
+  if(!G.started) return "";
+  const N = Object.values(G.nights || {}).filter(n => !n.none && n.ff != null).sort((a, b) => a.d < b.d ? -1 : 1).pop();
+  if(!N || G.recapX === N.d || N.d < addD(ymd(), -3)) return "";
+  const P = (EARN.byNight || {})[N.d] || {pts: 0, w: 0, l: 0}, won = [N.ffWin, N.pWin, N.oWin].filter(Boolean).length;
+  const day = N.d === addD(ymd(), -1) ? "Last night" : new Date(N.d + "T12:00:00").toLocaleDateString("en-US", {weekday: "long"});
+  const best = (N.five || []).slice().sort((a, b) => b.p - a.p)[0], total = (N.pts || 0) + P.pts;
+  const low = G.cards.filter(c => (G.start.includes(c.cid) || G.bench.includes(c.cid)) && c.gl != null && c.gl <= 3).sort((a, b) => a.gl - b.gl);
+  const chip = (ok, t) => `<span class="rc-g ${ok ? "w" : "l"}">${ok ? "✓" : "✗"} ${t}</span>`;
+  return `<div class="card recap"><button class="rc-x" data-recapx="${N.d}" title="Hide until the next night" aria-label="Hide the recap">✕</button>
+    <div class="rc-top"><div><span class="rc-k">☀️ Morning recap · ${esc(day)}, ${new Date(N.d + "T12:00:00").toLocaleDateString("en-US", {month: "short", day: "numeric"})}</span>
+      <b class="rc-tot ${total >= 0 ? "pos" : "neg"}">${total >= 0 ? "+" : "−"}${Math.abs(total).toLocaleString()} points</b></div>
+      <div class="rc-rec"><b>${won}–${3 - won}</b><small>nightly games</small></div></div>
+    <div class="rc-gs">${chip(N.ffWin, `Fantasy Five ${N.ff}${N.target != null ? ` vs ${N.target}` : ""}`)}${chip(N.pWin, `vs Pulse ${N.ff}–${N.pf}`)}${N.opp ? chip(N.oWin, `vs ${esc(nick(N.opp.t))} ${N.ff}–${N.opp.prod}${N.upset ? " · upset!" : ""}`) : ""}</div>
+    <div class="rc-rows">
+      <div><span>🏀 Lineup</span><b>${N.won >= 0 ? "+" : ""}${N.won}${N.tax ? ` <small>· tax −${N.tax}</small>` : ""}</b></div>
+      <div><span>🎯 Picks</span><b>${P.pts >= 0 ? "+" : "−"}${Math.abs(P.pts)} <small>· ${P.w}–${P.l}</small></b></div>
+      ${best ? `<div><span>⭐ Best player</span><b>${esc(best.n)} <small>· ${best.p} prod (${esc(best.l)})</small></b></div>` : ""}
+      ${low.length ? `<div class="warn"><span>📝 Running low</span><b>${low.slice(0, 3).map(c => `${esc(c.name)} <small>(${c.gl ? c.gl + " game" + (c.gl === 1 ? "" : "s") + " left" : "contract up"})</small>`).join(", ")}</b></div>` : ""}
+    </div></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-recapx]"); if(!b) return; G.recapX = b.dataset.recapx; gSave(); $("gRecap").innerHTML = ""; });
+/* the lock banner over your lineup: open until the night's first tip-off, then tonight's five is set */
+function lockHtml(){
+  const today = ymd(), tip = firstTip(today), at = t => t.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"});
+  if(!tip) return `<div class="lockbar open">📅 No games today. Lineup changes count for the next game night.</div>`;
+  if(Date.now() < tip.getTime()){ const m = Math.round((tip.getTime() - Date.now()) / 6e4), left = m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+    return `<div class="lockbar open">🔓 <b>Lineup locks at ${at(tip)}</b> (first tip-off, in ${left}). Changes until then count for tonight.</div>`; }
+  const L = lineupFor(today), now = G.start.map(x => (G.cards.find(c => c.cid === x) || {}).id).filter(Boolean);
+  const diff = L && (L.start.join() !== now.join() || L.bench.join() !== G.bench.map(x => (G.cards.find(c => c.cid === x) || {}).id).filter(Boolean).join());
+  return `<div class="lockbar">🔒 <b>Tonight's lineup locked at ${at(tip)}</b> (first tip-off). Changes you make now count from the next game night.${diff && L ? `<br><small>Playing tonight: ${L.start.map(id => esc(((statOf(id) || {}).name || id).split(" ").slice(-1)[0])).join(", ")}</small>` : ""}</div>`;
 }
 const lineupFor = d => { const k = Object.keys(G.snaps).filter(x => x <= d).sort().pop(); return k ? G.snaps[k] : null; };
 /* ---------- nightly games, scored from that night's box scores (data/games/<id>.json) ---------- */
@@ -1105,7 +1151,7 @@ function drawGame(){
   const ovrs = G.start.map(x => ratingOf(statOf(byId[x].id))).filter(Boolean);
   $("gLineupNote").textContent = ovrs.length ? `starting five OVR ${Math.round(ovrs.reduce((a, b) => a + b.ovr, 0) / ovrs.length)} · roster value ${G.start.concat(G.bench).reduce((a, x) => a + valueOf(ratingOf(statOf(byId[x].id))), 0)}` : "";
   const tip = firstTip(ymd());
-  $("gLock").textContent = tip && Date.now() >= tip.getTime() ? "Tonight's games have started, so lineup changes now count from tomorrow." : tip ? `Changes count for tonight until the first tip-off (${tip.toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"})}).` : "No games today; changes count for the next game night.";
+  $("gLock").innerHTML = lockHtml();
   const empty = (n, w) => Array.from({length: n}, () => `<div class="empty-slot" style="cursor:default;min-height:110px">${w}</div>`).join("");
   const startIds = G.start.map(x => byId[x].id);
   const mt = matesNow(startIds);
@@ -1120,7 +1166,7 @@ function drawGame(){
   $("gSort").innerHTML = [["ovr", "Best first"], ["gain", "Biggest value gain"], ["new", "Newest"], ["name", "A–Z"]].map(([k, l]) => `<button class="chip ${GSORT === k ? "on" : ""}" data-gsort="${k}" style="border-radius:999px;font-weight:600">${l}</button>`).join("") + (rest.length || over.length ? `<button class="chip" data-gsellall style="border-radius:999px;font-weight:600;margin-left:auto">Sell duplicates</button>` : "");
   $("gOver").innerHTML = over.length ? `<div class="card overcard"><b>⚠️ ${over.length} card${over.length === 1 ? "" : "s"} over the roster limit</b><p class="note" style="margin:4px 0 8px">Your team holds 20 cards: 5 starters, 5 on the bench and 10 reserves. Sell these, or move them into an open spot (or sell someone to make room). You can't open more packs until you're back to 20.</p><div class="cards">${over.map(c => gCard(c)).join("")}</div></div>` : "";
   $("gColl").innerHTML = (rest.length ? rest.map(c => gCard(c)).join("") : "") + empty(RES_MAX - rest.length, "Reserve slot<br><small>new cards land here</small>");
-  checkMilestones(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gAlbum").innerHTML = albumHtml(); wikiPhotos(); $("gScout").innerHTML = scoutHtml(); $("gMarket").innerHTML = marketHtml();
+  checkMilestones(); $("gRecap").innerHTML = recapHtml(); $("gTrophies").innerHTML = trophyHtml(); $("gChal").innerHTML = chalHtml(); $("gSets").innerHTML = setsHtml(); $("gWish").innerHTML = wishHtml(); $("gAlbum").innerHTML = albumHtml(); wikiPhotos(); $("gScout").innerHTML = scoutHtml(); $("gMarket").innerHTML = marketHtml();
   drawScore(); drawNights(); drawRules(); $("gHist").innerHTML = histHtml(); setTab();
 }
 function drawRules(){
@@ -1131,10 +1177,10 @@ function drawRules(){
       <ol style="margin:4px 0 0;padding-left:18px"><li><b>Every winning line pays:</b> spread or total <b>+25</b>; winner (moneyline) <b>25 × the payout</b>, at least 10, so upsets pay more (a +200 underdog is 50, a −300 favorite 10); a push is <b>+5</b>.</li>
       <li><b>Plus a bonus</b> for how many of that game's three lines you hit: <b>1 = +10</b>, <b>2 = +25</b>, <b>all 3 = +50</b>.</li></ol>
       Example: winner at +150 (38) + spread (25) + total (25) all right = 88, plus the 50 bonus = <b>138 points</b>.
-      <ul style="margin:4px 0 0;padding-left:18px"><li><b>6 to 15 picks a night</b>, depending on how many games are on (3–4 games: 8 picks; 12+ games: 15). Game lines, player props and parlay tickets each count as one, so choose wisely.</li>
+      <ul style="margin:4px 0 0;padding-left:18px"><li><b>8 to 22 picks a night</b>, depending on how many games are on (3–4 games: 12 picks; 8–11 games: 18; 12+ games: 22). Game lines, player props and parlay tickets each count as one, so choose wisely.</li>
       <li><b>🔒 Lock of the Day:</b> one pick a night pays double if it wins, −25 if it loses.</li>
       <li><b>Player props:</b> over/under a player's points, rebounds or assists (line = his season average): +15 each, +15 more for 3+ right in a night.</li>
-      <li><b>Parlays:</b> 2–4 of your picks from different games, all must win: 2 legs 63, 3 legs 150, 4 legs 300.</li>
+      <li><b>Parlays:</b> 2–4 of your picks (game lines or player props) from different games, all must win: 2 legs 63, 3 legs 150, 4 legs 300.</li>
       <li><b>Beat Pulse:</b> +10 when you take the other side from Pulse and win.</li>
       <li><b>Your guys:</b> a winning pick in a game where one of your lineup players scores 20+ (+10), 30+ (+20), 40+ (+35) or 50+ (+60), with trophies for each.</li>
       <li><b>🧹 Perfect slate:</b> every spread right on a 5+ game night: free Ruby pack and a trophy.</li></ul></li>

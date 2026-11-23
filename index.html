@@ -835,14 +835,15 @@ function renderUpcoming(){
   $("upNext").disabled = !!gameDays.length && upDay >= gameDays[gameDays.length - 1];
   const day = onDay(upDay);
   if(window.MyPicks){ const el = $("upParlay"), mine = Object.entries(MyPicks.all()).filter(([k, p]) => MyPicks.nightOf(p.t) === upDay), px = Object.values(MyPicks.parlays()).filter(x => x.night === upDay);
-    const open = mine.filter(([, p]) => !MyPicks.started(p.t)), games = new Set(open.map(([, p]) => p.gid)), n = MyPicks.used(upDay);
+    const myProps = Object.entries(MyPicks.props()).filter(([k, p]) => MyPicks.nightOf(p.t) === upDay);
+    const open = mine.concat(myProps).filter(([, p]) => !MyPicks.started(p.t)), games = new Set(open.map(([, p]) => p.gid)), n = MyPicks.used(upDay);
     const M = maxPoints(upDay), hasProps = Object.values(MyPicks.props()).some(p => MyPicks.nightOf(p.t) === upDay);
     const parts = [["picks", M.lines], ["game bonuses", M.bonus], ["🔒 lock", M.lock], ["beat Pulse", M.pulse], ["props", M.props], ["parlays", M.parlay]].filter(x => x[1]);
     el.innerHTML = mine.length || px.length || hasProps ? `<div class="card parlay"><div class="ptsmax"><span>If everything hits</span><b>+${M.total.toLocaleString()}</b><small>${parts.map(([l, v]) => `${v.toLocaleString()} ${l}`).join(" + ")}${M.slate ? " · plus a 🧹 perfect-slate Ruby pack" : ""}${M.risk ? ` · your lock costs ${M.risk} if it loses` : ""} · "your guys" bonuses come on top</small></div>
       <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px"><b>🎟️ ${n} of ${MyPicks.limitFor(upDay)} picks used${upDay === localDay(new Date().toISOString()) ? " tonight" : " this night"}</b><span class="note">Game lines, props and parlays each count as one. Lock one pick a night with 🔒.</span></div>
-      ${px.map(x => `<div class="pl-t">Parlay ×${MyPicks.PARLAY_MULT[x.legs.length]} (${x.legs.length} legs, pays ${Math.round(25 * MyPicks.PARLAY_MULT[x.legs.length])}): ${x.legs.map(k => { const p = MyPicks.all()[k]; return p ? esc(MyPicks.betText(p)) : "?"; }).join(" + ")} ${MyPicks.started(x.t) ? "" : `<button data-parlayx="${esc(x.id)}">✕</button>`}</div>`).join("")}
-      ${games.size >= 2 ? `<details class="pl-b"><summary>Build a parlay from your picks (2 to 4 games, all must win: 2 legs ×2.5 = 63, 3 legs ×6 = 150, 4 legs ×12 = 300)</summary>
-        <div class="pl-legs">${open.map(([k, p]) => `<label><input type="checkbox" data-leg="${esc(k)}"> ${esc(p.away)} @ ${esc(p.home)}: <b>${esc(MyPicks.betText(p))}</b></label>`).join("")}</div>
+      ${px.map(x => `<div class="pl-t">Parlay ×${MyPicks.PARLAY_MULT[x.legs.length]} (${x.legs.length} legs, pays ${Math.round(25 * MyPicks.PARLAY_MULT[x.legs.length])}): ${x.legs.map(k => esc(MyPicks.legText(k))).join(" + ")} ${MyPicks.started(x.t) ? "" : `<button data-parlayx="${esc(x.id)}">✕</button>`}</div>`).join("")}
+      ${games.size >= 2 ? `<details class="pl-b"><summary>Build a parlay from your picks and props (2 to 4 games, all must win: 2 legs ×2.5 = 63, 3 legs ×6 = 150, 4 legs ×12 = 300)</summary>
+        <div class="pl-legs">${open.slice().sort((a, b) => String(a[1].t + a[1].gid).localeCompare(String(b[1].t + b[1].gid))).map(([k, p]) => { const g = ((PRED && PRED.upcoming) || []).find(u => u.id === p.gid) || p; return `<label><input type="checkbox" data-leg="${esc(k)}"> ${esc(g.away || "")} @ ${esc(g.home || "")}: <b>${esc(MyPicks.legText(k))}</b>${MyPicks.isProp(k) ? " <small>prop</small>" : ""}</label>`; }).join("")}</div>
         <button class="btn primary" data-parlay>Make parlay</button> <span class="note">One leg per game. A parlay uses one of your ${MyPicks.limitFor(upDay)} picks.</span></details>` : ""}</div>` : "";
   }
   // how Pulse did on a finished day

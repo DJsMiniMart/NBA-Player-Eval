@@ -127,23 +127,24 @@ function nights(){
     x.lines.push(it); });
   Object.values(N).forEach(x => { const byG = {}; x.lines.forEach(it => { if(it.r === "W") byG[it.p.gid] = (byG[it.p.gid] || 0) + 1; });
     Object.entries(byG).forEach(([gid, w]) => { const b = [0, 10, 25, 50][Math.min(3, w)], it = x.lines.find(y => y.p.gid === gid && y.r === "W"); it.pts += b; it.notes.push(`+${b} game bonus (${w} of ${x.lines.filter(y => y.p.gid === gid).length} hit)`); }); });
-  PROPS.forEach(p => { const x = get(MyPicks.nightOf(p.t)); x.props.push({kind: "prop", p, r: p.res, pts: p.res === "W" ? 15 : 0}); });
+  PROPS.forEach(p => { const x = get(MyPicks.nightOf(p.t)); x.props.push({kind: "prop", k: p.key, p, r: p.res, pts: p.res === "W" ? 15 : 0}); });
   Object.values(N).forEach(x => { const w = x.props.filter(y => y.r === "W"); if(w.length >= 3){ w[0].pts += 15; w[0].bonus = true; } });
-  PX.forEach(t => { const x = get(t.night), legs = t.legs.map(k => x.lines.find(y => y.k === k));
+  PX.forEach(t => { const x = get(t.night), legs = t.legs.map(k => x.lines.find(y => y.k === k) || x.props.find(y => y.k === k));
     const r = legs.some(l => !l) ? "V" : legs.some(l => l.r === "L") ? "L" : legs.some(l => l.r === "P") ? "V" : legs.every(l => l.r === "W") ? "W" : null;
     x.parlays.push({kind: "parlay", t, legs, r, mult: MyPicks.PARLAY_MULT[t.legs.length], pts: r === "W" ? Math.round(25 * MyPicks.PARLAY_MULT[t.legs.length]) : 0}); });
   Object.values(N).forEach(x => { const all = x.lines.concat(x.props, x.parlays); x.pts = all.reduce((a, it) => a + it.pts, 0);
     all.forEach(it => { if(it.r === "W") x.w++; else if(it.r === "L") x.l++; else if(it.r === "P") x.p++; else if(!it.r) x.open++; }); });
   return Object.values(N).sort((a, b) => b.n.localeCompare(a.n));
 }
-/* parlay builder / editor for one night: pick 2-4 of your open game-line picks, one per game */
+/* parlay builder / editor for one night: pick 2-4 of your open picks (game lines or player props), one per game */
+const legName = it => it.kind === "prop" ? `${it.p.name} ${it.p.side} ${it.p.line} ${SL[it.p.stat] || it.p.stat}` : MyPicks.betText(it.p);
 function builder(x){
-  const open = x.lines.filter(it => !it.r && !MyPicks.started(it.p.t));
+  const open = x.lines.concat(x.props).filter(it => !it.r && !MyPicks.started(it.p.t));
   if(new Set(open.map(it => it.p.gid)).size < 2) return "";
   const ed = EDIT && MyPicks.parlays()[EDIT] && MyPicks.parlays()[EDIT].night === x.n ? MyPicks.parlays()[EDIT] : null;
   const chk = new Set(ed ? ed.legs : []), full = !ed && MyPicks.used(x.n) >= MyPicks.limitFor(x.n);
   return `<details class="pb" ${ed ? "open" : ""} data-night="${x.n}"><summary>${ed ? "✏️ Editing parlay" : "🎟️ Build a parlay"} <small>2 legs pays 63 · 3 legs 150 · 4 legs 300, all must win</small></summary>
-    <div class="pb-legs">${open.map(it => `<label><input type="checkbox" data-leg="${esc(it.k)}" data-g="${esc(it.p.gid)}"${chk.has(it.k) ? " checked" : ""}> <b>${esc(MyPicks.betText(it.p))}</b> <small>${esc(it.p.away)} @ ${esc(it.p.home)}</small></label>`).join("")}</div>
+    <div class="pb-legs">${open.map(it => `<label><input type="checkbox" data-leg="${esc(it.k)}" data-g="${esc(it.p.gid)}"${chk.has(it.k) ? " checked" : ""}> <b>${esc(legName(it))}</b> <small>${it.kind === "prop" ? "prop · " + esc(it.p.team || "") : `${esc(it.p.away)} @ ${esc(it.p.home)}`}</small></label>`).join("")}</div>
     <div class="pb-foot"><span class="pb-n note">${ed ? `${chk.size} legs selected` : "Pick 2 to 4, one per game"}</span>${ed ? `<button class="btn primary" data-psave="${esc(ed.id)}">Save parlay</button><button class="btn" data-pcancel>Cancel</button>` : `<button class="btn primary" data-pmake="${x.n}"${full ? " disabled title=\"You've used all 10 picks for this night\"" : ""}>Make parlay</button>`}</div>
     <p class="note pb-msg" style="margin:6px 0 0"></p></details>`;
 }
@@ -156,7 +157,7 @@ function row(it, open){
     return `<div class="bet">${res(it.r)}<div class="what"><b>${esc(p.name)} ${p.side} ${p.line} ${SL[p.stat]}</b><span class="tag pr">PROP</span><small>${it.r && it.r !== "V" ? `He had ${p.val}` : it.r === "V" ? "Didn't play: void" : time(p.t)}${it.bonus ? " · +15 for 3+ props right" : ""}</small></div>
       <div class="end">${open ? "" : `<b class="${it.pts ? "pos" : ""}">${it.pts ? "+" + it.pts : "0"}</b>`}</div></div>`; }
   const t = it.t;
-  return `<div class="bet">${res(it.r)}<div class="what"><b>${t.legs.length}-leg parlay ×${it.mult}</b><span class="tag pa">PARLAY</span><small>${it.legs.map(l => l ? `${esc(MyPicks.betText(l.p))} ${l.r ? `(${l.r})` : ""}` : "removed pick").join(" + ")} · pays ${Math.round(25 * it.mult)}</small></div>
+  return `<div class="bet">${res(it.r)}<div class="what"><b>${t.legs.length}-leg parlay ×${it.mult}</b><span class="tag pa">PARLAY</span><small>${it.legs.map(l => l ? `${esc(legName(l))} ${l.r ? `(${l.r})` : ""}` : "removed pick").join(" + ")} · pays ${Math.round(25 * it.mult)}</small></div>
     <div class="end">${open ? (MyPicks.started(t.t) ? "" : `<button class="btn sm" data-pe="${esc(t.id)}">Edit</button><button class="x" title="Cancel this parlay" data-px="${esc(t.id)}">✕</button>`) : `<b class="${it.pts ? "pos" : ""}">${it.pts ? "+" + it.pts : "0"}</b>`}</div></div>`;
 }
 function draw(){
