@@ -72,8 +72,8 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const EX = ["How many players averaged 25 points, 10 rebounds and 8 assists in a season?", "Who has averaged a triple-double for a season?", "Who has the most seasons averaging 30 points?",
   "Which players averaged 20 and 10 as a rookie?", "How many seasons did LeBron average 25, 7 and 7?", "Who are the members of the 50/40/90 club?", "Most 3-pointers in a season",
-  "Most career assists", "Who averaged 25 points for the Warriors since 2000?", "Who has won the most MVPs?", "What's the best record in the West?", "Who leads the league in rebounds?"];
-const TRY = ["How many players averaged 30 points in the 90s?", "Best field goal percentage in a season", "Who averaged 20 points before age 21?", "Most rebounds per game in a season"];
+  "Most career assists", "How many centers averaged 5 assists in a season?", "Who averaged 25 points for the Warriors since 2000?", "Who has won the most MVPs?", "What's the best record in the West?", "Who leads the league in rebounds?"];
+const TRY = ["How many players averaged 30 points in the 90s?", "Point guards who averaged 10 rebounds", "Best field goal percentage in a season", "Who averaged 20 points before age 21?", "Most rebounds per game in a season"];
 Ask.css();
 $("examples").innerHTML = EX.map(q => `<button type="button">${esc(q)}</button>`).join("");
 $("examples").onclick = e => { const b = e.target.closest("button"); if(b) ask(b.textContent); };

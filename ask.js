@@ -253,8 +253,10 @@ async function qseasons(){
   if(QS) return QS;
   const d = await get("qseasons.json"); if(!d) return null;
   const C = d.cols, ix = {}; C.forEach((k, i) => ix[k] = i);
-  const rows = d.rows.map(r => { const o = {id: d.players[r[0]][0], name: d.players[r[0]][1], season: d.seasons[r[1]], y: +d.seasons[r[1]].slice(0, 4)};
-    C.slice(2).forEach(k => o[k] = r[ix[k]]); return o; });
+  const rows = d.rows.map(r => { const P = d.players[r[0]], o = {id: P[0], name: P[1], season: d.seasons[r[1]], y: +d.seasons[r[1]].slice(0, 4)};
+    C.slice(2).forEach(k => o[k] = r[ix[k]]);
+    // every position he's listed at: that season's (PG, SG-SF...) plus his career listing (G, F-C...)
+    o.pos = String(o.pos || ""); o.cpos = String(P[2] || ""); o.ps = new Set(o.pos.split("-").concat(String(P[2] || "").split("-")).filter(Boolean)); return o; });
   const maxG = {}; rows.forEach(r => { maxG[r.season] = Math.max(maxG[r.season] || 0, r.g || 0); });
   const first = {}; rows.forEach(r => { if(!first[r.id] || r.y < first[r.id]) first[r.id] = r.y; });
   QS = {rows, maxG, first, seasons: d.seasons, current: d.current};
@@ -275,6 +277,18 @@ const QPCT = [
   {k: "fgp", m: "fg", a: "fga", re: "from the field|field goal|fg", lab: "FG%", name: "field goal %", min: 300},
   {k: "fg3p", m: "fg3", a: "fg3a", re: "from three|from 3|from deep|three point|3 point|3pt|3p|from beyond the arc", lab: "3P%", name: "3-point %", min: 82, since: 1980},
   {k: "ftp", m: "ft", a: "fta", re: "from the line|free throws?|ft", lab: "FT%", name: "free throw %", min: 125}];
+/* positions: a player listed at more than one counts at each (a "G-F" is a guard and a forward) */
+const QPOS = [
+  {re: /\bpoint guards?\b|\bpgs?\b/, lab: "point guards", has: s => s.has("PG")},
+  {re: /\bshooting guards?\b|\bsgs?\b|\boff guards?\b/, lab: "shooting guards", has: s => s.has("SG")},
+  {re: /\bsmall forwards?\b|\bsfs?\b/, lab: "small forwards", has: s => s.has("SF")},
+  {re: /\bpower forwards?\b|\bpfs?\b/, lab: "power forwards", has: s => s.has("PF")},
+  {re: /\bcent(?:er|re)s?\b|\b5s\b/, lab: "centers", has: s => s.has("C")},
+  {re: /\bwings?\b/, lab: "wings", has: s => s.has("SG") || s.has("SF") || (s.has("G") && s.has("F"))},
+  {re: /\bbig ?men\b|\bbigs\b|\bbig man\b/, lab: "big men", has: s => s.has("PF") || s.has("C")},
+  {re: /\bguards?\b/, lab: "guards", has: s => s.has("PG") || s.has("SG") || s.has("G")},
+  {re: /\bforwards?\b/, lab: "forwards", has: s => s.has("SF") || s.has("PF") || s.has("F")}];
+const posIn = q => { const m = QPOS.find(P => P.re.test(q)); return m || null; };
 const FRANCH = {ATL: "ATL STL MLH TRI", BKN: "BRK NJN NYN NYA NJA", CHA: "CHO CHA CHH", DEN: "DEN DNA DNR", DET: "DET FTW", GSW: "GSW SFW PHW", HOU: "HOU SDR",
   LAC: "LAC SDC BUF", LAL: "LAL MNL", MEM: "MEM VAN", NOP: "NOP NOH NOK", OKC: "OKC SEA", PHI: "PHI SYR", PHX: "PHO PHX", SAC: "SAC KCK KCO CIN ROC", SAS: "SAS SAA DLC TEX",
   UTA: "UTA NOJ", WAS: "WAS WSB CAP BAL CHZ CHP", NYK: "NYK", BOS: "BOS", CHI: "CHI", CLE: "CLE", DAL: "DAL", IND: "IND INA", MIA: "MIA", MIL: "MIL", MIN: "MIN", ORL: "ORL", POR: "POR", TOR: "TOR"};
@@ -348,6 +362,7 @@ async function statQuery(raw, p, teams){
   if(rookie) rows = rows.filter(r => Q.first[r.id] === r.y && r.y > 1946);
   if(codes) rows = rows.filter(r => String(r.team).split("/").some(t => codes.includes(t)));
   if(AF) rows = rows.filter(r => AF.f(r.age));
+  const POS = posIn(q); if(POS) rows = rows.filter(r => POS.has(r.ps));
   // which stats are tracked: drop seasons that didn't count what's asked
   const asked = T.map(t => t.s || t.p).concat(leaderMode ? [stat1] : []);
   const since = Math.max(0, ...asked.map(s => s.since || 0));
@@ -366,17 +381,18 @@ async function statQuery(raw, p, teams){
   T.forEach(t => addCol(t.p ? {k: t.p.k, lab: t.p.lab, f: r => f1s(pctOf(r, t.p))} : {k: t.s.k + (t.tot ? "T" : ""), lab: t.tot ? t.s.lab + " total" : t.s.lab, f: r => t.tot ? String(r[t.s.k] ?? "—") : f1s(per(r, t.s.k))}));
   if(leaderMode) addCol(stat1.m ? {k: stat1.k, lab: stat1.lab, f: r => f1s(pctOf(r, stat1))} : {k: stat1.k, lab: stat1.lab, f: r => f1s(per(r, stat1.k))});
   ["pts", "trb", "ast"].forEach(k => { if(cols.length < 4){ const S = QSTAT.find(s => s.k === k); addCol({k, lab: S.lab, f: r => f1s(per(r, k))}); } });
-  const scope = [SF.label, codes ? `for the ${TEAMS[fr]}` : "", rookie ? "as a rookie" : "", AF ? AF.label : "", p ? "" : ""].filter(Boolean).join(", ");
+  const scope = [POS ? `by ${POS.lab}` : "", SF.label, codes ? `for the ${TEAMS[fr]}` : "", rookie ? "as a rookie" : "", AF ? AF.label : "", p ? "" : ""].filter(Boolean).join(", ");
   const desc = T.map(t => t.p ? `${t.c === "<" ? "under " : ""}${t.v}% ${t.p.name.replace(" %", "")}` : `${t.c === "<" ? "under " : ""}${t.v}${t.c === "<" ? "" : "+"} ${t.s.name}${t.tot ? (career ? "" : " in a season") : (career ? " a game" : " a game")}`);
   const descTxt = desc.length > 1 ? desc.slice(0, -1).join(", ") + " and " + desc[desc.length - 1] : desc[0];
   const link = r => known.has(r.id) ? plink(r.name, r.id) : esc(r.name);
   const pName = x => known.has(x.id) ? plink(x.name, x.id) : esc(x.name);
   const lineOf = r => cols.map(c => `<b>${esc(c.f(r))}</b> <small>${esc(c.lab)}</small>`).join(" · ");
-  const rowHtml = (r, i) => [i + 1, `${link(r)}<br><small>${esc(career ? `${r.season} · ${r.g} games` : `${r.season} · ${String(r.team).replace(/\//g, ", ")}`)}</small>`, `<span class="ask-line">${lineOf(r)}</span>`];
+  const rowHtml = (r, i) => [i + 1, `${link(r)}<br><small>${esc(career ? `${r.season} · ${r.g} games` : `${r.season} · ${String(r.team).replace(/\//g, ", ")}${r.pos ? " · " + r.pos : ""}${r.cpos && r.cpos !== r.pos ? ` (career ${r.cpos})` : ""}`)}</small>`, `<span class="ask-line">${lineOf(r)}</span>`];
   const tbl = (title, list) => table(title, list.slice(0, 15).map(rowHtml)) + (list.length > 15 ? `<details class="ask-more"><summary>Show all ${list.length}</summary>${table(title, list.slice(15).map((r, i) => rowHtml(r, i + 15)))}</details>` : "");
   if(!career) notes.push(`Per-game numbers count seasons with at least 70% of that season's games.`);
   else if(!p) notes.push("Career numbers include players with 400+ games.");
   if(!withCur) notes.push(`This season (${Q.current}) isn't counted until it's over; add "this season" to ask about it.`);
+  if(POS) notes.push(`Positions are as listed for each season, plus each player's career listing, so a player listed at more than one position counts at each.${/point|shooting|small|power/.test(POS.lab) ? " Before 1973-74 many players are listed only as a guard or forward, so those seasons may not count." : ""}`);
   if(rookie) notes.push("A rookie season is a player's first NBA season (ABA years aren't included).");
   notes.push(`Regular season only, ${Q.seasons[0]} to ${Q.current}.`);
   // leaders: "most points per game in a season", "career assists leader"
