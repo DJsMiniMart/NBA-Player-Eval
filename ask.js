@@ -26,7 +26,7 @@ const QWORDS = /^(who|what|whats|which|when|where|how|is|are|does|did|do|has|hav
 function looksLikeQuestion(raw){
   const q = fold(raw);
   if(!q || q.split(" ").length < 2) return false;
-  return /\?\s*$/.test(raw) || QWORDS.test(q) || /\b(leads?|leading|most|fewest|record|next game|play next|injur|hurt|mvp|champion|standings|averag|stats|race|rings?)\b/.test(q);
+  return /\?\s*$/.test(raw) || QWORDS.test(q) || /\baverag|\d+ ?(points|rebounds|assists|steals|blocks|threes|ppg|rpg|apg)\b|\b50 40 90\b/.test(q) || /\b(leads?|leading|most|fewest|record|next game|play next|injur|hurt|mvp|champion|standings|averag|stats|race|rings?)\b/.test(q);
 }
 function teamIn(q){
   const hits = [];
@@ -247,6 +247,165 @@ async function draftAnswer(){
   const top = D.prospects.slice(0, 5);
   return {html: `<p class="ask-a">The consensus No. 1 prospect for the 2027 draft is <b>${esc(top[0].name)}</b> (${esc(top[0].pos)}, ${esc(top[0].school)}).</p>${table("2027 consensus big board", top.map(p => [p.rank, `<b>${esc(p.name)}</b>`, `<small>${esc(p.pos)} · ${esc(p.school)}</small>`]))}`, href: "draft.html", more: "Draft Board"};
 }
+/* ---------- every season since 1946-47 (data/qseasons.json): "how many players averaged 25, 10 and 8 in a season?" ---------- */
+let QS = null;
+async function qseasons(){
+  if(QS) return QS;
+  const d = await get("qseasons.json"); if(!d) return null;
+  const C = d.cols, ix = {}; C.forEach((k, i) => ix[k] = i);
+  const rows = d.rows.map(r => { const o = {id: d.players[r[0]][0], name: d.players[r[0]][1], season: d.seasons[r[1]], y: +d.seasons[r[1]].slice(0, 4)};
+    C.slice(2).forEach(k => o[k] = r[ix[k]]); return o; });
+  const maxG = {}; rows.forEach(r => { maxG[r.season] = Math.max(maxG[r.season] || 0, r.g || 0); });
+  const first = {}; rows.forEach(r => { if(!first[r.id] || r.y < first[r.id]) first[r.id] = r.y; });
+  QS = {rows, maxG, first, seasons: d.seasons, current: d.current};
+  return QS;
+}
+// stats people ask about, per game unless the number is only possible as a season total
+const QSTAT = [
+  {k: "fg3", re: "threes?|3s|3 ?pointers?|three ?pointers?|3pm|triples|3 ?pt makes", lab: "3PM", name: "3-pointers", cap: 10, since: 1980},
+  {k: "pts", re: "points?|pts|ppg|pt", lab: "PTS", name: "points", cap: 60},
+  {k: "trb", re: "rebounds?|rebs?|rpg|boards", lab: "REB", name: "rebounds", cap: 30, since: 1951},
+  {k: "ast", re: "assists?|asts?|apg|dimes", lab: "AST", name: "assists", cap: 25},
+  {k: "stl", re: "steals?|stls?|spg", lab: "STL", name: "steals", cap: 8, since: 1974},
+  {k: "blk", re: "blocks?|blks?|bpg|blocked shots", lab: "BLK", name: "blocks", cap: 10, since: 1974},
+  {k: "tov", re: "turnovers?|tovs?", lab: "TOV", name: "turnovers", cap: 10, since: 1978},
+  {k: "mp", re: "minutes|mins?|mpg", lab: "MIN", name: "minutes", cap: 48, since: 1952},
+  {k: "g", re: "games(?! a season)", lab: "G", name: "games", cap: 0}];
+const QPCT = [
+  {k: "fgp", m: "fg", a: "fga", re: "from the field|field goal|fg", lab: "FG%", name: "field goal %", min: 300},
+  {k: "fg3p", m: "fg3", a: "fg3a", re: "from three|from 3|from deep|three point|3 point|3pt|3p|from beyond the arc", lab: "3P%", name: "3-point %", min: 82, since: 1980},
+  {k: "ftp", m: "ft", a: "fta", re: "from the line|free throws?|ft", lab: "FT%", name: "free throw %", min: 125}];
+const FRANCH = {ATL: "ATL STL MLH TRI", BKN: "BRK NJN NYN NYA NJA", CHA: "CHO CHA CHH", DEN: "DEN DNA DNR", DET: "DET FTW", GSW: "GSW SFW PHW", HOU: "HOU SDR",
+  LAC: "LAC SDC BUF", LAL: "LAL MNL", MEM: "MEM VAN", NOP: "NOP NOH NOK", OKC: "OKC SEA", PHI: "PHI SYR", PHX: "PHO PHX", SAC: "SAC KCK KCO CIN ROC", SAS: "SAS SAA DLC TEX",
+  UTA: "UTA NOJ", WAS: "WAS WSB CAP BAL CHZ CHP", NYK: "NYK", BOS: "BOS", CHI: "CHI", CLE: "CLE", DAL: "DAL", IND: "IND INA", MIA: "MIA", MIL: "MIL", MIN: "MIN", ORL: "ORL", POR: "POR", TOR: "TOR"};
+const qnorm = raw => String(raw).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "").replace(/%/g, " percent ")
+  .replace(/(\d)\.(\d)/g, "$1D$2").replace(/(\d)-(\d\d)\b/g, "$1 $2").replace(/[^a-z0-9+/D ]/g, " ").replace(/D/g, ".").replace(/\s+/g, " ").trim();
+function thresholds(q){
+  const out = [], seen = new Set();
+  const cmp = pre => /(under|less than|fewer than|below|at most|no more than)\s*$/.test(pre) ? "<" : ">=";
+  // 50/40/90 club
+  if(/\b50 ?\/? ?40 ?\/? ?90\b/.test(q)){ out.push({p: QPCT[0], v: 50, c: ">="}, {p: QPCT[1], v: 40, c: ">="}, {p: QPCT[2], v: 90, c: ">="}); return out; }
+  // shooting: "50 percent from three", "shot 45 percent from the field", "40 percent 3 point"
+  QPCT.forEach(P => { const m = q.match(new RegExp(`((?:\\w+ ){0,3})(\\d+(?:\\.\\d+)?) percent (?:or (?:better|more|higher) )?(?:shooting )?(?:${P.re})`)) || q.match(new RegExp(`((?:\\w+ ){0,3})(?:${P.re}) (?:percent|percentage|pct) (?:of |over |above |at least |under |below )?(\\d+(?:\\.\\d+)?)`));
+    if(m && !seen.has(P.k)){ seen.add(P.k); out.push({p: P, v: +m[2], c: cmp(m[1] || "")}); } });
+  const words = QSTAT.map(s => s.re).join("|");
+  const re = new RegExp(`((?:[a-z]+ ){0,3})(\\d+(?:\\.\\d+)?)\\s*(\\+|plus)?\\s*(?:or more |or better |per game |a game )?(?:${words})\\b(?! ?(?:percent|percentage|pct|shoot))`, "g");
+  let m; while((m = re.exec(q))){ const word = m[0].slice(m[0].lastIndexOf(m[2]) + m[2].length).replace(/^\s*(\+|plus)?\s*(or more |or better |per game |a game )?/, "").trim();
+    const S = QSTAT.find(s => new RegExp(`^(?:${s.re})\\b`).test(word)); if(!S || seen.has(S.k)) continue;
+    if(/percent\s*$/.test(m[1])) continue;
+    seen.add(S.k); const v = +m[2];
+    out.push({s: S, v, c: cmp(m[1] || ""), tot: S.k === "g" || v > S.cap || /\btotal\b/.test(q) && !/averag|per game|a game/.test(q)}); }
+  // "25, 7 and 7" / "20 and 10": points, rebounds (and assists) by default
+  if(!out.length){ const m3 = q.match(/\b(?:averag\w*|put up|a|with|of|did) (\d+(?:\.\d+)?) (?:(\d+(?:\.\d+)?) )?and (\d+(?:\.\d+)?)\b(?! (?:percent|games|seasons|years|times))/);
+    if(m3){ const nums = [m3[1], m3[2], m3[3]].filter(x => x != null).map(Number), keys = nums.length === 3 ? ["pts", "trb", "ast"] : ["pts", "trb"];
+      nums.forEach((v, i) => out.push({s: QSTAT.find(s => s.k === keys[i]), v, c: ">=", tot: false})); return out; } }
+  // "a triple-double average"
+  if(/averag\w* a triple double/.test(q) && !out.length) ["pts", "trb", "ast"].forEach(k => out.push({s: QSTAT.find(s => s.k === k), v: 10, c: ">=", tot: false}));
+  return out;
+}
+function seasonFilter(q, Q){
+  let lo = -1e9, hi = 1e9, label = "", m;
+  if(/this (season|year)|so far this/.test(q)){ const y = +Q.current.slice(0, 4); return {lo: y, hi: y, label: `this season (${Q.current})`}; }
+  if((m = q.match(/\b(19[4-9]\d|20[0-4]\d) (\d\d)\b/))){ const y = +m[1]; return {lo: y, hi: y, label: `in ${y}-${m[2]}`}; }
+  if((m = q.match(/between (19[4-9]\d|20[0-4]\d) and (19[4-9]\d|20[0-4]\d)/))) return {lo: +m[1] - 1, hi: +m[2] - 1, label: `from ${m[1]} to ${m[2]}`};
+  if((m = q.match(/since (?:the )?(19[4-9]\d|20[0-4]\d)/))){ lo = +m[1]; label = `since ${m[1]}`; }
+  if((m = q.match(/(?:before|prior to) (?:the )?(19[4-9]\d|20[0-4]\d)/))){ hi = +m[1] - 2; label = (label ? label + " and " : "") + `before ${m[1]}`; }
+  if((m = q.match(/in the (?:19|20)?(\d0)s\b/))){ const d = +m[1], y = d >= 40 ? 1900 + d : 2000 + d; lo = y - 1; hi = y + 8; label = `in the ${y}s`; }
+  if((m = q.match(/(?:last|past) (\d+) (?:seasons|years)/))){ const cy = +Q.current.slice(0, 4); lo = cy - +m[1]; hi = cy - 1; label = `in the last ${m[1]} seasons`; }
+  if(lo === -1e9 && hi === 1e9 && (m = q.match(/\bin (19[4-9]\d|20[0-4]\d)\b/))){ const y = +m[1]; return {lo: y - 1, hi: y - 1, label: `in ${y - 1}-${String(y).slice(2)}`}; }
+  return {lo, hi, label};
+}
+function ageFilter(q){
+  let m;
+  if((m = q.match(/(?:age|aged) (\d\d) or (younger|under)|(\d\d) (?:years old )?or younger|younger than (\d\d)|under (?:the age of )?(\d\d) years|under age (\d\d)/))){ const n = +(m[1] || m[3] || m[4] || m[5] || m[6]); const strict = !!(m[4] || m[5] || m[6]); return {f: a => a != null && (strict ? a < n : a <= n), label: strict ? `younger than ${n}` : `age ${n} or younger`}; }
+  if((m = q.match(/(?:age|aged) (\d\d) or older|(\d\d) (?:years old )?or older|older than (\d\d)|over (?:the age of )?(\d\d) years/))){ const n = +(m[1] || m[2] || m[3] || m[4]); const strict = !!(m[3] || m[4]); return {f: a => a != null && (strict ? a > n : a >= n), label: strict ? `older than ${n}` : `age ${n} or older`}; }
+  if((m = q.match(/(?:before|by|until) (?:the )?age (?:of )?(\d\d)|before (?:he|they) (?:was|were|turned) (\d\d)/))){ const n = +(m[1] || m[2]); return {f: a => a != null && a < n, label: `before age ${n}`}; }
+  if((m = q.match(/\b(?:at|aged?) (\d\d)\b(?! (?:points|rebounds|assists))/))){ const n = +m[1]; return {f: a => a === n, label: `at age ${n}`}; }
+  return null;
+}
+const per = (r, k) => r[k] == null || !r.g ? null : r[k] / r.g;
+const f1s = v => v == null ? "—" : (Math.round(v * 10) / 10).toFixed(1);
+const pctOf = (r, P) => r[P.a] ? r[P.m] / r[P.a] * 100 : null;
+async function statQuery(raw, p, teams){
+  const q = qnorm(raw);
+  const T = thresholds(q);
+  const stat1 = (/percent|percentage|pct|shoot/.test(q) && QPCT.find(P => new RegExp(`\\b(?:${P.re})\\b`).test(q))) || QSTAT.find(s => s.k !== "g" && new RegExp(`\\b(?:${s.re})\\b`).test(q));
+  const leaderMode = !T.length && stat1 && /(in a|single|one|any) season|season (record|high)|career|all time|ever|history/.test(q) && /most|highest|best|top|lead|record|who averaged|fewest|lowest/.test(q);
+  if(!T.length && !leaderMode) return null;
+  const Q = await qseasons(); if(!Q) return null;
+  const known = new Set((await players()).map(x => x.id));
+  if(!p){ // older players who aren't in the site's player files (before 1973-74)
+    if(!Q.names){ Q.names = new Map(); Q.rows.forEach(r => { if(!Q.names.has(r.id)) Q.names.set(r.id, {id: r.id, name: r.name, k: fold(r.name)}); }); }
+    const fq = fold(raw); let best = null; Q.names.forEach(x => { if(x.k.length > 6 && new RegExp(`\\b${x.k}\\b`).test(fq) && (!best || x.k.length > best.k.length)) best = x; });
+    if(best) p = best;
+  }
+  const career = /career/.test(q), rookie = /rookie/.test(q), SF = seasonFilter(q, Q), AF = ageFilter(q);
+  const fr = teams && teams.length === 1 && !p ? teams[0] : null, codes = fr ? (FRANCH[fr] || fr).split(" ") : null;
+  const notes = [];
+  const withCur = SF.label.startsWith("this season") || /including this|this season|so far|currently|right now/.test(q);
+  let rows = Q.rows.filter(r => r.y >= SF.lo && r.y <= SF.hi && (withCur || r.season !== Q.current));
+  if(p) rows = rows.filter(r => r.id === p.id);
+  if(rookie) rows = rows.filter(r => Q.first[r.id] === r.y && r.y > 1946);
+  if(codes) rows = rows.filter(r => String(r.team).split("/").some(t => codes.includes(t)));
+  if(AF) rows = rows.filter(r => AF.f(r.age));
+  // which stats are tracked: drop seasons that didn't count what's asked
+  const asked = T.map(t => t.s || t.p).concat(leaderMode ? [stat1] : []);
+  const since = Math.max(0, ...asked.map(s => s.since || 0));
+  if(since && +Q.seasons[0].slice(0, 4) + 1 < since){ rows = rows.filter(r => r.y + 1 >= since); notes.push(`${asked.filter(s => s.since).map(s => s.name[0].toUpperCase() + s.name.slice(1)).join(" and ")} ${asked.filter(s => s.since).length > 1 ? "have" : "has"} only been counted since ${since - 1}-${String(since).slice(2)}.`); }
+  // career: add each player's seasons together
+  if(career){ const by = {}; rows.forEach(r => { const o = by[r.id] = by[r.id] || {id: r.id, name: r.name, season: "", y: r.y, y2: r.y, g: 0, team: "", seasons: 0}; o.seasons++; o.y = Math.min(o.y, r.y); o.y2 = Math.max(o.y2, r.y);
+      ["g", "mp", "pts", "trb", "ast", "stl", "blk", "tov", "fg", "fga", "fg3", "fg3a", "ft", "fta"].forEach(k => { if(r[k] != null) o[k] = (o[k] || 0) + r[k]; }); });
+    rows = Object.values(by).map(o => Object.assign(o, {season: `${o.y}-${String(o.y2 + 1).slice(2)}`})); }
+  const minG = r => career ? (p ? 1 : 400) : Math.max(1, Math.ceil(0.7 * (Q.maxG[r.season] || 0)));
+  const scale = r => career ? 1 : (Q.maxG[r.season] || 82) / 82;
+  const okPct = (r, P) => career ? (r[P.a] || 0) >= P.min * 3 : (r[P.m] || 0) >= P.min * scale(r);
+  const val = (r, t) => t.p ? pctOf(r, t.p) : t.tot ? r[t.s.k] : per(r, t.s.k);
+  const pass = (r, t) => { const v = val(r, t); if(v == null) return false; if(t.p && !okPct(r, t.p)) return false; if(!t.tot && !t.p && (r.g || 0) < minG(r)) return false;
+    return t.c === "<" ? v < t.v : v >= t.v - 1e-9; };
+  const cols = []; const addCol = c => { if(!cols.some(x => x.k === c.k)) cols.push(c); };
+  T.forEach(t => addCol(t.p ? {k: t.p.k, lab: t.p.lab, f: r => f1s(pctOf(r, t.p))} : {k: t.s.k + (t.tot ? "T" : ""), lab: t.tot ? t.s.lab + " total" : t.s.lab, f: r => t.tot ? String(r[t.s.k] ?? "—") : f1s(per(r, t.s.k))}));
+  if(leaderMode) addCol(stat1.m ? {k: stat1.k, lab: stat1.lab, f: r => f1s(pctOf(r, stat1))} : {k: stat1.k, lab: stat1.lab, f: r => f1s(per(r, stat1.k))});
+  ["pts", "trb", "ast"].forEach(k => { if(cols.length < 4){ const S = QSTAT.find(s => s.k === k); addCol({k, lab: S.lab, f: r => f1s(per(r, k))}); } });
+  const scope = [SF.label, codes ? `for the ${TEAMS[fr]}` : "", rookie ? "as a rookie" : "", AF ? AF.label : "", p ? "" : ""].filter(Boolean).join(", ");
+  const desc = T.map(t => t.p ? `${t.c === "<" ? "under " : ""}${t.v}% ${t.p.name.replace(" %", "")}` : `${t.c === "<" ? "under " : ""}${t.v}${t.c === "<" ? "" : "+"} ${t.s.name}${t.tot ? (career ? "" : " in a season") : (career ? " a game" : " a game")}`);
+  const descTxt = desc.length > 1 ? desc.slice(0, -1).join(", ") + " and " + desc[desc.length - 1] : desc[0];
+  const link = r => known.has(r.id) ? plink(r.name, r.id) : esc(r.name);
+  const pName = x => known.has(x.id) ? plink(x.name, x.id) : esc(x.name);
+  const lineOf = r => cols.map(c => `<b>${esc(c.f(r))}</b> <small>${esc(c.lab)}</small>`).join(" · ");
+  const rowHtml = (r, i) => [i + 1, `${link(r)}<br><small>${esc(career ? `${r.season} · ${r.g} games` : `${r.season} · ${String(r.team).replace(/\//g, ", ")}`)}</small>`, `<span class="ask-line">${lineOf(r)}</span>`];
+  const tbl = (title, list) => table(title, list.slice(0, 15).map(rowHtml)) + (list.length > 15 ? `<details class="ask-more"><summary>Show all ${list.length}</summary>${table(title, list.slice(15).map((r, i) => rowHtml(r, i + 15)))}</details>` : "");
+  if(!career) notes.push(`Per-game numbers count seasons with at least 70% of that season's games.`);
+  else if(!p) notes.push("Career numbers include players with 400+ games.");
+  if(!withCur) notes.push(`This season (${Q.current}) isn't counted until it's over; add "this season" to ask about it.`);
+  if(rookie) notes.push("A rookie season is a player's first NBA season (ABA years aren't included).");
+  notes.push(`Regular season only, ${Q.seasons[0]} to ${Q.current}.`);
+  // leaders: "most points per game in a season", "career assists leader"
+  if(leaderMode){
+    const low = /fewest|lowest|worst/.test(q), tot = (career && !/averag|per game|a game|ppg|rpg|apg/.test(q)) || /\btotal|most (points|rebounds|assists|steals|blocks|threes|3s|3 pointers|three pointers|minutes|turnovers)\b(?! (per|a) game)/.test(q) && !/averag|per game|a game|ppg|rpg|apg/.test(q);
+    const v = r => stat1.m ? (okPct(r, stat1) ? pctOf(r, stat1) : null) : tot ? r[stat1.k] : ((r.g || 0) >= minG(r) ? per(r, stat1.k) : null);
+    const list = rows.filter(r => v(r) != null).sort((a, b) => low ? v(a) - v(b) : v(b) - v(a));
+    if(!list.length) return {html: `<p class="ask-a">I couldn't find any seasons that match.</p>`};
+    if(tot && !stat1.m){ cols.splice(0, 1, {k: stat1.k + "T", lab: stat1.lab + " total", f: r => (r[stat1.k] ?? 0).toLocaleString()}); }
+    const top = list[0], what = `${stat1.name}${tot || stat1.m ? "" : " per game"}`;
+    return {html: `<p class="ask-a">${low ? "Fewest" : stat1.m ? "Best" : "Most"} ${esc(what)} ${career ? "in a career" : "in a season"}${scope ? " " + esc(scope) : ""}: <b>${link(top)}</b> with <b>${esc(cols[0].f(top))}</b>${career ? "" : ` in ${esc(top.season)}`}.</p>${tbl(career ? "Career leaders" : "Best seasons", list.slice(0, 50))}<p class="ask-n">${esc(notes.join(" "))}</p>`, href: "history.html", more: "NBA History"};
+  }
+  const hits = rows.filter(r => T.every(t => pass(r, t)));
+  const sortT = T.find(t => !t.p && t.c !== "<") || T[0];
+  hits.sort((a, b) => /most recent|latest|last/.test(q) ? b.y - a.y : (val(b, sortT) || 0) - (val(a, sortT) || 0));
+  const byP = new Map(); hits.forEach(r => { const o = byP.get(r.id) || {id: r.id, name: r.name, n: 0, yrs: []}; o.n++; o.yrs.push(r.season); byP.set(r.id, o); });
+  if(p){
+    const what = career ? (hits.length ? "has" : "hasn't") : "";
+    return {html: `<p class="ask-a">${career ? `<b>${pName(p)}</b> ${what} averaged ${esc(descTxt)} for his career${hits.length ? ` (${esc(cols.map(c => `${c.f(hits[0])} ${c.lab}`).join(", "))})` : ""}.` : `<b>${pName(p)}</b> ${hits.length ? `did it in <b>${hits.length}</b> season${hits.length === 1 ? "" : "s"}` : "never did it"}: ${esc(descTxt)}${scope ? ", " + esc(scope) : ""}.`}</p>
+      ${hits.length && !career ? tbl(`${p.name}'s seasons`, hits) : ""}<p class="ask-n">${esc(notes.join(" "))}</p>`, href: known.has(p.id) ? `pe.html#/player/${encodeURIComponent(p.id)}` : "history.html", more: known.has(p.id) ? `${p.name}'s page` : "NBA History"};
+  }
+  if(!hits.length) return {html: `<p class="ask-a">Nobody has ${career ? "averaged" : "had a season with"} ${esc(descTxt)}${scope ? ", " + esc(scope) : ""}.</p><p class="ask-n">${esc(notes.join(" "))}</p>`, href: "history.html", more: "NBA History"};
+  const most = /most (seasons|times|years)|how many (seasons|times) has|who has done it the most/.test(q);
+  const P = [...byP.values()].sort((a, b) => b.n - a.n || a.yrs[0].localeCompare(b.yrs[0]));
+  const head = career ? `<b>${P.length}</b> player${P.length === 1 ? " has" : "s have"} averaged ${esc(descTxt)} for a career${scope ? ", " + esc(scope) : ""}.`
+    : `<b>${P.length}</b> player${P.length === 1 ? " has" : "s have"} done it in <b>${hits.length}</b> season${hits.length === 1 ? "" : "s"}: ${esc(descTxt)}${scope ? ", " + esc(scope) : ""}.${P[0].n > 1 ? ` <b>${link(P[0])}</b> has the most (${P[0].n}).` : ""}`;
+  const byPlayer = table("Most seasons", P.slice(0, 10).map((x, i) => [i + 1, link(x), `<b>${x.n}</b>`, `<small>${esc(x.yrs.slice().sort().slice(0, 4).join(", "))}${x.n > 4 ? "…" : ""}</small>`]));
+  return {html: `<p class="ask-a">${head}</p>${most && !career ? byPlayer + tbl("Every season", hits) : tbl(career ? "Careers" : "Every season", hits) + (!career && P.length > 1 && P[0].n > 1 && P.length < hits.length ? `<details class="ask-more"><summary>By player</summary>${byPlayer}</details>` : "")}<p class="ask-n">${esc(notes.join(" "))}</p>`, href: "history.html", more: "NBA History"};
+}
 /* ---------- the router ---------- */
 async function answer(raw){
   if(!looksLikeQuestion(raw)) return null;
@@ -254,6 +413,7 @@ async function answer(raw){
   Object.entries(PALIAS).forEach(([k, v]) => { q = q.replace(new RegExp(`\\b${k}\\b`, "g"), v); });
   const teams = teamIn(q);
   if(/\b(draft|prospect|mock|big board|number one pick|no 1 pick|first pick)\b/.test(q) && !/drafted|draft pick history/.test(q)) return draftAnswer();
+  { const pp = await playerIn(q), sq = await statQuery(raw, pp, teams); if(sq) return sq; }
   const thisSeason = /this (season|year)|right now|currently|so far|leading|leads?|leader/.test(q);
   // history: championships
   if(/champion|title|ring|won it all|finals winner|won the finals/.test(q) && !/finals mvp/.test(q)) return champAnswer(q, teams[0]);
@@ -294,9 +454,11 @@ const CSS = `.ask{padding:10px 12px 12px;border-bottom:1px solid var(--line,#dde
 .ask .ask-r{display:flex;gap:8px;align-items:baseline;padding:5px 10px;border-top:1px solid var(--line,#dde2ea);} .ask .ask-r .c0{width:18px;color:var(--dim,#5b6475);flex:none;} .ask .ask-r .c1{flex:1;min-width:0;}
 .ask .ask-r small{color:var(--dim,#5b6475);}
 .ask .ask-chips{display:flex;flex-wrap:wrap;gap:6px;} .ask .ask-chips span{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--row,#f2f4f8);}
+.ask .ask-line{display:inline-block;text-align:right;white-space:normal;} .ask .ask-r .c2:has(.ask-line){text-align:right;max-width:58%;}
+.ask .ask-more{margin-top:6px;} .ask .ask-more summary{cursor:pointer;font-weight:600;font-size:13px;margin-bottom:6px;}
 .ask .ask-go{display:inline-block;margin-top:8px;font-weight:600;font-size:13px;}
 .ask.none{color:var(--dim,#5b6475);font-size:13px;}`;
 function css(){ if(document.getElementById("askCss")) return; const s = document.createElement("style"); s.id = "askCss"; s.textContent = CSS; document.head.appendChild(s); }
-const EXAMPLES = ["Who has won the most MVPs?", "Who leads the league in 3-pointers?", "When do the Lakers play next?", "What's the best record in the East?", "Is Haliburton hurt?", "How is Wembanyama doing?", "Who won the 2016 title?", "Most career assists"];
+const EXAMPLES = ["How many players averaged 25, 10 and 8 in a season?", "Who has won the most MVPs?", "Who leads the league in 3-pointers?", "When do the Lakers play next?", "What's the best record in the East?", "Is Haliburton hurt?", "How is Wembanyama doing?", "Who won the 2016 title?", "Most career assists"];
 window.Ask = {looksLikeQuestion, answer, css, EXAMPLES};
 })();

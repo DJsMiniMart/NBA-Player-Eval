@@ -45,6 +45,7 @@ const PAGES = [
   {label:"The Locker Room", sub:"Every player, by team",          href:"pe.html#/players",    match:p => /pe\.html$/.test(p.path) && /^#\/(players|player|compare)/.test(p.hash)},
   {label:"The Game", sub:"Your favorite players, 2K-style cards and the card game", href:"rotation.html", match:p => /rotation\.html$/.test(p.path)},
   {label:"The Stat Lab", sub:"Team stats and league leaders",  href:"stats.html",          match:p => /stats\.html$/.test(p.path)},
+  {label:"Ask the Geek", sub:"Ask stat questions in plain English",  href:"ask.html",          match:p => /ask\.html$/.test(p.path)},
   {label:"Franchise Files", sub:"Every team: stats, lineups, cap, picks, history",     href:"team.html",           match:p => /team\.html$/.test(p.path)},
   {label:"Trade Machine", sub:"Test a trade against the CBA",   href:"trade.html",          match:p => /trade\.html$/.test(p.path)},
   {label:"Draft Board",     sub:"2027 big board, mock drafts, lottery order", href:"draft.html", match:p => /draft\.html$/.test(p.path)},

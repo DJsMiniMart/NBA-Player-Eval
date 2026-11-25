@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask the Geek · Full Court Geek Press</title>
+<meta name="description" content="Ask NBA stat questions in plain English: how many players averaged 25, 10 and 8 in a season, who has the most 30-point seasons, career leaders, awards, standings and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#f2f4f8; --panel:#fff; --ink:#0f172a; --dim:#5b6475; --line:#dde2ea; --row:#f6f8fb; --accent:#C8102E; --court:#1D428A; --good:#2f9e44; --me:#1D428A; }
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0b1220; --panel:#121b2e; --ink:#e8edf6; --dim:#93a0b8; --line:#22304a; --row:#16213a; --accent:#ff4d63; --court:#7aa2ff; --good:#51cf66; --me:#2b55b5; } }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,sans-serif;}
+  a{color:var(--court);}
+  .nba-band{color:#fff;}
+  .band-in{max-width:760px;margin:0 auto;padding:26px 16px 22px;}
+  .band-in .eyebrow{font:700 13px/1 Inter,sans-serif;letter-spacing:3px;text-transform:uppercase;color:#ff4d63;margin-bottom:10px;}
+  h1{font:700 46px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.5px;margin:0;}
+  h1 span{background:#C8102E;padding:0 8px;border-radius:4px;margin-left:4px;}
+  .lede{font-size:16px;opacity:.9;margin:10px 0 0;max-width:620px;}
+  main{max-width:760px;margin:0 auto;padding:14px 16px 140px;}
+  .thread{display:flex;flex-direction:column;gap:12px;}
+  .msg{max-width:100%;}
+  .msg.me{align-self:flex-end;max-width:85%;background:var(--me);color:#fff;padding:9px 14px;border-radius:16px 16px 4px 16px;font-weight:500;}
+  .msg.bot{align-self:flex-start;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:4px 16px 16px 16px;overflow:hidden;}
+  .msg.bot .ask{border-bottom:0;padding:12px 14px 14px;}
+  .who{font:700 10.5px Inter,sans-serif;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);padding:10px 14px 0;}
+  .thinking{padding:12px 14px;color:var(--dim);font-size:14px;}
+  .thinking i{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:var(--dim);animation:bl 1s infinite;} .thinking i:nth-child(2){animation-delay:.2s} .thinking i:nth-child(3){animation-delay:.4s}
+  @keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  .hello{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;}
+  .hello p{margin:0 0 8px;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chips button{font:500 13px Inter,sans-serif;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--row);color:var(--ink);cursor:pointer;text-align:left;}
+  .chips button:hover{border-color:var(--court);}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(180deg,transparent,var(--bg) 30%);padding:18px 16px 16px;}
+  .bar form{max-width:760px;margin:0 auto;display:flex;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px;box-shadow:0 6px 20px rgba(0,0,0,.12);}
+  .bar input{flex:1;min-width:0;border:0;background:none;font:16px Inter,sans-serif;color:var(--ink);outline:none;}
+  .bar button{border:0;border-radius:999px;background:var(--accent);color:#fff;font:700 14px Inter,sans-serif;padding:9px 16px;cursor:pointer;}
+  .bar button:disabled{opacity:.5;cursor:default;}
+  .note{color:var(--dim);font-size:13px;}
+  .foot{margin:18px 0 0;}
+  @media (max-width:560px){ h1{font-size:38px;} }
+</style>
+</head>
+<body>
+<div class="nba-band"><div class="band-in">
+  <div class="eyebrow">Plain-English stat questions</div>
+  <h1>Ask the <span>Geek</span></h1>
+  <p class="lede">Ask about any NBA season since 1946-47: who averaged what, who did it most, career leaders, awards, titles, standings, injuries and who's hot this year.</p>
+</div></div>
+
+<main>
+  <div class="thread" id="thread">
+    <div class="hello" id="hello">
+      <p><b>Try one of these</b>, or type your own question below.</p>
+      <div class="chips" id="examples"></div>
+    </div>
+  </div>
+  <p class="note foot">Answers are worked out right here in your browser from the site's own stat files (regular season, from Basketball-Reference and the NBA's feeds), so they're exact counts, not guesses. Ask about one thing at a time; it doesn't remember earlier questions.</p>
+</main>
+
+<div class="bar"><form id="askForm" autocomplete="off"><input id="askQ" type="text" placeholder="How many players averaged 25, 10 and 8 in a season?" aria-label="Ask a question" enterkeyhint="send"><button id="askGo" type="submit">Ask</button></form></div>
+
+<script src="nav.js"></script>
+<script src="ask.js"></script>
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const EX = ["How many players averaged 25 points, 10 rebounds and 8 assists in a season?", "Who has averaged a triple-double for a season?", "Who has the most seasons averaging 30 points?",
+  "Which players averaged 20 and 10 as a rookie?", "How many seasons did LeBron average 25, 7 and 7?", "Who are the members of the 50/40/90 club?", "Most 3-pointers in a season",
+  "Most career assists", "Who averaged 25 points for the Warriors since 2000?", "Who has won the most MVPs?", "What's the best record in the West?", "Who leads the league in rebounds?"];
+const TRY = ["How many players averaged 30 points in the 90s?", "Best field goal percentage in a season", "Who averaged 20 points before age 21?", "Most rebounds per game in a season"];
+Ask.css();
+$("examples").innerHTML = EX.map(q => `<button type="button">${esc(q)}</button>`).join("");
+$("examples").onclick = e => { const b = e.target.closest("button"); if(b) ask(b.textContent); };
+let busy = false;
+async function ask(text){
+  text = String(text || "").trim(); if(!text || busy) return;
+  busy = true; $("askGo").disabled = true; $("askQ").value = "";
+  const T = $("thread");
+  T.insertAdjacentHTML("beforeend", `<div class="msg me">${esc(text)}</div><div class="msg bot"><div class="who">Ask the Geek</div><div class="thinking"><i></i><i></i><i></i></div></div>`);
+  const box = T.lastElementChild; box.scrollIntoView({behavior: "smooth", block: "end"});
+  let a = null; try{ a = await Ask.answer(text.replace(/\?*$/, "?")); }catch(e){ console.error(e); }
+  box.innerHTML = `<div class="who">Ask the Geek</div><div class="ask">${a ? a.html + (a.href ? `<a class="ask-go" href="${esc(a.href)}">${esc(a.more || "More")} →</a>` : "")
+    : `<p class="ask-a">I couldn't work that one out yet. I'm best with season and career numbers ("averaged 25 and 10", "most 3-pointers in a season"), awards, titles, standings, schedules and injuries.</p><p class="ask-a" style="margin:0">Try: ${TRY.map(q => `<a href="#" data-q="${esc(q)}">${esc(q)}</a>`).join(" · ")}</p>`}</div>`;
+  box.scrollIntoView({behavior: "smooth", block: "start"});
+  try{ history.replaceState(null, "", "?q=" + encodeURIComponent(text)); }catch(_){}
+  busy = false; $("askGo").disabled = false;
+}
+$("thread").addEventListener("click", e => { const a = e.target.closest("[data-q]"); if(a){ e.preventDefault(); ask(a.dataset.q); } });
+$("askForm").onsubmit = e => { e.preventDefault(); ask($("askQ").value); };
+const q0 = new URLSearchParams(location.search).get("q"); if(q0) ask(q0); else if(matchMedia("(min-width:700px)").matches) $("askQ").focus();
+})();
+</script>
+</body>
+</html>
