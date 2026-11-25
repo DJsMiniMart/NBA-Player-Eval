@@ -9,6 +9,8 @@ Writes data/qseasons.json: {"cols": ["p", "s", "team", ...], "players": [[id, na
     Anything a season didn't track is null.
   - 1973-74 on come from the season files update_stats.py already saves (data/season-YYYY.json).
   - The current season comes from data/stats.json.
+Positions are Basketball-Reference's for that season (PG, SG, SF, PF, C; older seasons often just G, F or C,
+and some players have two, like SF-PF).
 A traded player has one row for his whole season (all teams), with every team he played for.
 
 Run after update_stats.py (GitHub Actions). Safe to re-run: it only downloads old seasons it doesn't have yet.
@@ -26,11 +28,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 OUT = os.path.join(DATA, "qseasons.json")
 FIRST_YEAR, OLD_LAST = 1947, 1973          # 1946-47 ... 1972-73 from the old pages
-COLS = ["id", "name", "season", "team", "age", "g", "mp", "pts", "trb", "ast", "stl", "blk", "tov",
+OLD_SCHEMA = 2                             # 2: positions saved too; older files get downloaded again
+COLS = ["id", "name", "season", "team", "pos", "age", "g", "mp", "pts", "trb", "ast", "stl", "blk", "tov",
         "fg", "fga", "fg3", "fg3a", "ft", "fta", "orb", "drb"]
-NUM = COLS[4:]
+NUM = COLS[5:]
 # Basketball-Reference data-stat names (old and new table styles) -> our names
-ALIAS = {"player": "name", "name_display": "name", "team_id": "team", "team_name_abbr": "team", "age": "age",
+ALIAS = {"player": "name", "name_display": "name", "team_id": "team", "team_name_abbr": "team", "pos": "pos", "age": "age",
          "g": "g", "games": "g", "mp": "mp", "pts": "pts", "trb": "trb", "ast": "ast", "stl": "stl", "blk": "blk",
          "tov": "tov", "fg": "fg", "fga": "fga", "fg3": "fg3", "fg3a": "fg3a", "ft": "ft", "fta": "fta",
          "orb": "orb", "drb": "drb"}
@@ -99,8 +102,8 @@ def parse_old(html):
                 m = a and a.get("href") and re.search(r"/players/\w/([\w.]+)\.html", a["href"])
                 pid = (m.group(1) if m else None) or cell.get("data-append-csv")
                 row["name"] = txt.rstrip("*")
-            elif key == "team":
-                row["team"] = txt
+            elif key in ("team", "pos"):
+                row[key] = txt
             else:
                 try:
                     row[key] = float(txt) if txt != "" else None
@@ -133,7 +136,8 @@ def backfill_old(limit_new=40):
     got = 0
     for year in range(OLD_LAST, FIRST_YEAR - 1, -1):
         path = os.path.join(DATA, f"oldseason-{year}.json")
-        if load(path, {}).get("players"):
+        saved = load(path, {})
+        if saved.get("players") and saved.get("schema") == OLD_SCHEMA:
             continue
         if got >= limit_new:
             break
@@ -151,7 +155,7 @@ def backfill_old(limit_new=40):
             print(f"No totals for {label(year)} (HTTP {status})")
             continue
         with open(path, "w", encoding="utf-8") as f:
-            json.dump({"season": label(year), "league": league, "source": url, "players": players}, f, separators=(",", ":"))
+            json.dump({"season": label(year), "league": league, "source": url, "schema": OLD_SCHEMA, "players": players}, f, separators=(",", ":"))
         print(f"Saved {label(year)}: {len(players)} players")
 
 
@@ -162,7 +166,7 @@ def row_from(p, season):
     if trb is None and (p.get("drb") is not None or p.get("orb") is not None):
         trb = (p.get("drb") or 0) + (p.get("orb") or 0)
     vals = dict(p, trb=trb)
-    return [p["id"], p["name"], season, team] + [vals.get(k) for k in NUM]
+    return [p["id"], p["name"], season, team, p.get("pos") or ""] + [vals.get(k) for k in NUM]
 
 
 def build():
@@ -200,7 +204,7 @@ def build():
         if r[0] not in pix:
             pix[r[0]] = len(players)
             players.append([r[0], r[1]])
-        out.append([pix[r[0]], sidx[r[2]]] + r[3:])
+        out.append([pix[r[0]], sidx[r[2]]] + r[3:])   # team, pos, then the numbers
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"updatedAt": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "current": cur.get("season"),
                    "cols": ["p", "s"] + COLS[3:], "players": players, "seasons": seasons, "rows": out}, f, separators=(",", ":"))
