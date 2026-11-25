@@ -69,6 +69,8 @@
   .empty{padding:14px;color:var(--dim);}
   .final{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:14px;font-weight:600;}
   @media (max-width:760px){ .grid{grid-template-columns:1fr;} .tm img{width:44px;height:44px;} .tm .nm{font-size:22px;} .at .sc{font-size:32px;} .teams{gap:6px;} }
+  .b21{display:inline-block;font:700 10.5px/1.6 Inter,system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid #c92a2a;color:#c92a2a;background:rgba(201,42,42,.07);vertical-align:middle;white-space:nowrap;}
+  @media (prefers-color-scheme: dark){ .b21{color:#ff8787;border-color:#ff8787;} }
 </style>
 </head>
 <body>
@@ -168,7 +170,7 @@ async function load(){
   html += `<h2>Head-to-head</h2>` + h2hHtml(H, away, home);
 
   // ---------- lines + your pick ----------
-  html += `<div class="bet"><h2>Lines &amp; your pick</h2>` + linesHtml(O, U, away, home, g) + `</div>`;
+  html += `<div class="bet"><h2>Lines &amp; your pick <span class="b21" title="Betting lines are shown for information only. You must be 21+ and in a state where sports betting is legal to bet for real. Gambling problem? Call 1-800-GAMBLER.">21+ · For information only</span></h2>` + linesHtml(O, U, away, home, g) + `</div>`;
 
   // ---------- storylines ----------
   const st = (U && U.stories) || [];

@@ -282,6 +282,8 @@
   .my .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;} .my .row a,.my .row button{font:600 12.5px Inter,sans-serif;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;cursor:pointer;}
   .my-pick{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;}
   .my-pick select{font:500 14px Inter,sans-serif;padding:7px 10px;border-radius:8px;}
+  .b21{display:inline-block;font:700 10.5px/1.6 Inter,system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid #c92a2a;color:#c92a2a;background:rgba(201,42,42,.07);vertical-align:middle;white-space:nowrap;}
+  @media (prefers-color-scheme: dark){ .b21{color:#ff8787;border-color:#ff8787;} }
 </style>
 </head>
 <body>
@@ -317,7 +319,7 @@
   </section>
 
   <section class="sec" id="upSec">
-    <div class="sec-h"><h2>Coming up</h2><small id="upNote">Pulse picks the winner · storylines for every game · use the arrows or the calendar to look back</small></div>
+    <div class="sec-h"><h2>Coming up</h2><small id="upNote">Pulse picks the winner · storylines for every game · use the arrows or the calendar to look back</small> <span class="b21" title="Betting lines are shown for information only. You must be 21+ and in a state where sports betting is legal to bet for real. Gambling problem? Call 1-800-GAMBLER.">21+ · For information only</span></div>
     <div class="daynav">
       <button class="arr" id="upPrev" aria-label="Previous day">‹</button>
       <div class="daytabs" id="upDays"></div>
