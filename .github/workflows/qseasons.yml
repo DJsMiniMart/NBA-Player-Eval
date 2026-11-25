@@ -1,0 +1,29 @@
+name: Ask the Geek seasons
+
+# Builds data/qseasons.json (every season since 1946-47, for stat questions on Ask the Geek).
+# The daily update rebuilds it too; this is for running it on its own from the Actions tab.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-stats
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install beautifulsoup4
+      - name: Build every season
+        run: python qseasons.py
+      - name: Save
+        run: .github/scripts/save.sh "Ask the Geek seasons"

@@ -49,6 +49,11 @@ jobs:
           NO_BACKFILL: "1"
         run: python update_stats.py
 
+      - name: Every season for Ask the Geek
+        if: steps.gate.outputs.skip != '1'
+        continue-on-error: true
+        run: python qseasons.py
+
       - name: Save the new numbers
         if: steps.gate.outputs.skip != '1'
         run: .github/scripts/save.sh "Daily stats update"
