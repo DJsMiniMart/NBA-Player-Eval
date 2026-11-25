@@ -11,12 +11,12 @@ const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const $ = id => document.getElementById(id);
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 
-const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
+const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + reb + 2*stl + 2*blk - 2*tov) / min : null;
 /* Pulse+: Pulse that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
-const plusOf = (pts, ast, reb, stl, blk, tov, fgm, fga, ftm, fta, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov - (fga - fgm) - .5*(fta - ftm)) / min : null;
+const plusOf = (pts, ast, reb, stl, blk, tov, fgm, fga, ftm, fta, min) => min ? (pts + 2*ast + reb + 2*stl + 2*blk - 2*tov - (fga - fgm) - .5*(fta - ftm)) / min : null;
 /* Clutch Pulse: the Pulse formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute.
    0 for a player with no crunch-time minutes. c = [sec, pts, ast, reb, stl, blk, tov, ...] */
-const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) / (c[0] / 60) : 0;
+const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + c[3] + 2*c[4] + 2*c[5] - 2*c[6]) / (c[0] / 60) : 0;
 
 const css = `
 .bx-modal{position:fixed;inset:0;z-index:100;background:rgba(5,10,25,.6);display:none;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto;}
@@ -122,7 +122,7 @@ async function open(gid){
     ${r ? `<div class="bx-recap"><b>${r.u ? `<a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.h)}</a>` : esc(r.h)}</b>${r.d && r.d !== r.h ? `<p>${esc(r.d)}</p>` : ""}</div>` : ""}
     ${window.Clips && Clips.forGame(gid).length ? `<div class="bx-clips"><div class="bx-note" style="font-weight:700;margin:10px 0 4px">▶ Highlights</div>${Clips.strip(Clips.forGame(gid))}</div>` : ""}</div>
     ${sides.map(table).join("")}
-    <p class="bx-note" style="margin-top:10px">Pulse = (points + assists×2 + rebounds×2 + steals×4 + blocks − turnovers×4) ÷ minutes. Pulse+ also subtracts 1 per missed field goal and 0.5 per missed free throw. Clutch Pulse is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
+    <p class="bx-note" style="margin-top:10px">Pulse = (points + assists×2 + rebounds + steals×2 + blocks×2 − turnovers×2) ÷ minutes. Pulse+ also subtracts 1 per missed field goal and 0.5 per missed free throw. Clutch Pulse is the same formula using only stats from crunch time (last 5 minutes of the 4th or overtime with the score within 5), divided by crunch-time minutes; 0 means no crunch-time minutes, and a 🔥 number had crunch-time minutes (hover it for the line). S = starter.</p>`;
 }
 window.BoxScore = {open, close, peOf, plusOf, clutchPE};
 })();

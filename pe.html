@@ -267,8 +267,8 @@ const cols = () => COLS.filter(c => (!c.only || [].concat(c.only).includes(VIEW)
   .map(c => c.k === "value" ? Object.assign({}, c, {t: METRIC_LABEL[metric()] || c.t}) : c)
   .map(c => c.base ? Object.assign({}, c, {t:BASE.season}) : (c.k === "season" && VIEW === "careers" ? Object.assign({}, c, {t:"Years"}) : c))
   .map(c => c.k === "team" && (VIEW === "alltime" || VIEW === "careers") ? Object.assign({}, c, {sm:true}) : c);
-/* Pulse from totals: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MIN */
-const playEval = t => t.mp ? (t.pts + 2*t.ast + 2*((t.drb||0) + (t.orb||0)) + 4*t.stl + t.blk - 4*(t.tov||0)) / t.mp : null;
+/* Pulse from totals: ((PTS + AST*2 + REB + STL*2 + BLK*2) - TOV*2) / MIN */
+const playEval = t => t.mp ? (t.pts + 2*t.ast + ((t.drb||0) + (t.orb||0)) + 2*t.stl + 2*t.blk - 2*(t.tov||0)) / t.mp : null;
 const CAREERS = {};
 /* A player-season counting only what he did for `team` (null if he never played for them that season).
    Players who changed teams mid-season carry per-team splits; older data without them falls back to full totals. */
@@ -388,12 +388,12 @@ function attachClutch(players){
   players.forEach(p => {
     if(p.pe0 == null) p.pe0 = p.value;
     const c = CLUTCH && CLUTCH.get(fold(p.name));
-    const base = c ? c.pts + 2*c.ast + 2*c.reb + 4*c.stl + c.blk - 4*c.tov : 0;
+    const base = c ? c.pts + 2*c.ast + c.reb + 2*c.stl + 2*c.blk - 2*c.tov : 0;
     p.clutch = c || null;
     p.cmin = c ? c.sec / 60 : 0;
     p.cpe = p.cmin ? base / p.cmin : 0;
     /* Pulse+: Pulse that also charges missed shots (−1 per missed field goal, −0.5 per missed free throw) */
-    p.mvrp = p.mp ? ((p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0) - ((p.fga||0) - (p.fg||0)) - .5*((p.fta||0) - (p.ft||0))) / p.mp : null;
+    p.mvrp = p.mp ? ((p.pts||0) + 2*(p.ast||0) + (p.trb||0) + 2*(p.stl||0) + 2*(p.blk||0) - 2*(p.tov||0) - ((p.fga||0) - (p.fg||0)) - .5*((p.fta||0) - (p.ft||0))) / p.mp : null;
   });
 }
 function applyMetric(){
@@ -405,7 +405,7 @@ function applyMetric(){
   if(!note){ note = document.createElement("div"); note.id = "metricNote"; note.className = "metric-note"; document.querySelector('.controls').after(note); }
   const any = VIEW === "current" && DATA.players.some(p => p.cmin > 0);
   note.hidden = m === "pe";
-  note.innerHTML = m === "mvrp" ? `<b>Pulse+</b> is Pulse with missed shots charged: (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4 − missed field goals − missed free throws×0.5) ÷ minutes. A player now breaks even on twos at 33% and on threes at 25%, so a bad shooting night costs him. Tested on every 2025-26 game, it picked the winner 87.7% of the time vs. 83.8% for Pulse.` : `<b>Clutch Pulse</b> is the Pulse formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch Pulse of 0 but still has his regular Pulse. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
+  note.innerHTML = m === "mvrp" ? `<b>Pulse+</b> is Pulse with missed shots charged: (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2 − missed field goals − missed free throws×0.5) ÷ minutes. A player now breaks even on twos at 33% and on threes at 25%, so a bad shooting night costs him. Tested on every 2025-26 game, it picked the winner 87.7% of the time vs. 83.8% for Pulse.` : `<b>Clutch Pulse</b> is the Pulse formula using only stats from crunch time (the last 5 minutes of the 4th quarter or overtime with the score within 5), divided by crunch-time minutes. A player who hasn't played in crunch time has a Clutch Pulse of 0 but still has his regular Pulse. To be ranked here, players need at least ${CRUNCH_MIN_MINUTES} crunch-time minutes this season.${any ? "" : " No game has had crunch time yet this season."}`;
 }
 
 function drawHead(){
@@ -495,8 +495,8 @@ function teamCell(p){
 }
 function detailRow(p){
   const parts = [
-    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Rebounds ×2", p.trb != null ? p.trb : (p.drb||0) + (p.orb||0), 2],
-    ["Steals ×4", p.stl, 4], ["Blocks", p.blk, 1], ["Turnovers ×4", p.tov || 0, -4]
+    ["Points", p.pts, 1], ["Assists ×2", p.ast, 2], ["Rebounds", p.trb != null ? p.trb : (p.drb||0) + (p.orb||0), 1],
+    ["Steals ×2", p.stl, 2], ["Blocks ×2", p.blk, 2], ["Turnovers ×2", p.tov || 0, -2]
   ];
   const total = parts.reduce((t,[,v,m])=>t+v*m, 0);
   return `<tr class="detail"><td colspan="${cols().length}">
@@ -641,7 +641,7 @@ async function showSeason(file){
 }
 
 /* ---------- Pulse$: who's outplaying his contract ----------
-   Production = the Pulse formula's top line (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4), season to date.
+   Production = the Pulse formula's top line (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2), season to date.
    Pulse$       = production per $1M of salary earned so far (salary × team games ÷ 82).
    Plays like = the median salary of the 15 qualified players whose production per team game is closest to his:
                 what the league actually pays for that level of play. Outplaying by = plays like − salary.
@@ -661,7 +661,7 @@ function valueRows(){
     const sal = salaryOf((CONTRACTS || {})[p.id]);
     if(!sal || !p.g || !p.mp) return;
     const tg = Math.max(p.g, (TEAMG || {})[BBR2NBA[p.team] || p.team] || 0);
-    const prod = (p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0);
+    const prod = (p.pts||0) + 2*(p.ast||0) + (p.trb||0) + 2*(p.stl||0) + 2*(p.blk||0) - 2*(p.tov||0);
     rows.push({p, id:p.id, name:p.name, team:p.team, g:p.g, mpg:p.mp / p.g, sal, tg, prod, pace: prod / tg,
       vpd: prod / (sal * tg / 82 / 1e6), mvr: prod / p.mp, tier: tierOf(sal), q: p.g >= minG && p.mp / p.g >= minM});
   });
@@ -709,7 +709,7 @@ function drawValue(){
     || `<tr><td colspan="10" style="text-align:center;padding:18px;color:var(--dim)">No players here yet.</td></tr>`;
   $('vMore').innerHTML = list.length > vShown ? `<button id="vMoreBtn">Show more (${list.length - vShown} more)</button>` : "";
   if($('vMoreBtn')) $('vMoreBtn').onclick = () => { vShown += 50; drawValue(); };
-  $('vNote').textContent = `Pulse$ = Pulse production (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) per $1M of salary earned so far. "Plays like" is what the league pays for production like his: the median salary of the 15 qualified players closest to him in production per team game. "Outplaying by" is how far that is above his salary. Pay tiers compare a player with others paid about the same, so a max player is judged against other max players. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
+  $('vNote').textContent = `Pulse$ = Pulse production (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) per $1M of salary earned so far. "Plays like" is what the league pays for production like his: the median salary of the 15 qualified players closest to him in production per team game. "Outplaying by" is how far that is above his salary. Pay tiers compare a player with others paid about the same, so a max player is judged against other max players. Qualified = ${minG}+ game${minG === 1 ? "" : "s"} and ${minM}+ minutes a game. Early in the season the numbers swing a lot.`;
   card.querySelectorAll("[data-id]").forEach(el => el.onclick = () => openPlayer(el.dataset.id));
 }
 
@@ -721,7 +721,7 @@ function rookieRows(){
   const all = (CUR && CUR.players) || [];
   const most = Math.max(1, ...all.map(p => p.g || 0));
   const minG = Math.max(1, Math.ceil(most / 2)), minM = 10;
-  const mvrOf = p => p.mp ? ((p.pts||0) + 2*(p.ast||0) + 2*(p.trb||0) + 4*(p.stl||0) + (p.blk||0) - 4*(p.tov||0)) / p.mp : null;
+  const mvrOf = p => p.mp ? ((p.pts||0) + 2*(p.ast||0) + (p.trb||0) + 2*(p.stl||0) + 2*(p.blk||0) - 2*(p.tov||0)) / p.mp : null;
   const qual = p => (p.g||0) >= minG && p.mp / Math.max(1, p.g) >= minM;
   const ranked = all.filter(qual).map(p => [p.id, mvrOf(p)]).sort((a, b) => b[1] - a[1]);
   const lgRank = new Map(ranked.map(([id], i) => [id, i + 1]));

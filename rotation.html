@@ -358,7 +358,7 @@ function playsLike(p){
   if(!STATS || !p || !p.g) return null;
   const salOf = id => { const c = CT[id]; const y = c && (c.years || []).find(r => r[0] === SEASON); return y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0; };
   const tg = {}; ((SCHED && SCHED.games) || []).forEach(g => { if(g[4] === 3){ tg[g[2]] = (tg[g[2]] || 0) + 1; tg[g[3]] = (tg[g[3]] || 0) + 1; } });
-  const prod = x => (x.pts || 0) + 2 * (x.ast || 0) + 2 * (x.trb || 0) + 4 * (x.stl || 0) + (x.blk || 0) - 4 * (x.tov || 0);
+  const prod = x => (x.pts || 0) + 2 * (x.ast || 0) + (x.trb || 0) + 2 * (x.stl || 0) + 2 * (x.blk || 0) - 2 * (x.tov || 0);
   const pace = x => prod(x) / Math.max(x.g, tg[NBA[x.team] || x.team] || 0);
   if(!POOL) POOL = STATS.players.filter(x => x.g >= MING && x.mp / x.g >= 10).map(x => ({id: x.id, pace: pace(x), sal: salOf(x.id)})).filter(x => x.sal);
   const me = pace(p), near = POOL.filter(x => x.id !== p.id).sort((a, b) => Math.abs(a.pace - me) - Math.abs(b.pace - me)).slice(0, 15).map(x => x.sal).sort((a, b) => a - b);

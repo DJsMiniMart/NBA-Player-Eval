@@ -48,7 +48,7 @@
 
 <main>
   <h2>The formula</h2>
-  <div class="formula">(PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN
+  <div class="formula">(PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ MIN
     <small>Everything a player adds in a game, minus his turnovers, divided by the minutes he played</small></div>
 
   <div class="card">
@@ -57,15 +57,16 @@
       <tbody>
         <tr><td class="w">Points</td><td>×1</td><td>The baseline: every point counts once.</td></tr>
         <tr><td class="w">Assists</td><td>×2</td><td>An assist creates a basket for someone else. Passing is worth more than the box score usually gives it credit for.</td></tr>
-        <tr><td class="w">Rebounds</td><td>×2</td><td>A defensive rebound finishes a stop; an offensive rebound buys another shot. We tested halving defensive rebounds, and it made Pulse <i>worse</i> at predicting wins, so they stay at ×2.</td></tr>
-        <tr><td class="w">Steals</td><td>×4</td><td>A steal ends the other team's possession <i>and</i> usually starts a fast break: a two-possession swing.</td></tr>
-        <tr><td class="w">Blocks</td><td>×1</td><td>A block stops a shot, but the other team often keeps the ball.</td></tr>
-        <tr><td class="w">Turnovers</td><td>−4</td><td>The mirror image of a steal: a possession thrown away, often leading to easy points the other way.</td></tr>
+        <tr><td class="w">Rebounds</td><td>×1</td><td>A defensive rebound finishes a stop and an offensive rebound buys another shot, but most defensive boards come after the whole defense forced a miss, and the team usually gets that ball anyway. Counting rebounds once keeps big men who rack up uncontested boards from crowding the top of the list.</td></tr>
+        <tr><td class="w">Steals</td><td>×2</td><td>A steal ends the other team's possession and often starts a fast break. The easy basket that follows already shows up in someone's points, so ×2 is enough.</td></tr>
+        <tr><td class="w">Blocks</td><td>×2</td><td>A block takes away a shot at the rim and changes what the other team tries next, even when they keep the ball.</td></tr>
+        <tr><td class="w">Turnovers</td><td>−2</td><td>The mirror image of a steal: a possession thrown away, often leading to easy points the other way.</td></tr>
         <tr><td class="w">Minutes</td><td>÷</td><td>Everything is per minute, so a 12-minute bench spark and a 38-minute star can be compared fairly.</td></tr>
       </tbody>
     </table>
   </div>
-  <p>Pulse's signature is the heavy weight on <b>possessions</b>. Most box-score stats are built around scoring; Pulse says that winning and losing the ball matters as much as putting it in the basket.</p>
+  <p>Pulse's signature is the weight on <b>creating and protecting possessions</b>: assists, steals, blocks and turnovers all count double, so a player who sets up teammates and doesn't give the ball away rates above one who only scores.</p>
+  <div class="card"><b>New weights (November 2026).</b> Pulse used to count rebounds ×2, steals ×4, turnovers −4 and blocks ×1. That put too many rebounding centers near the top (14 of the top 25 last season). The new weights fix that and predict games slightly better: across 8,500 games from 2017-18 to 2025-26, rating teams on their earlier games picked 64.4% of winners with the new weights vs 64.0% with the old ones (and 64.9% vs 64.4% for Pulse+). Every season on the site has been re-scored with the new formula, so numbers before and after the change compare fairly.</div>
 
   <h2>The Pulse family</h2>
   <div class="grid">
@@ -78,9 +79,9 @@
   <h2>Does it work?</h2>
   <p>Every test below uses only what was known <i>before</i> each game, the same way the picks on The Morning Press are made. There's no hindsight.</p>
   <div class="grid">
-    <div class="card"><div class="big">70%</div><h3>Game winners</h3><p>Team Pulse ratings, adjusted for who's sitting, plus home court picked the winner of 70% of 2025-26 games. Sportsbook favorites typically win about 67–70%.</p></div>
-    <div class="card"><div class="big">87.7%</div><h3>Pulse+ in the box score</h3><p>The team with the higher Pulse+ in a game won 87.7% of 2025-26 games (Pulse: 83.8%). Missed shots matter.</p></div>
-    <div class="card"><div class="big">0.84</div><h3>Season win %</h3><p>Over a season, a team's Pulse margin tracks its winning percentage with a 0.84 correlation (1.00 would be perfect).</p></div>
+    <div class="card"><div class="big">70%</div><h3>Game winners</h3><p>Team Pulse ratings, adjusted for who's sitting, plus home court picked the winner of 70% of 2025-26 games (measured with the earlier weights; the new ones tested slightly better). Sportsbook favorites typically win about 67–70%.</p></div>
+    <div class="card"><div class="big">91.2%</div><h3>Pulse+ in the box score</h3><p>The team with the higher Pulse+ in a game won 91.2% of 2025-26 games (Pulse: 87.6%). Missed shots matter.</p></div>
+    <div class="card"><div class="big">0.85</div><h3>Season win %</h3><p>Over a season, a team's Pulse margin tracks its winning percentage with a 0.85 correlation (1.00 would be perfect).</p></div>
   </div>
   <h2>Who's sitting out</h2>
   <p>A team's rating is an average of its games, but the lineup changes from night to night. So before every pick, Pulse adjusts the rating for who's actually playing:</p>

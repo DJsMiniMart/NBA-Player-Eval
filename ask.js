@@ -85,7 +85,7 @@ async function seasonRows(){
   const d = await get("teams/players.json"); if(!d) return null;
   const C = d.cols, ix = k => C.indexOf(k);
   const rows = d.players.map(r => { const o = {}; C.forEach((k, i) => o[k] = r[i]); o.reb = (o.dreb || 0) + (o.oreb || 0);
-    o.pulse = o.min ? (o.pts + 2 * o.ast + 2 * o.reb + 4 * o.stl + o.blk - 4 * o.tov) / o.min : 0; return o; });
+    o.pulse = o.min ? (o.pts + 2 * o.ast + o.reb + 2 * o.stl + 2 * o.blk - 2 * o.tov) / o.min : 0; return o; });
   const most = Math.max(...rows.map(r => r.g || 0));
   return {rows, season: d.season, minG: Math.max(1, Math.ceil(most / 2)), most, ix};
 }

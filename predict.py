@@ -1,6 +1,6 @@
 """Pulse game picks and storylines for the home page (data/predictions.json).
 
-Team rating = average Pulse production margin per game: (PTS + AST*2 + REB*2 + STL*4 + BLK - TOV*4) for the team
+Team rating = average Pulse production margin per game: (PTS + AST*2 + REB + STL*2 + BLK*2 - TOV*2) for the team
 minus the same for its opponents. Early in the season each team's rating leans on half of last season's
 (PRIOR_GAMES games' worth). Win chance for the home team = 1 / (1 + e^(-SCALE * (home - away + HOME_EDGE))).
 Fit on every 2025-26 game, using only what was known before each game: it picked 68.0% of winners.
@@ -84,7 +84,7 @@ def load(path, default):
 
 
 def prod(line):
-    return line[0] + 2 * line[9] + 2 * (line[7] + line[8]) + 4 * line[10] + line[11] - 4 * line[12]
+    return line[0] + 2 * line[9] + (line[7] + line[8]) + 2 * line[10] + 2 * line[11] - 2 * line[12]
 
 
 def final_ratings(tgames):
@@ -99,7 +99,7 @@ def final_ratings(tgames):
 
 def pprod(lg):
     """Pulse production for one player game log row."""
-    return lg[5] + 2 * lg[6] + 2 * (lg[7] + lg[8]) + 4 * lg[9] + lg[10] - 4 * lg[11]
+    return lg[5] + 2 * lg[6] + (lg[7] + lg[8]) + 2 * lg[9] + 2 * lg[10] - 2 * lg[11]
 
 
 def name_key(n):
@@ -274,8 +274,8 @@ def ctx(year):
     rook = load(os.path.join(DATA, "rookies.json"), {}) or {}
     morning = load(os.path.join(DATA, "morning.json"), {}) or {}
     custom = load(os.path.join(DATA, "storylines.json"), {}) or {}
-    mvr = lambda p: ((p.get("pts", 0) + 2 * p.get("ast", 0) + 2 * p.get("trb", 0) + 4 * p.get("stl", 0) + p.get("blk", 0)  # noqa: E731
-                      - 4 * p.get("tov", 0)) / p["mp"]) if p.get("mp") else None
+    mvr = lambda p: ((p.get("pts", 0) + 2 * p.get("ast", 0) + p.get("trb", 0) + 2 * p.get("stl", 0) + 2 * p.get("blk", 0)  # noqa: E731
+                      - 2 * p.get("tov", 0)) / p["mp"]) if p.get("mp") else None
     now_team = {p["id"]: BBR2NBA.get(p.get("team"), p.get("team")) for p in stats if p.get("id")}
     last_team = {}
     for p in last:   # a player traded mid-season shows a "TOT" row first, then a row per team; keep the last team

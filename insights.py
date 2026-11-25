@@ -38,11 +38,11 @@ RACE_K = 15   # games of last season blended into the MVP pace (about 600 minute
 
 
 def pp(l):
-    return l[5] + 2 * l[6] + 2 * (l[7] + l[8]) + 4 * l[9] + l[10] - 4 * l[11]
+    return l[5] + 2 * l[6] + (l[7] + l[8]) + 2 * l[9] + 2 * l[10] - 2 * l[11]
 
 
 def tprod(line):
-    return line[0] + 2 * line[9] + 2 * (line[7] + line[8]) + 4 * line[10] + line[11] - 4 * line[12]
+    return line[0] + 2 * line[9] + (line[7] + line[8]) + 2 * line[10] + 2 * line[11] - 2 * line[12]
 
 
 def team_of(log, tg):

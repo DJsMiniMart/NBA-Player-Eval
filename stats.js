@@ -46,7 +46,7 @@ function teamRows(){
       pts: t[I.pts]*per, opp: o[I.pts]*per, diff: (t[I.pts] - o[I.pts])*per,
       ortg: P2 ? 100*t[I.pts]/P2 : null, drtg: P2 ? 100*o[I.pts]/P2 : null, net: P2 ? 100*(t[I.pts]-o[I.pts])/P2 : null,
       pace: min ? 48*P2/min : null,
-      pe: n ? (t[I.pts] + 2*t[I.ast] + 2*reb + 4*t[I.stl] + t[I.blk] - 4*t[I.tov]) / (48*n) : null,
+      pe: n ? (t[I.pts] + 2*t[I.ast] + reb + 2*t[I.stl] + 2*t[I.blk] - 2*t[I.tov]) / (48*n) : null,
       fgm: t[I.fgm]*per, fga: t[I.fga]*per, fgp: t[I.fga] ? t[I.fgm]/t[I.fga] : null,
       fg3m: t[I.fg3m]*per, fg3a: t[I.fg3a]*per, fg3p: t[I.fg3a] ? t[I.fg3m]/t[I.fg3a] : null,
       ftm: t[I.ftm]*per, fta: t[I.fta]*per, ftp: t[I.fta] ? t[I.ftm]/t[I.fta] : null,
@@ -64,7 +64,7 @@ const TCOLS = [
   ["n","GP",n0,0,"Games played"],["w","W",n0,1],["l","L",n0,-1],["winp","Win%",pc,1],
   ["cw","Clutch W",n0,1,"Wins in games that were within 5 in the last 5 minutes"],["cl","Clutch L",n0,-1,"Losses in games that were within 5 in the last 5 minutes"],["cwp","Clutch Win%",pc,1,"Win % in close games (within 5 in the last 5 minutes)"],
   ["pts","PTS",n1,1,"Points"],["opp","OPP",n1,-1,"Points allowed"],["diff","+/-",sg,1,"Point margin"],
-  ["pe","Team Pulse",n3,1,"(PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ 48, per game"],
+  ["pe","Team Pulse",n3,1,"(PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ 48, per game"],
   ["ortg","ORtg",n1,1,"Points scored per 100 possessions"],["drtg","DRtg",n1,-1,"Points allowed per 100 possessions"],["net","Net",sg,1,"Net rating"],["pace","Pace",n1,0,"Possessions per 48 minutes"],
   ["reb","REB",n1,1,"Rebounds"],["oreb","OREB",n1,1],["dreb","DREB",n1,1],["orbp","OREB%",pc,1,"Share of available offensive rebounds"],["drbp","DREB%",pc,1,"Share of available defensive rebounds"],
   ["ast","AST",n1,1],["stl","STL",n1,1],["blk","BLK",n1,1],["tov","TOV",n1,-1],["tovp","TOV%",n1,-1,"Turnovers per 100 plays"],["pf","PF",n1,-1,"Fouls"],
@@ -109,14 +109,14 @@ function players(){
       pts: r[PC.pts], reb, oreb: r[PC.oreb], dreb: r[PC.dreb], ast: r[PC.ast], stl: r[PC.stl], blk: r[PC.blk], tov: r[PC.tov],
       fgm: r[PC.fgm], fga: r[PC.fga], fg3m: r[PC.fg3m], fg3a: r[PC.fg3a], ftm: r[PC.ftm], fta: r[PC.fta], pm: r[PC.pm],
       dd: r[PC.dd], td: r[PC.td], high: r[PC.high],
-      pe: mins ? (r[PC.pts] + 2*r[PC.ast] + 2*reb + 4*r[PC.stl] + r[PC.blk] - 4*r[PC.tov]) / mins : null,
-      mvrp: mins ? (r[PC.pts] + 2*r[PC.ast] + 2*reb + 4*r[PC.stl] + r[PC.blk] - 4*r[PC.tov] - (r[PC.fga] - r[PC.fgm]) - .5*(r[PC.fta] - r[PC.ftm])) / mins : null,
+      pe: mins ? (r[PC.pts] + 2*r[PC.ast] + reb + 2*r[PC.stl] + 2*r[PC.blk] - 2*r[PC.tov]) / mins : null,
+      mvrp: mins ? (r[PC.pts] + 2*r[PC.ast] + reb + 2*r[PC.stl] + 2*r[PC.blk] - 2*r[PC.tov] - (r[PC.fga] - r[PC.fgm]) - .5*(r[PC.fta] - r[PC.ftm])) / mins : null,
       fgp: r[PC.fga] ? r[PC.fgm]/r[PC.fga] : null, fg3p: r[PC.fg3a] ? r[PC.fg3m]/r[PC.fg3a] : null, ftp: r[PC.fta] ? r[PC.ftm]/r[PC.fta] : null,
       stocks: r[PC.stl] + r[PC.blk],
       cmin: (r[PC.c_sec] || 0) / 60, cpts: r[PC.c_pts] || 0, cfgm: r[PC.c_fgm] || 0, cfga: r[PC.c_fga] || 0, cpm: r[PC.c_pm] || 0,
       cfgp: r[PC.c_fga] ? r[PC.c_fgm] / r[PC.c_fga] : null};
     /* Clutch Pulse: the Pulse formula on crunch-time stats only (last 5 min of the 4th/OT, score within 5), per crunch-time minute; 0 if none */
-    o.cpe = o.cmin ? ((r[PC.c_pts]||0) + 2*(r[PC.c_ast]||0) + 2*(r[PC.c_reb]||0) + 4*(r[PC.c_stl]||0) + (r[PC.c_blk]||0) - 4*(r[PC.c_tov]||0)) / o.cmin : 0;
+    o.cpe = o.cmin ? ((r[PC.c_pts]||0) + 2*(r[PC.c_ast]||0) + (r[PC.c_reb]||0) + 2*(r[PC.c_stl]||0) + 2*(r[PC.c_blk]||0) - 2*(r[PC.c_tov]||0)) / o.cmin : 0;
     o.qcl = o.cmin >= CLUTCH_MIN;
     o.qual = g >= minG && mins / g >= 10;
     o.qfg = r[PC.fgm] >= Math.max(2, Math.ceil(300 * frac));

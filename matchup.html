@@ -97,7 +97,7 @@ const sgn = n => n == null ? "—" : (n > 0 ? "+" : "") + (Number.isInteger(n) ?
 const f1 = v => v == null || !isFinite(v) ? "—" : v.toFixed(1);
 const pctTxt = v => v == null || !isFinite(v) ? "—" : (v * 100).toFixed(1) + "%";
 const day = d => new Date(String(d).slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", {month:"short", day:"numeric", year:"numeric"});
-const prod = s => s.pts + 2 * s.ast + 2 * (s.oreb + s.dreb) + 4 * s.stl + s.blk - 4 * s.tov;
+const prod = s => s.pts + 2 * s.ast + (s.oreb + s.dreb) + 2 * s.stl + 2 * s.blk - 2 * s.tov;
 
 async function load(){
   const gid = decodeURIComponent(location.hash.replace("#", ""));
@@ -190,7 +190,7 @@ function teamStats(L, S){
     x.pts += v("pts"); x.opp += o("pts");
     x.poss += v("fga") - v("oreb") + v("tov") + .44 * v("fta"); x.oposs += o("fga") - o("oreb") + o("tov") + .44 * o("fta");
     x.fg3m += v("fg3m"); x.fg3a += v("fg3a"); x.reb += v("oreb") + v("dreb"); x.tov += v("tov");
-    const pr = a => (a[ix("pts")] || 0) + 2 * (a[ix("ast")] || 0) + 2 * ((a[ix("oreb")] || 0) + (a[ix("dreb")] || 0)) + 4 * (a[ix("stl")] || 0) + (a[ix("blk")] || 0) - 4 * (a[ix("tov")] || 0);
+    const pr = a => (a[ix("pts")] || 0) + 2 * (a[ix("ast")] || 0) + ((a[ix("oreb")] || 0) + (a[ix("dreb")] || 0)) + 2 * (a[ix("stl")] || 0) + 2 * (a[ix("blk")] || 0) - 2 * (a[ix("tov")] || 0);
     x.prodF += pr(me); x.prodA += pr(op); x.res.push(win);
   };
   ((L && L.games) || []).slice().sort((a, b) => String(a[1]).localeCompare(String(b[1]))).forEach(g => {

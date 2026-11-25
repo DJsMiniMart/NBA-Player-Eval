@@ -8,7 +8,7 @@ const G = [
   ["Clutch Pulse", "Pulse using only crunch time: the last 5 minutes of the 4th quarter or overtime with the score within 5.", "about.html"],
   ["Pulse Wins", "Wins a player has added above a replacement-level player, from his Pulse production and his share of the team's defense.", "about.html"],
   ["Pulse pick", "Pulse's pick to win a game, from each team's Pulse margin plus home court, adjusted for who's injured or resting.", "about.html"],
-  ["Pulse", "The site's all-in-one production stat: (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ minutes. Around 1.0 is a typical rotation player; 1.25+ is top 10% and 1.4+ is All-NBA level.", "about.html"],
+  ["Pulse", "The site's all-in-one production stat: (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ minutes. Around 0.85 is a typical rotation player; 1.1+ is top 10% and 1.25+ is All-NBA level.", "about.html"],
   ["Value tracker", "What contract level a player is playing at this season: the median salary of the 15 qualified players whose production is closest to his.", null],
   ["Playing like", "What the league pays for a player producing what he's producing this season (median salary of the 15 closest qualified players).", null],
   ["Plays like", "What the league pays for a player producing what he's producing (median salary of the 15 closest qualified players).", null],

@@ -396,7 +396,7 @@
     </div>
   </section>
 
-  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. Pulse = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p>
+  <p class="foot">Scores, box scores, headlines and transactions from ESPN; updated every morning. Pulse = (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ MIN.</p>
 </main>
 
 <script src="nav.js"></script>
@@ -430,8 +430,8 @@ const logo = c => TEAMS[c] ? `${teamBadge(TEAMS[c].id)}` : "";
 const img = (c, cls = "") => logo(c) ? `<img class="${cls}" src="${logo(c)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : "";
 const short = c => (TEAMS[c] && TEAMS[c].n.split(" ").slice(-1)[0]) || c;
 const nick = c => { const n = (TEAMS[c] && TEAMS[c].n) || c; return /Trail Blazers$/.test(n) ? "Trail Blazers" : n.split(" ").slice(-1)[0]; };
-const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov) / min : null;
-const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + 2*c[3] + 4*c[4] + c[5] - 4*c[6]) / (c[0] / 60) : 0;   // crunch-time stats only, per crunch-time minute
+const peOf = (pts, ast, reb, stl, blk, tov, min) => min ? (pts + 2*ast + reb + 2*stl + 2*blk - 2*tov) / min : null;
+const clutchPE = c => c && c[0] ? (c[1] + 2*c[2] + c[3] + 2*c[4] + 2*c[5] - 2*c[6]) / (c[0] / 60) : 0;   // crunch-time stats only, per crunch-time minute
 const lastName = n => { const p = String(n).split(" "); return p.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv)$/i.test(p[p.length-1]) ? p[p.length-2] : p[p.length-1]; };
 async function getJSON(path){ try{ const r = await fetch(path + "?t=" + Date.now()); return r.ok ? await r.json() : null; }catch(_){ return null; } }
 const store = {get(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }, set(k, v){ try{ localStorage.setItem(k, v); }catch(_){} }};
@@ -500,7 +500,7 @@ function allLines(games){
         if(!min) return;
         const reb = dreb + oreb, pe = peOf(pts, ast, reb, stl, blk, tov, min);
         out.push({id, name, team:t, opp, home: t === b.home, gid:g[0], min, pts, ast, reb, stl, blk, tov, fgm, fga, tpm, tpa, ftm, fta, pm, cl,
-          pe, plus: min ? (pts + 2*ast + 2*reb + 4*stl + blk - 4*tov - (fga - fgm) - .5*(fta - ftm)) / min : null, cpe: clutchPE(cl), cmin: cl && cl[0] ? cl[0] / 60 : 0, won: b.teams[t].line[0] > b.teams[opp].line[0]});
+          pe, plus: min ? (pts + 2*ast + reb + 2*stl + 2*blk - 2*tov - (fga - fgm) - .5*(fta - ftm)) / min : null, cpe: clutchPE(cl), cmin: cl && cl[0] ? cl[0] / 60 : 0, won: b.teams[t].line[0] > b.teams[opp].line[0]});
       }); });
   });
   return out;

@@ -78,7 +78,7 @@ function summarize(games){
   const efg = s => (s[I.fgm] + 0.5 * s[I.fg3m]) / s[I.fga];
   return {n, w, l: n - w, winp: w / n,
     pts: t[I.pts]/n, opp: o[I.pts]/n, diff: (t[I.pts]-o[I.pts])/n,
-    pe: (t[I.pts] + 2*t[I.ast] + 2*(t[I.oreb] + t[I.dreb]) + 4*t[I.stl] + t[I.blk] - 4*t[I.tov]) / (48*n),
+    pe: (t[I.pts] + 2*t[I.ast] + (t[I.oreb] + t[I.dreb]) + 2*t[I.stl] + 2*t[I.blk] - 2*t[I.tov]) / (48*n),
     ortg: 100*t[I.pts]/P, drtg: 100*o[I.pts]/P, net: 100*(t[I.pts]-o[I.pts])/P, pace: 48*P/(min/1 || 1)*1,
     fgp: t[I.fgm]/t[I.fga], fg3p: t[I.fg3m]/t[I.fg3a], ftp: t[I.ftm]/t[I.fta], efg: efg(t),
     ts: t[I.pts]/(2*(t[I.fga] + 0.44*t[I.fta])), tpar: t[I.fg3a]/t[I.fga], ftr: t[I.fta]/t[I.fga],
@@ -170,7 +170,7 @@ function drawStats(){
   const badge = k => rk[k] ? `<span class="rk ${rk[k] <= 10 ? "top" : rk[k] > 20 ? "bot" : ""}" title="${ordN(rk[k])} of ${R.teams}">${ordN(rk[k])}</span>` : `<span class="rk">—</span>`;
   const tile = (k, label, fmt, tip) => `<div class="card tile"${tip ? ` title="${esc(tip)}"` : ""}><div class="k">${label}</div><div class="v">${fmt(s[k])}</div><div class="r">${rk[k] ? `${ordN(rk[k])} in the NBA` : ""}</div></div>`;
   $('statsBody').innerHTML = `
-    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team Pulse",f3n,"Points, assists×2, rebounds×2, steals×4, blocks, minus turnovers×4, per 48 minutes")}</div>
+    <div class="big4" style="margin-top:12px">${tile("ortg","Offensive rating",f1)}${tile("drtg","Defensive rating",f1)}${tile("net","Net rating",sgn)}${tile("pace","Pace",f1)}${tile("pe","Team Pulse",f3n,"Points, assists×2, rebounds, steals×2, blocks×2, minus turnovers×2, per 48 minutes")}</div>
     <div class="groups">${GROUPS.map(([name, rows]) => `<div class="card grp"><h3>${name}</h3>${rows.map(([k, label, fmt]) => `<div class="srow"><span class="k">${label}</span><span class="v">${fmt(s[k])}</span>${badge(k)}</div>`).join("")}</div>`).join("")}</div>
     <div class="card" style="margin-top:12px"><div class="tw"><table>
       <thead><tr><th class="l">Date</th><th class="l">Opponent</th><th class="l">Result</th><th>Pts</th><th>Opp</th><th>Off rtg</th><th>Def rtg</th><th>eFG%</th><th>3P</th><th>TOV</th><th>Reb</th><th>Ast</th></tr></thead>
@@ -295,7 +295,7 @@ function drawRoster(){
     rows.push({name:p.n, id: c ? c.id : statsByName.get(fold(p.n)), c, gp:n, gs:t[16], mp: n ? t[1]/n : 0, pts: n ? t[2]/n : 0, reb: n ? reb/n : 0,
       ast: n ? t[3]/n : 0, stl: n ? t[6]/n : 0, blk: n ? t[7]/n : 0, tov: n ? t[8]/n : 0,
       fgp: t[10] ? t[9]/t[10] : null, fg3p: t[12] ? t[11]/t[12] : null, ftp: t[14] ? t[13]/t[14] : null, pm: n ? t[15]/n : 0,
-      ev: t[1] ? (t[2] + 2*t[3] + 2*reb + 4*t[6] + t[7] - 4*t[8]) / t[1] : null});
+      ev: t[1] ? (t[2] + 2*t[3] + reb + 2*t[6] + 2*t[7] - 2*t[8]) / t[1] : null});
   });
   byName.forEach(c => rows.push({name:c.name, id:c.id, c, gp:0, gs:0, mp:0, pts:0, reb:0, ast:0, stl:0, blk:0, tov:0, fgp:null, fg3p:null, ftp:null, pm:0, ev:null}));
   rows.forEach(r => { r.sal = r.c ? r.c.salary : 0; r.age = r.c ? age(r.c.born) : ""; r.pos = r.c ? r.c.pos || "" : ""; });
@@ -600,7 +600,7 @@ function statOf(k, t, n, N){
   if(k === "gp") return n;
   if(!n) return null;
   if(RPCT[k]){ const [a, b] = RPCT[k]; return t[b] >= Math.max(3, n) ? t[a] / t[b] * 100 : null; }
-  if(k === "pulse") return t[1] >= 20 ? (t[2] + 2 * t[3] + 2 * (t[4] + t[5]) + 4 * t[6] + t[7] - 4 * t[8]) / t[1] : null;
+  if(k === "pulse") return t[1] >= 20 ? (t[2] + 2 * t[3] + (t[4] + t[5]) + 2 * t[6] + 2 * t[7] - 2 * t[8]) / t[1] : null;
   if(k === "pm" && t.noPm) return null;
   const v = {min: t[1], pts: t[2], reb: t[4] + t[5], ast: t[3], stl: t[6], blk: t[7], tov: t[8], pm: t[15]}[k];
   return v / (N || n);

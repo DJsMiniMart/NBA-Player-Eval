@@ -13,7 +13,7 @@ and writes data/seasons.json so the page can offer a season picker.
 rebounds separately, so it's the earliest season the formula can be run on.
 
 Formula (season totals):
-  ((PTS + 2*AST + 2*REB + 4*STL + BLK) - 4*TOV) / MP
+  ((PTS + 2*AST + REB + 2*STL + 2*BLK) - 2*TOV) / MP
   (the same as using per-game numbers divided by minutes per game)
   The NBA didn't record turnovers before 1977-78, so nothing is subtracted for 1973-74 to 1976-77.
 
@@ -44,7 +44,7 @@ HISTORY_PATH = os.path.join(DATA_DIR, "history.json")
 SEASONS_PATH = os.path.join(DATA_DIR, "seasons.json")
 ALLTIME_PATH = os.path.join(DATA_DIR, "alltime.json")
 # Saved seasons are re-scored with this whenever it changes, so edit stat_value() and this together.
-FORMULA = "((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / MP"
+FORMULA = "((PTS + AST*2 + REB + STL*2 + BLK*2) - TOV*2) / MP"
 FIRST_TOV_SEASON = 1978   # 1977-78: first season with turnovers
 # first season with steals, blocks and offensive/defensive rebounds (1973-74 -> 1974)
 FIRST_SEASON = 1974
@@ -66,11 +66,11 @@ MULTI_TEAM = re.compile(r"^(TOT|\dTM)$")
 
 
 def stat_value(p):
-    """The stat: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / minutes played."""
+    """The stat: ((PTS + AST*2 + REB + STL*2 + BLK*2) - TOV*2) / minutes played."""
     if not p["mp"]:
         return None
     reb = p.get("trb") if p.get("trb") is not None else (p.get("drb") or 0) + (p.get("orb") or 0)
-    total = p["pts"] + p["ast"] * 2 + reb * 2 + p["stl"] * 4 + p["blk"] - (p.get("tov") or 0) * 4
+    total = p["pts"] + p["ast"] * 2 + reb + p["stl"] * 2 + p["blk"] * 2 - (p.get("tov") or 0) * 2
     return total / p["mp"]
 
 

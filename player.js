@@ -81,10 +81,10 @@ const f1 = v => v == null ? "—" : (Math.round(v*10)/10).toFixed(1);
 const f3 = v => v == null ? "—" : v.toFixed(3);
 const pct = (m, a) => a ? (100*m/a).toFixed(1) + "%" : "—";
 const per = (t, g) => (num(t) != null && g) ? t/g : null;
-/* Pulse: ((PTS + AST*2 + REB*2 + STL*4 + BLK) - TOV*4) / minutes */
+/* Pulse: ((PTS + AST*2 + REB + STL*2 + BLK*2) - TOV*2) / minutes */
 const rebOf = s => s.trb != null ? s.trb : (s.drb || 0) + (s.orb || 0);
-const evalOf = s => s.mp ? (s.pts + 2*s.ast + 2*rebOf(s) + 4*s.stl + s.blk - 4*(s.tov || 0)) / s.mp : null;
-const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds ×2",2],["stl","Steals ×4",4],["blk","Blocks",1],["tov","Turnovers (×4, subtracted)",-4]];
+const evalOf = s => s.mp ? (s.pts + 2*s.ast + rebOf(s) + 2*s.stl + 2*s.blk - 2*(s.tov || 0)) / s.mp : null;
+const PARTS = [["pts","Points",1],["ast","Assists ×2",2],["trb","Rebounds",1],["stl","Steals ×2",2],["blk","Blocks ×2",2],["tov","Turnovers (×2, subtracted)",-2]];
 const POS_NAMES = {PG:"point guards",SG:"shooting guards",SF:"small forwards",PF:"power forwards",C:"centers",G:"guards",F:"forwards"};
 
 let REC = null, SEL = null, EL = null, LOGS_ALL = {}, SPLIT = {};
@@ -291,7 +291,7 @@ const TIERS_V = [[0, 3e6, "a minimum-contract"], [3e6, 10e6, "a bench"], [10e6, 
 const tierName = v => (TIERS_V.find(t => v >= t[0] && v < t[1]) || TIERS_V[0])[2];
 const salNum = y => y ? +String(y[1]).replace(/[^\d]/g, "") || 0 : 0;
 const med = a => { if(!a.length) return 0; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
-const prodOf = p => (p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 4 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0);
+const prodOf = p => (p.pts || 0) + 2 * (p.ast || 0) + (p.trb || 0) + 2 * (p.stl || 0) + 2 * (p.blk || 0) - 2 * (p.tov || 0);
 /* Value tracker: what the league pays for production like his this season (same method as the Pulse$ board):
    the median salary of the 15 qualified players whose production per team game is closest to his. */
 function valueInfo(){
@@ -307,7 +307,7 @@ function valueInfo(){
   const out = {me, minG, sal: me.sal || salNum(REC.contract && REC.contract.years && REC.contract.years[0]), like: like(me.pace), pace: me.pace, pool};
   // last 10 games: his production per game in them, priced the same way
   const L = ((REC.games || {})[currentLabel()] || {}).logs || [];
-  if(L.length >= 10 && L.length > me.p.g * 0.6){ const t = L.slice(-10), pr = t.reduce((a, l) => a + (+l[5] || 0) + 2 * (+l[6] || 0) + 2 * ((+l[7] || 0) + (+l[8] || 0)) + 4 * (+l[9] || 0) + (+l[10] || 0) - 4 * (+l[11] || 0), 0) / 10;
+  if(L.length >= 10 && L.length > me.p.g * 0.6){ const t = L.slice(-10), pr = t.reduce((a, l) => a + (+l[5] || 0) + 2 * (+l[6] || 0) + ((+l[7] || 0) + (+l[8] || 0)) + 2 * (+l[9] || 0) + 2 * (+l[10] || 0) - 2 * (+l[11] || 0), 0) / 10;
     out.l10 = {pace: pr, like: like(pr)}; }
   const sorted = pool.slice().sort((a, b) => b.pace - a.pace); out.rank = sorted.findIndex(r => r.p.id === REC.id) + 1; out.of = sorted.length;
   return out;
@@ -330,7 +330,7 @@ function valueCard(){
       <span class="fill ${d >= 0 ? "up" : "down"}" style="left:${Math.min(pc(sal), pc(like))}%;width:${Math.abs(pc(like) - pc(sal))}%"></span>
       ${ticks.map(t => `<s style="left:${pc(t[0])}%">${t[1]}</s>`).join("")}</div>
     <div class="pp-vkey"><span><i class="paid"></i>Paid</span><span><i class="like"></i>Playing like</span>${v.l10 ? `<span>Last 10 games: playing like <b>${M(v.l10.like)}</b></span>` : ""}<span>Production #${v.rank} of ${v.of} qualified</span></div>
-    <div class="pp-note">"Playing like" is what the league actually pays for his level of play this season: the median salary of the 15 qualified players whose production per team game (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4, missed games count as zero) is closest to his. A max player having a rough year can price out at $20M; a cheap player having a breakout can price out at $30M. Same method as the Pulse$ board. Early in the season it swings a lot.</div></div>`;
+    <div class="pp-note">"Playing like" is what the league actually pays for his level of play this season: the median salary of the 15 qualified players whose production per team game (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2, missed games count as zero) is closest to his. A max player having a rough year can price out at $20M; a cheap player having a breakout can price out at $30M. Same method as the Pulse$ board. Early in the season it swings a lot.</div></div>`;
 }
 const CAP_PCT_MAX = () => window.CAP_RULES ? CAP_RULES.cap * 0.30 : 49.5e6;
 
@@ -364,7 +364,7 @@ const money = n => "$" + Math.round(n).toLocaleString();
 function mvrPlus(s){
   if(!s || !s.mp || s.fga == null) return null;
   const trb = s.trb != null ? s.trb : (s.drb||0) + (s.orb||0);
-  return ((s.pts||0) + 2*(s.ast||0) + 2*trb + 4*(s.stl||0) + (s.blk||0) - 4*(s.noTov ? 0 : (s.tov||0)) - ((s.fga||0) - (s.fg||0)) - .5*((s.fta||0) - (s.ft||0))) / s.mp;
+  return ((s.pts||0) + 2*(s.ast||0) + trb + 2*(s.stl||0) + 2*(s.blk||0) - 2*(s.noTov ? 0 : (s.tov||0)) - ((s.fga||0) - (s.fg||0)) - .5*((s.fta||0) - (s.ft||0))) / s.mp;
 }
 function careerCard(list, title, withRank, sub){
   const seasons = (list || []).slice().reverse();
@@ -1014,7 +1014,7 @@ function tradeHtml(){
     const s = {g: L.length, min: 0, pts: 0, ast: 0, reb: 0, stl: 0, blk: 0, tov: 0, fgm: 0, fga: 0, f3m: 0, f3a: 0, ftm: 0, fta: 0, pm: 0, w: 0, mar: 0};
     L.forEach(l => { s.min += l[4]; s.pts += l[5]; s.ast += l[6]; s.reb += l[7] + l[8]; s.stl += l[9]; s.blk += l[10]; s.tov += l[11];
       s.fgm += l[12]; s.fga += l[13]; s.f3m += l[14]; s.f3a += l[15]; s.ftm += l[16]; s.fta += l[17]; s.pm += l[18] || 0; s.w += l[19] === "W"; s.mar += l[21] || 0; });
-    s.pulse = s.min ? (s.pts + 2 * s.ast + 2 * s.reb + 4 * s.stl + s.blk - 4 * s.tov) / s.min : null;
+    s.pulse = s.min ? (s.pts + 2 * s.ast + s.reb + 2 * s.stl + 2 * s.blk - 2 * s.tov) / s.min : null;
     return s;
   };
   const B = agg(before), A = agg(after);
@@ -1045,7 +1045,7 @@ function tradeHtml(){
     + `<div class="pp-grid"><div class="pp-card c12" id="ppTrade"><h3>Before &amp; after <small>per game</small></h3>${pick}
       <div class="tablewrap"><table class="pp-tbl"><thead><tr><th class="l"></th><th>${beforeLbl}</th><th>With ${esc(tn(to))}${nextTrade ? ` (until ${md(nextTrade[0])})` : ""}</th><th>Change</th></tr></thead>
       <tbody>${ROWS.map(row).join("")}<tr><td class="l">Team in his games</td><td>${rec(B)}</td><td>${rec(A)}</td><td></td></tr></tbody></table></div>
-      <div class="pp-note">${A.g ? "" : `He hasn't played for ${esc(tn(to))} yet; the "after" column fills in once he does. `}${A.g && A.g < 5 ? "Only a few games since the trade, so the after column will move a lot. " : ""}Green ▲ / red ▼ = better / worse after the trade (fewer turnovers counts as better). Pulse = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</div></div></div><div class="pp-gap"></div>`;
+      <div class="pp-note">${A.g ? "" : `He hasn't played for ${esc(tn(to))} yet; the "after" column fills in once he does. `}${A.g && A.g < 5 ? "Only a few games since the trade, so the after column will move a lot. " : ""}Green ▲ / red ▼ = better / worse after the trade (fewer turnovers counts as better). Pulse = (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ MIN.</div></div></div><div class="pp-gap"></div>`;
 }
 
 /* ---------- on the floor together: two-man pairings from the team's lineup stints (data/teams/<code>.json) ---------- */
@@ -1151,9 +1151,9 @@ function clutchCard(){
   if(!r) return box + `<h3>Crunch time <small>last 5 minutes of the 4th or OT, score within 5</small></h3><div class="pp-empty">No games yet this season.</div></div>`;
   const v = k => r[C[k]] || 0;
   const mins = v("min"), cmin = v("c_sec") / 60;
-  const base = mins ? (v("pts") + 2*v("ast") + 2*(v("dreb") + v("oreb")) + 4*v("stl") + v("blk") - 4*v("tov")) / mins : null;
+  const base = mins ? (v("pts") + 2*v("ast") + (v("dreb") + v("oreb")) + 2*v("stl") + 2*v("blk") - 2*v("tov")) / mins : null;
   /* Clutch Pulse: the Pulse formula on crunch-time stats only, per crunch-time minute (0 with no crunch-time minutes) */
-  const cpe = cmin ? (v("c_pts") + 2*v("c_ast") + 2*v("c_reb") + 4*v("c_stl") + v("c_blk") - 4*v("c_tov")) / cmin : 0;
+  const cpe = cmin ? (v("c_pts") + 2*v("c_ast") + v("c_reb") + 2*v("c_stl") + 2*v("c_blk") - 2*v("c_tov")) / cmin : 0;
   const moments = (SEASONP.moments[r[C.id]] || []).slice().reverse();
   const clock = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const per = (n, d) => d ? `${n}-${d}` : "—";

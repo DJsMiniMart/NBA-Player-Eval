@@ -158,7 +158,7 @@ function body(t){
     <div class="tp-jump"><a href="#tpDeal">The full trade</a>${t.players.length ? `<a href="#tpPlayers">Players</a>` : ""}${picksIn(t).length ? `<a href="#tpPicks">Picks</a>` : ""}<a href="#tpCap">Salary &amp; cap</a><a href="#tpNews">News</a><a href="#tpMore">More</a></div>
     <div class="tp-sec" id="tpDeal"><h4>The full trade</h4>${deal}</div>
     ${t.players.length ? `<div class="tp-sec" id="tpPlayers"><h4>Players in the deal</h4><div class="tp-pl">${t.players.map(([pid, n]) => playerCard(pid, n)).join("")}</div>
-      <p class="tp-note">This season's numbers, all teams combined. Pulse = (PTS + AST×2 + REB×2 + STL×4 + BLK − TOV×4) ÷ MIN.</p></div>` : ""}
+      <p class="tp-note">This season's numbers, all teams combined. Pulse = (PTS + AST×2 + REB + STL×2 + BLK×2 − TOV×2) ÷ MIN.</p></div>` : ""}
     ${picksHtml(t)}${capHtml(t)}
     <div class="tp-sec" id="tpNews"><h4>News about the trade</h4>${news ? `<ul class="tp-news">${news}</ul>` : `<p class="tp-note" style="margin:0 0 8px">No ESPN stories saved for this one${(Date.now() - Date.parse(t.date)) / 864e5 > 45 ? " (it's from before stories were collected)" : " yet"}.</p>`}
       <div class="tp-links" style="margin-top:8px"><a href="https://www.espn.com/search/_/q/${q}" target="_blank" rel="noopener">Search ESPN</a>
