@@ -1,7 +1,7 @@
 """Every NBA (and BAA) regular season, one row per player, for "Ask the Geek" stat questions
 ("how many players averaged 25 points, 10 rebounds and 8 assists in a season?").
 
-Writes data/qseasons.json: {"cols": ["p", "s", "team", ...], "players": [[id, name], ...], "seasons": [...], "rows": [...]}
+Writes data/qseasons.json: {"cols": ["p", "s", "team", ...], "players": [[id, name, career positions], ...], "seasons": [...], "rows": [...]}
   (p = index into players, s = index into seasons)
   - 1946-47 to 1972-73 come from Basketball-Reference's season totals pages, downloaded once each and kept in
     data/oldseason-YYYY.json (they never change). Older seasons didn't track everything: minutes start in
@@ -203,7 +203,10 @@ def build():
     for r in rows:
         if r[0] not in pix:
             pix[r[0]] = len(players)
-            players.append([r[0], r[1]])
+            # his career position(s) from his player file too (G, F, C, G-F, F-C...), so a player listed at
+            # more than one position counts at each of them
+            bio = (load(os.path.join(DATA, "players", f"{r[0]}.json"), {}) or {}).get("bio") or {}
+            players.append([r[0], r[1], bio.get("pos") or ""])
         out.append([pix[r[0]], sidx[r[2]]] + r[3:])   # team, pos, then the numbers
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"updatedAt": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "current": cur.get("season"),
