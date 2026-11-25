@@ -714,7 +714,7 @@ function playoffsBlock(){
 function cardBuyBtn(){
   if(!LG || !REC || isRetired()) return "";
   const P = LG.players, st = P.find(p => p.id === REC.id); if(!st || !st.g || !st.mp) return "";
-  const f = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 3 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0)) / p.g : 0;
+  const f = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + (p.trb || 0) + 2 * (p.stl || 0) + 2 * (p.blk || 0) - 2 * (p.tov || 0)) / p.g : 0;
   const most = Math.max(1, ...P.map(p => p.g || 0)), MING = Math.max(1, Math.ceil(most / 2));
   const Q = P.filter(p => p.g >= MING && p.mp / p.g >= 15).map(f); if(!Q.length) return "";
   const early = !(st.g >= MING && st.mp / st.g >= 15), med = Q.slice().sort((a, b) => a - b)[Q.length >> 1];

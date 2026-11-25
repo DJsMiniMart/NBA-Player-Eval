@@ -258,7 +258,7 @@
   <div class="two">
     <div><h2 data-jump="What's new">What's new <small>with your Rotation, newest first</small></h2><div class="card"><ul class="feed" id="feed"></ul></div></div>
     <div><h2 data-jump="Next up">Next up <small>when your guys play</small></h2><div class="card"><ul class="tn" id="tonight"></ul></div>
-      <h2 data-jump="Card tiers">Card tiers</h2><p class="note" style="margin:0">Each card's rating (OVR) comes from where his production per game (PTS + 2×AST + 2×REB + 3×STL + BLK − 4×TOV, the same formula the card game scores) ranks among qualified players this season, so minutes count: a 35-minute starter rates above an efficient 15-minute backup, on a 2K-style scale: the league's best is a 99, a typical rotation player is in the low 70s. "Early" means he hasn't played enough yet to qualify, so his rating is pulled toward average until he has.</p><div class="legend" id="legend"></div></div>
+      <h2 data-jump="Card tiers">Card tiers</h2><p class="note" style="margin:0">Each card's rating (OVR) comes from where his production per game (PTS + 2×AST + REB + 2×STL + 2×BLK − 2×TOV, the same formula the card game scores) ranks among qualified players this season, so minutes count: a 35-minute starter rates above an efficient 15-minute backup, on a 2K-style scale: the league's best is a 99, a typical rotation player is in the low 70s. "Early" means he hasn't played enough yet to qualify, so his rating is pulled toward average until he has.</p><div class="legend" id="legend"></div></div>
   </div>
   <p class="note foot">Saved in this browser. Updated every morning (injuries hourly). Starters are your first five; use the arrows on a card to move a player between the starting five and the bench.</p>
   </div>
@@ -342,7 +342,7 @@ const TIERS = [[95, "opal", "Galaxy Opal"], [90, "diamond", "Diamond"], [84, "am
 let QUAL = [], MING = 1;
 /* card ratings use production per game (the Fantasy Five formula), not per-minute Pulse: a card is worth what it puts up
    in a night, so a 35-minute starter outranks an efficient 15-minute backup */
-const fpg = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + 2 * (p.trb || 0) + 3 * (p.stl || 0) + (p.blk || 0) - 4 * (p.tov || 0)) / p.g : 0;
+const fpg = p => p && p.g ? ((p.pts || 0) + 2 * (p.ast || 0) + (p.trb || 0) + 2 * (p.stl || 0) + 2 * (p.blk || 0) - 2 * (p.tov || 0)) / p.g : 0;
 function ratingOf(p){
   if(!p || !p.g || !p.mp) return null;
   const early = !(p.g >= MING && p.mp / p.g >= 15);
@@ -644,7 +644,7 @@ const lineupFor = d => { const k = Object.keys(G.snaps).filter(x => x <= d).sort
 /* ---------- nightly games, scored from that night's box scores (data/games/<id>.json) ---------- */
 const BOX = {};
 const getBox = id => BOX[id] || (BOX[id] = getJSON(`data/games/${id}.json`));
-const prodOf = r => (+r[4] || 0) + 2 * (+r[5] || 0) + 2 * ((+r[6] || 0) + (+r[7] || 0)) + 3 * (+r[8] || 0) + (+r[9] || 0) - 4 * (+r[10] || 0);
+const prodOf = r => (+r[4] || 0) + 2 * (+r[5] || 0) + ((+r[6] || 0) + (+r[7] || 0)) + 2 * (+r[8] || 0) + 2 * (+r[9] || 0) - 2 * (+r[10] || 0);
 function seeded(str){ let h = 2166136261; for(const ch of str){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 async function playNight(d){
   const games = ((SCHED && SCHED.games) || []).filter(g => ymd(new Date(g[1])) === d);
@@ -1186,7 +1186,7 @@ function drawRules(){
       <li><b>Your guys:</b> a winning pick in a game where one of your lineup players scores 20+ (+10), 30+ (+20), 40+ (+35) or 50+ (+60), with trophies for each.</li>
       <li><b>🧹 Perfect slate:</b> every spread right on a 5+ game night: free Ruby pack and a trophy.</li></ul></li>
     <li><b>Earn points from nightly games</b> (scored the morning after, from the real box scores), using the lineup you had before the night's first tip-off:
-      <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's production (PTS + 2×AST + 2×REB + 3×STL + BLK − 4×TOV). When a starter sits, the first bench player at his position subs in. Your target is your <b>projection</b>: what the five who played average per game this season, added up. Beat it (after chemistry and bench adjustments): <b>+${WIN_PTS}</b>. A stacked five has a big projection too, so it has to play like it.</li>
+      <ol style="margin:4px 0 0;padding-left:18px"><li><b>Fantasy Five:</b> your five's production (PTS + 2×AST + REB + 2×STL + 2×BLK − 2×TOV). When a starter sits, the first bench player at his position subs in. Your target is your <b>projection</b>: what the five who played average per game this season, added up. Beat it (after chemistry and bench adjustments): <b>+${WIN_PTS}</b>. A stacked five has a big projection too, so it has to play like it.</li>
       <li><b>vs Pulse:</b> Pulse builds a five from that night's players with about the same total OVR as yours who played (if only 3 of yours played, it picks 3). Outscore it: <b>+${WIN_PTS}</b>.</li>
       <li><b>vs a real team:</b> your five against the NBA starting five closest to yours in OVR that night (if fewer of yours played, their starters who played the most minutes, same number). Win: <b>+${WIN_PTS}</b>; beat a better-rated five: another <b>+${WIN_PTS}</b>.</li></ol></li>
     <li><b>Chemistry:</b> start any five you want, but they have to fit. Chemistry (0-100) rates positions, playmaking, 3-point spacing, rim protection and rebounding, and whether there are too many players who need the ball. Great chemistry adds up to +10%; poor chemistry costs up to −50%; no guard costs another −20% and no center another −20% (−60% at most). A center with four star forwards ends up around −40%: very hard to win with.</li>
@@ -1602,6 +1602,9 @@ async function init(){
   await Promise.all([window.Injuries ? Injuries.ready : null, window.Injuries ? Injuries.logReady() : null, ...ROT.map(async id => { FILES[id] = await getJSON(`data/players/${encodeURIComponent(id)}.json`); })]);
   setupAdd(); drawAll();
   if(G.started && !G.season){ G.season = SEASON; gSave(); }
+  // November 2026: production uses the new Pulse weights. Re-base every card's "value when you got him" once,
+  // so the switch itself doesn't show up as a gain or loss (or count toward hold-and-sell bonuses)
+  if(G.started && G.fv !== 2){ G.cards.concat(G.keep || []).forEach(c => { const r = ratingOf(statOf(c.id)); if(r){ c.val = valueOf(r); c.ovr = r.ovr; c.tier = r.cls; } }); G.fv = 2; gSave(); }
   await earnings(); if(!seasonOver()) await playNights(); setupGame();
   if(seasonOver()) showSeasonEnd();
   { const m = location.hash.match(/buy=([^&]+)/); if(m) showBuy(decodeURIComponent(m[1])); }

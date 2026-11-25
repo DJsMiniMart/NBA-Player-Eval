@@ -349,7 +349,7 @@ def main():
 
 def write_career(year):
     """data/career.json: each current player's per-game production in earlier seasons (card game formula:
-    PTS + 2*AST + 2*REB + 3*STL + BLK - 4*TOV), to flag players playing below their career level."""
+    PTS + 2*AST + REB + 2*STL + 2*BLK - 2*TOV, the same weights as Pulse), to flag players playing below their career level."""
     import glob
     cur = {p.get("id") for p in ((load_json(STATS_PATH, {}) or {}).get("players") or []) if p.get("id")}
     tot = {}
@@ -362,7 +362,7 @@ def write_career(year):
                 continue
             t = tot.setdefault(i, [0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             t[0] += p["g"]
-            t[1] += (p.get("pts", 0) + 2 * p.get("ast", 0) + 2 * p.get("trb", 0) + 3 * p.get("stl", 0) + p.get("blk", 0) - 4 * p.get("tov", 0))
+            t[1] += (p.get("pts", 0) + 2 * p.get("ast", 0) + p.get("trb", 0) + 2 * p.get("stl", 0) + 2 * p.get("blk", 0) - 2 * p.get("tov", 0))
             t[2] += 1
             for j, k in enumerate(["pts", "trb", "ast", "stl", "blk", "mp", "fg", "fga", "fg3", "fg3a"]):
                 t[3 + j] += p.get(k, 0) or 0
