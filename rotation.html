@@ -526,7 +526,9 @@ const buyoutBack = c => c.fund && c.fund.left > 0 ? Math.floor(c.fund.left * (1 
 const ymd = d => { d = d || new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const addD = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return ymd(x); };
 /* card value: from where his production per game ranks (percentile), steep at the top like a real market: a top-10 player is worth ~230, a top-25 ~100, a median player ~7 */
-const valueOf = r => r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.pow(r.pc, 2.5)))) : 5;
+/* a card's value = what it sells for. Since Nov 2026 that's half of what buying him costs (value scale 2.25, buy = 2x value) */
+const VALUE_SCALE = 2.25;
+const valueOf = r => Math.round(VALUE_SCALE * (r ? Math.max(5, Math.round(5 + 0.5 * Math.exp(6.75 * Math.pow(r.pc, 2.5)))) : 5));
 /* pick points: per game, how many of your lines (winner, spread, total) hit: 1 = 10, 2 = 25, 3 = 50 */
 async function earnings(){
   if(!window.MyPicks){ EARN = {pts: 0, games: 0, list: []}; return; }
@@ -910,7 +912,7 @@ const HOLD_DAYS = 7, HOLD_BONUS = 0.5;
 /* contracts: every card plays a set number of games for you (games he actually plays in your five), by tier when you got him;
    with 3 or fewer left you can re-sign him for half his current value; at 0 he leaves your lineup until you do */
 const CLEN = {opal: 12, diamond: 15, amethyst: 18, ruby: 20, gold: 25}, RESIGN = 0.5, RESIGN_AT = 3;
-const BUY_MULT = 4.5, BUY_MIN = 50;   // buying a card outright: 4.5x its value (the best card ~1,800), at least 50
+const BUY_MULT = 2, BUY_MIN = 50;   // buying a card outright: 2x its value, so selling gets back half (the best card ~1,800 to buy, ~900 to sell), at least 50
 const contractLen = id => CLEN[(ratingOf(statOf(id)) || {cls: "gold"}).cls] || 25;
 /* re-signing: pick a deal; longer = cheaper per game. Bird rights from games played for you (all deals): 30 = Early Bird, 60 = Full Bird.
    Bird: cheaper re-signing and part of his salary doesn't count toward your cap/tax. Expired and not re-signed within 7 days: Bird rights lapse. */
@@ -1309,7 +1311,7 @@ function holdBonus(c, v){
   const b = Math.round((v - c.val) * HOLD_BONUS); G.st.holds = (G.st.holds || 0) + 1; G.st.holdPts = (G.st.holdPts || 0) + b; return b;
 }
 const toast2 = m => { if(window.fcToast) setTimeout(() => fcToast(m), 500); };
-/* ---------- buy a card outright (from a player page): 4.5x his card value ---------- */
+/* ---------- buy a card outright (from a player page): 2x his card value (selling gets half back) ---------- */
 /* ---------- scout: slumping players vs their career level, priced to buy low; plus your own watch list ---------- */
 let SCTAB = "auto", SCSAL = "all", SCSORT = "profit";
 const SCOUT_MAX = 15;
@@ -1369,7 +1371,7 @@ function scoutHtml(){
   return tabs + `<div class="chips" style="margin-bottom:6px">${chip("sal", "all", "Any salary")}${chip("sal", "20", "Under $20M")}${chip("sal", "10", "Under $10M")}<span style="width:8px"></span>${chip("sort", "profit", "Biggest upside")}${chip("sort", "slump", "Biggest slump")}${chip("sort", "cheap", "Cheapest")}</div>
     <p class="note" style="margin:0 0 4px">Veterans (82+ career games) playing 10%+ below their career production. ${L.length} match.</p>
     ${L.slice(0, 15).map(x => scoutRow(x, false)).join("") || `<p class="note">No one matches right now.</p>`}
-    <p class="note" style="margin:8px 0 0">Price is 4.5× his card value today. "Sells for" assumes he returns to his career production and you hold him 7+ days for the hold bonus. A slump can also be an injury, age or a smaller role, so check his page.</p>`;
+    <p class="note" style="margin:8px 0 0">Price is 2× his card value today (selling gets back half). "Sells for" assumes he returns to his career production and you hold him 7+ days for the hold bonus. A slump can also be an injury, age or a smaller role, so check his page.</p>`;
 }
 /* ---------- daily prize wheel: one spin a day (plus "spin again"); streaks of 7 and 30 days add free packs ---------- */
 const WHEEL = [
@@ -1604,7 +1606,9 @@ async function init(){
   if(G.started && !G.season){ G.season = SEASON; gSave(); }
   // November 2026: production uses the new Pulse weights. Re-base every card's "value when you got him" once,
   // so the switch itself doesn't show up as a gain or loss (or count toward hold-and-sell bonuses)
-  if(G.started && G.fv !== 2){ G.cards.concat(G.keep || []).forEach(c => { const r = ratingOf(statOf(c.id)); if(r){ c.val = valueOf(r); c.ovr = r.ovr; c.tier = r.cls; } }); G.fv = 2; gSave(); }
+  if(G.started && G.fv !== 2 && G.fv !== 3){ G.cards.concat(G.keep || []).forEach(c => { const r = ratingOf(statOf(c.id)); if(r){ c.val = valueOf(r); c.ovr = r.ovr; c.tier = r.cls; } }); G.fv = 3; gSave(); }
+  // Nov 27 2026: cards sell for half their buy price. Scale each card's saved values to the new scale once
+  if(G.started && G.fv === 2){ G.cards.concat(G.keep || []).forEach(c => { if(c.val != null) c.val = Math.round(c.val * VALUE_SCALE); if(c.vh) c.vh = c.vh.map(([d, v]) => [d, Math.round(v * VALUE_SCALE)]); }); G.fv = 3; gSave(); }
   await earnings(); if(!seasonOver()) await playNights(); setupGame();
   if(seasonOver()) showSeasonEnd();
   { const m = location.hash.match(/buy=([^&]+)/); if(m) showBuy(decodeURIComponent(m[1])); }
